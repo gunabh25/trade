@@ -12,7 +12,7 @@ from tradeflow.db.models.copy_trading import (
     ExecutionLog,
     OrderMapping,
 )
-from tradeflow.db.models.journal import Note, Strategy, TradeJournal
+from tradeflow.db.models.journal import JournalScreenshot, Note, Strategy, TradeJournal
 from tradeflow.db.models.notification import Notification
 from tradeflow.db.models.oauth import OAuthAccount
 from tradeflow.db.models.risk import RiskBreach, RiskMonitorSnapshot, RiskRule
@@ -29,6 +29,7 @@ __all__ = [
     "CopyGroup",
     "CopyGroupFollower",
     "ExecutionLog",
+    "JournalScreenshot",
     "Note",
     "Notification",
     "OAuthAccount",

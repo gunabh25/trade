@@ -192,9 +192,26 @@ class PositionSide(StrEnum):
 class NoteEntityType(StrEnum):
     TRADE = "trade"
     JOURNAL = "journal"
+    JOURNAL_ENTRY = "journal_entry"
     STRATEGY = "strategy"
     TRADING_ACCOUNT = "trading_account"
     ORDER = "order"
+
+
+class JournalSource(StrEnum):
+    MANUAL = "manual"
+    AUTO_IMPORT = "auto_import"
+
+
+class TradeEmotion(StrEnum):
+    CONFIDENT = "confident"
+    CALM = "calm"
+    FOMO = "fomo"
+    FEARFUL = "fearful"
+    REVENGE = "revenge"
+    IMPATIENT = "impatient"
+    DISCIPLINED = "disciplined"
+    ANXIOUS = "anxious"
 
 
 class NotificationType(StrEnum):

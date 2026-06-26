@@ -27,3 +27,14 @@ export type {
   LivenessResponse,
   ReadinessResponse,
 } from './health';
+export type {
+  CalendarDay,
+  EmotionStats,
+  JournalEntry,
+  JournalListResponse,
+  JournalScreenshot,
+  JournalSource,
+  JournalStats,
+  JournalStrategy,
+  StrategyPerformance,
+} from './journal';

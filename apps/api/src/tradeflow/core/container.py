@@ -27,6 +27,7 @@ from tradeflow.features.auth.service import AuthService
 from tradeflow.features.broker.service import BrokerConnectionService
 from tradeflow.features.copy_trading.service import CopyTradingService
 from tradeflow.features.health.service import HealthService
+from tradeflow.features.journal.service import JournalService
 from tradeflow.features.risk.service import RiskService
 from tradeflow.integrations.brokers.manager import BrokerSessionManager
 from tradeflow.integrations.brokers.monitor import ConnectionMonitor
@@ -50,6 +51,7 @@ class Container(containers.DeclarativeContainer):
             "tradeflow.features.broker.router",
             "tradeflow.features.copy_trading.router",
             "tradeflow.features.risk.router",
+            "tradeflow.features.journal.router",
             "tradeflow.core.dependencies.auth",
         ],
     )
@@ -204,6 +206,8 @@ class Container(containers.DeclarativeContainer):
         alert_service=risk_alert_service,
         state_store=risk_state_store,
     )
+
+    journal_service: providers.Factory[JournalService] = providers.Factory(JournalService)
 
     copy_trading_service: providers.Factory[CopyTradingService] = providers.Factory(
         CopyTradingService,
