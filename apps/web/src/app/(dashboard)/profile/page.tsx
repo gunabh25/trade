@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 
-import { Button, Card, CardContent, CardHeader, CardTitle } from '@tradeflow/ui';
+import { Button, Card, CardContent, CardHeader, CardTitle, Input } from '@tradeflow/ui';
 
 import * as authApi from '@/features/auth/api/auth-api';
 import { useAuth } from '@/features/auth/components/auth-provider';
@@ -45,23 +45,20 @@ export default function ProfilePage() {
   }
 
   return (
-    <main className="mx-auto max-w-2xl space-y-6 p-8">
-      <h1 className="text-2xl font-semibold">Profile & security</h1>
-      <Card>
+    <div className="mx-auto max-w-2xl space-y-6 p-4 sm:p-6">
+      <Card className="border-border/60 bg-card/80 shadow-none">
         <CardHeader>
-          <CardTitle>Profile</CardTitle>
+          <CardTitle className="text-base font-medium">Profile</CardTitle>
         </CardHeader>
         <CardContent className="space-y-3">
-          <input
-            className="w-full rounded-md border border-zinc-700 bg-zinc-900 px-3 py-2"
+          <Input
             placeholder="First name"
             value={firstName}
             onChange={(e) => {
               setFirstName(e.target.value);
             }}
           />
-          <input
-            className="w-full rounded-md border border-zinc-700 bg-zinc-900 px-3 py-2"
+          <Input
             placeholder="Last name"
             value={lastName}
             onChange={(e) => {
@@ -69,7 +66,7 @@ export default function ProfilePage() {
             }}
           />
           <textarea
-            className="w-full rounded-md border border-zinc-700 bg-zinc-900 px-3 py-2"
+            className="border-input bg-background ring-offset-background placeholder:text-muted-foreground focus-visible:ring-ring flex min-h-[80px] w-full rounded-md border px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2"
             placeholder="Bio"
             value={bio}
             onChange={(e) => {
@@ -79,12 +76,12 @@ export default function ProfilePage() {
           <Button onClick={() => void saveProfile()}>Save profile</Button>
         </CardContent>
       </Card>
-      <Card>
+      <Card className="border-border/60 bg-card/80 shadow-none">
         <CardHeader>
-          <CardTitle>Two-factor authentication</CardTitle>
+          <CardTitle className="text-base font-medium">Two-factor authentication</CardTitle>
         </CardHeader>
         <CardContent className="space-y-3">
-          <p className="text-sm text-zinc-400">
+          <p className="text-muted-foreground text-sm">
             Status: {user.twoFactorEnabled ? 'Enabled' : 'Disabled'}
           </p>
           {!user.twoFactorEnabled ? (
@@ -94,9 +91,8 @@ export default function ProfilePage() {
               </Button>
               {totpSetup ? (
                 <>
-                  <p className="break-all text-xs text-zinc-400">{totpSetup}</p>
-                  <input
-                    className="w-full rounded-md border border-zinc-700 bg-zinc-900 px-3 py-2"
+                  <p className="text-muted-foreground break-all text-xs">{totpSetup}</p>
+                  <Input
                     placeholder="6-digit code"
                     value={totpCode}
                     onChange={(e) => {
@@ -110,6 +106,6 @@ export default function ProfilePage() {
           ) : null}
         </CardContent>
       </Card>
-    </main>
+    </div>
   );
 }
