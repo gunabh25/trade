@@ -24,6 +24,7 @@ celery_app.conf.update(
     task_routes={
         "tradeflow.workers.tasks.*": {"queue": "default"},
         "tradeflow.workers.copy_tasks.*": {"queue": "copy"},
+        "tradeflow.workers.risk_tasks.*": {"queue": "risk"},
     },
     beat_schedule={
         "drain-copy-retry-queue": {
@@ -33,6 +34,14 @@ celery_app.conf.update(
         "recover-broker-connections": {
             "task": "tradeflow.workers.copy_tasks.recover_connections",
             "schedule": 60.0,
+        },
+        "monitor-risk-all-accounts": {
+            "task": "tradeflow.workers.risk_tasks.monitor_all_accounts",
+            "schedule": 30.0,
+        },
+        "reset-daily-risk-sessions": {
+            "task": "tradeflow.workers.risk_tasks.reset_daily_sessions",
+            "schedule": 3600.0,
         },
     },
 )

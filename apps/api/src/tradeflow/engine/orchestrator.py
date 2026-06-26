@@ -24,6 +24,7 @@ from tradeflow.db.models.copy_trading import (
     CopyGroupFollower,
     ExecutionLog,
 )
+from tradeflow.db.models.risk import RiskRule
 from tradeflow.db.models.trading import TradingAccount
 from tradeflow.engine.executor import CopyExecutor
 from tradeflow.engine.mapping import TradeMappingStore
@@ -36,6 +37,8 @@ from tradeflow.engine.types import (
     LeaderEvent,
 )
 from tradeflow.integrations.brokers.manager import BrokerSessionManager
+from tradeflow.risk.evaluator import RiskEvaluator
+from tradeflow.risk.types import ProposedOrder
 
 logger = get_logger(__name__)
 
@@ -50,6 +53,7 @@ class CopyOrchestrator:
         retry_queue: RetryQueue,
         *,
         max_parallel_followers: int = 10,
+        risk_evaluator: RiskEvaluator | None = None,
     ) -> None:
         self._sessions = session_manager
         self._mapping = mapping_store
@@ -57,6 +61,7 @@ class CopyOrchestrator:
         self._matcher = OrderMatcher()
         self._executor = CopyExecutor(session_manager)
         self._max_parallel = max_parallel_followers
+        self._risk = risk_evaluator
 
     async def handle_leader_event(
         self,
@@ -207,6 +212,10 @@ class CopyOrchestrator:
                     success=False,
                     error=decision.skip_reason,
                 )
+
+            risk_block = await self._check_risk(db, event, decision)
+            if risk_block is not None:
+                return risk_block
 
             mapped_id = mapping_lookup.get((event.leader_order_id, decision.follower_account_id))
             result = await self._executor.execute(
@@ -359,6 +368,43 @@ class CopyOrchestrator:
                 follower_balance=account.balance,
             )
         return contexts
+
+    async def _check_risk(
+        self,
+        db: AsyncSession,
+        event: LeaderEvent,
+        decision: CopyDecision,
+    ) -> CopyExecutionResult | None:
+        if self._risk is None or decision.action != CopyEventAction.PLACE:
+            return None
+
+        rule = await db.scalar(
+            select(RiskRule).where(
+                RiskRule.trading_account_id == decision.follower_account_id,
+                RiskRule.deleted_at.is_(None),
+            ),
+        )
+        if rule is None or not rule.enabled:
+            return None
+
+        order = ProposedOrder(
+            symbol=event.symbol,
+            side=decision.side,
+            quantity=decision.quantity,
+            price=decision.price,
+            notional_usd=decision.price * decision.quantity if decision.price else None,
+        )
+        result = await self._risk.check_pre_trade(rule, decision.follower_account_id, order)
+        if result.allowed:
+            return None
+
+        violation = result.primary_violation
+        reason = violation.message if violation else "risk_blocked"
+        return CopyExecutionResult(
+            decision=decision,
+            success=False,
+            error=f"risk_blocked:{reason}",
+        )
 
     @staticmethod
     def _decision_to_dict(decision: CopyDecision) -> dict[str, object]:

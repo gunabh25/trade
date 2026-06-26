@@ -202,8 +202,37 @@ class NotificationType(StrEnum):
     CONNECTION_LOST = "connection_lost"
     RISK_BREACH = "risk_breach"
     POSITION_DRIFT = "position_drift"
+    KILL_SWITCH = "kill_switch"
     BILLING = "billing"
     SYSTEM = "system"
+
+
+class RiskBreachType(StrEnum):
+    DAILY_LOSS = "daily_loss"
+    MAX_DRAWDOWN = "max_drawdown"
+    MAX_POSITION_SIZE = "max_position_size"
+    MAX_CONTRACTS = "max_contracts"
+    MAX_CONTRACTS_PER_SYMBOL = "max_contracts_per_symbol"
+    TRADING_HOURS = "trading_hours"
+    ALLOWED_SYMBOLS = "allowed_symbols"
+    BLOCKED_SYMBOLS = "blocked_symbols"
+    LEVERAGE_LIMIT = "leverage_limit"
+    KILL_SWITCH = "kill_switch"
+
+
+class RiskAction(StrEnum):
+    BLOCK = "block"
+    WARN = "warn"
+    FLATTEN = "flatten"
+    STOP_COPYING = "stop_copying"
+    LOCK_ACCOUNT = "lock_account"
+
+
+class RiskMonitorStatus(StrEnum):
+    HEALTHY = "healthy"
+    WARNING = "warning"
+    BREACHED = "breached"
+    KILL_SWITCH = "kill_switch"
 
 
 class AuditAction(StrEnum):

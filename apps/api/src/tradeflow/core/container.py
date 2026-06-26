@@ -27,10 +27,16 @@ from tradeflow.features.auth.service import AuthService
 from tradeflow.features.broker.service import BrokerConnectionService
 from tradeflow.features.copy_trading.service import CopyTradingService
 from tradeflow.features.health.service import HealthService
+from tradeflow.features.risk.service import RiskService
 from tradeflow.integrations.brokers.manager import BrokerSessionManager
 from tradeflow.integrations.brokers.monitor import ConnectionMonitor
 from tradeflow.integrations.brokers.registry import BrokerAdapterRegistry
 from tradeflow.integrations.brokers.retry import RetryPolicy
+from tradeflow.risk.actions import RiskActionExecutor
+from tradeflow.risk.alerts import RiskAlertService
+from tradeflow.risk.evaluator import RiskEvaluator
+from tradeflow.risk.monitor import RiskMonitor
+from tradeflow.risk.state import RiskStateStore
 
 
 class Container(containers.DeclarativeContainer):
@@ -43,6 +49,7 @@ class Container(containers.DeclarativeContainer):
             "tradeflow.features.auth.router",
             "tradeflow.features.broker.router",
             "tradeflow.features.copy_trading.router",
+            "tradeflow.features.risk.router",
             "tradeflow.core.dependencies.auth",
         ],
     )
@@ -150,12 +157,52 @@ class Container(containers.DeclarativeContainer):
         max_attempts=config.provided.copy_retry_max_attempts,
     )
 
+    risk_state_store: providers.Singleton[RiskStateStore] = providers.Singleton(
+        RiskStateStore,
+        redis=redis_client,
+    )
+
+    risk_evaluator: providers.Singleton[RiskEvaluator] = providers.Singleton(
+        RiskEvaluator,
+        state_store=risk_state_store,
+    )
+
     copy_orchestrator: providers.Singleton[CopyOrchestrator] = providers.Singleton(
         CopyOrchestrator,
         session_manager=broker_session_manager,
         mapping_store=trade_mapping_store,
         retry_queue=copy_retry_queue,
         max_parallel_followers=config.provided.copy_max_parallel_followers,
+        risk_evaluator=risk_evaluator,
+    )
+
+    risk_action_executor: providers.Singleton[RiskActionExecutor] = providers.Singleton(
+        RiskActionExecutor,
+        session_manager=broker_session_manager,
+        state_store=risk_state_store,
+    )
+
+    risk_alert_service: providers.Singleton[RiskAlertService] = providers.Singleton(
+        RiskAlertService,
+        state_store=risk_state_store,
+    )
+
+    risk_monitor: providers.Singleton[RiskMonitor] = providers.Singleton(
+        RiskMonitor,
+        evaluator=risk_evaluator,
+        action_executor=risk_action_executor,
+        alert_service=risk_alert_service,
+        state_store=risk_state_store,
+        session_manager=broker_session_manager,
+    )
+
+    risk_service: providers.Factory[RiskService] = providers.Factory(
+        RiskService,
+        evaluator=risk_evaluator,
+        monitor=risk_monitor,
+        action_executor=risk_action_executor,
+        alert_service=risk_alert_service,
+        state_store=risk_state_store,
     )
 
     copy_trading_service: providers.Factory[CopyTradingService] = providers.Factory(

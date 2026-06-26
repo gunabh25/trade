@@ -101,6 +101,12 @@ class Settings(BaseSettings):
     )
     copy_max_parallel_followers: int = Field(default=10, alias="COPY_MAX_PARALLEL_FOLLOWERS")
 
+    # Risk engine
+    risk_monitor_interval_seconds: float = Field(
+        default=30.0,
+        alias="RISK_MONITOR_INTERVAL_SECONDS",
+    )
+
     @property
     def cors_origins(self) -> list[str]:
         return [origin.strip() for origin in self.api_cors_origins.split(",") if origin.strip()]
