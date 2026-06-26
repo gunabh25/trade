@@ -37,6 +37,7 @@ from tradeflow.engine.types import (
     LeaderEvent,
 )
 from tradeflow.integrations.brokers.manager import BrokerSessionManager
+from tradeflow.notifications.dispatcher import NotificationDispatcher
 from tradeflow.risk.evaluator import RiskEvaluator
 from tradeflow.risk.types import ProposedOrder
 
@@ -54,6 +55,7 @@ class CopyOrchestrator:
         *,
         max_parallel_followers: int = 10,
         risk_evaluator: RiskEvaluator | None = None,
+        notification_dispatcher: NotificationDispatcher | None = None,
     ) -> None:
         self._sessions = session_manager
         self._mapping = mapping_store
@@ -62,6 +64,7 @@ class CopyOrchestrator:
         self._executor = CopyExecutor(session_manager)
         self._max_parallel = max_parallel_followers
         self._risk = risk_evaluator
+        self._notifications = notification_dispatcher
 
     async def handle_leader_event(
         self,
@@ -180,11 +183,13 @@ class CopyOrchestrator:
         else:
             log.status = ExecutionLogStatus.RETRY_SCHEDULED
             log.error_message = result.error
-            await self._retry.enqueue(
+            enqueue_status = await self._retry.enqueue(
                 execution_log_id=execution_log_id,
                 payload={"event_id": event.id, "decision": self._decision_to_dict(decision)},
                 attempt=log.attempt,
             )
+            if enqueue_status == "dead_letter":
+                await self._notify_trade_failed(db, event, decision, result.error)
 
         await db.flush()
         return result
@@ -227,7 +232,14 @@ class CopyOrchestrator:
             )
 
             if not result.success:
-                await self._schedule_retry(db, event, decision, result)
+                enqueue_status = await self._schedule_retry(db, event, decision, result)
+                if enqueue_status == "dead_letter":
+                    await self._notify_trade_failed(
+                        db,
+                        event,
+                        decision,
+                        result.error or "copy_failed",
+                    )
                 return result
 
             if decision.action == CopyEventAction.PLACE and result.follower_order_id:
@@ -253,6 +265,16 @@ class CopyOrchestrator:
                     "latency_ms": result.latency_ms,
                 },
             )
+            if result.success and self._notifications is not None:
+                await self._notifications.notify_trade_copied(
+                    db,
+                    user_id=event.user_id,
+                    symbol=event.symbol,
+                    action=decision.action.value,
+                    follower_account_id=decision.follower_account_id,
+                    copy_group_id=event.copy_group_id,
+                    latency_ms=result.latency_ms,
+                )
             return result
 
     async def _schedule_retry(
@@ -261,7 +283,7 @@ class CopyOrchestrator:
         event: LeaderEvent,
         decision: CopyDecision,
         result: CopyExecutionResult,
-    ) -> ExecutionLog:
+    ) -> str:
         log = ExecutionLog(
             user_id=event.user_id,
             copy_group_id=event.copy_group_id,
@@ -278,12 +300,29 @@ class CopyOrchestrator:
         db.add(log)
         await db.flush()
 
-        await self._retry.enqueue(
+        return await self._retry.enqueue(
             execution_log_id=log.id,
             payload={"event_id": event.id, "decision": self._decision_to_dict(decision)},
             attempt=1,
         )
-        return log
+
+    async def _notify_trade_failed(
+        self,
+        db: AsyncSession,
+        event: LeaderEvent,
+        decision: CopyDecision,
+        error: str,
+    ) -> None:
+        if self._notifications is None:
+            return
+        await self._notifications.notify_trade_failed(
+            db,
+            user_id=event.user_id,
+            symbol=event.symbol,
+            error=error,
+            copy_group_id=event.copy_group_id,
+            follower_account_id=decision.follower_account_id,
+        )
 
     async def _persist_audit(
         self,

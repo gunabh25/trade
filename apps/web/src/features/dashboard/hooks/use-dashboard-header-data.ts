@@ -2,9 +2,11 @@
 
 import { useCallback, useEffect, useState } from 'react';
 
+import type { BrokerConnection, InAppNotification } from '@tradeflow/types/api';
+
 import { listBrokerConnections } from '@/features/broker/api/broker-api';
 import type { Notification, Workspace } from '@/features/dashboard/data/mock-dashboard-data';
-import { listRiskBreaches } from '@/features/risk/api/risk-api';
+import { listNotifications } from '@/features/notifications/api/notifications-api';
 import { formatRelativeTime } from '@/lib/api/normalize';
 
 interface DashboardHeaderData {
@@ -19,6 +21,29 @@ const EMPTY_HEADER: DashboardHeaderData = {
   notifications: [],
 };
 
+const EMPTY_CONNECTIONS: BrokerConnection[] = [];
+
+function mapNotificationType(type: InAppNotification['type']): Notification['type'] {
+  if (type === 'trade_copied' || type === 'copy_failure') {
+    return 'trade';
+  }
+  if (type === 'risk_breach' || type === 'kill_switch' || type === 'position_drift') {
+    return 'risk';
+  }
+  return 'system';
+}
+
+function toHeaderNotification(item: InAppNotification): Notification {
+  return {
+    id: item.id,
+    title: item.title,
+    message: item.body,
+    time: formatRelativeTime(item.created_at),
+    read: item.read,
+    type: mapNotificationType(item.type),
+  };
+}
+
 export function useDashboardHeaderData(enabled: boolean) {
   const [data, setData] = useState<DashboardHeaderData>(EMPTY_HEADER);
 
@@ -28,10 +53,10 @@ export function useDashboardHeaderData(enabled: boolean) {
     }
 
     try {
-      const [connections, breaches] = await Promise.all([
-        listBrokerConnections().catch(() => []),
-        listRiskBreaches().catch(() => []),
-      ]);
+      const connections = await listBrokerConnections().catch(
+        (): BrokerConnection[] => EMPTY_CONNECTIONS,
+      );
+      const notificationResponse = await listNotifications({ pageSize: 8 }).catch((): null => null);
 
       const workspaces: Workspace[] =
         connections.length > 0
@@ -42,14 +67,7 @@ export function useDashboardHeaderData(enabled: boolean) {
             }))
           : EMPTY_HEADER.workspaces;
 
-      const notifications: Notification[] = breaches.slice(0, 8).map((breach) => ({
-        id: breach.id,
-        title: 'Risk breach detected',
-        message: breach.message,
-        time: formatRelativeTime(breach.created_at),
-        read: false,
-        type: 'risk',
-      }));
+      const notifications = (notificationResponse?.items ?? []).map(toHeaderNotification);
 
       setData({
         workspaces,

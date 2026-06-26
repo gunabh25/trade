@@ -130,7 +130,10 @@ def recover_connections() -> dict[str, int]:
         registry = BrokerAdapterRegistry()
         monitor = ConnectionMonitor()
         session_manager = BrokerSessionManager(registry, monitor, encryption)
-        recovery = ConnectionRecovery(session_manager)
+        from tradeflow.notifications.dispatcher import NotificationDispatcher
+
+        dispatcher = NotificationDispatcher(settings, redis)
+        recovery = ConnectionRecovery(session_manager, notification_dispatcher=dispatcher)
 
         try:
             async with session_factory() as db:
@@ -138,7 +141,7 @@ def recover_connections() -> dict[str, int]:
                 await db.commit()
             return {"recovered": count}
         finally:
-            await redis.close()
+            await redis.aclose()
 
     return _run_async(_recover())
 

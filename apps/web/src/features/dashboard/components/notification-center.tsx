@@ -15,6 +15,7 @@ import {
 } from '@tradeflow/ui';
 
 import type { Notification } from '@/features/dashboard/data/mock-dashboard-data';
+import { markAllNotificationsRead } from '@/features/notifications/api/notifications-api';
 
 interface NotificationCenterProps {
   notifications: Notification[];
@@ -32,6 +33,7 @@ export function NotificationCenter({ notifications: initial }: NotificationCente
 
   function markAllRead() {
     setNotifications((prev) => prev.map((n) => ({ ...n, read: true })));
+    void markAllNotificationsRead().catch(() => undefined);
   }
 
   return (

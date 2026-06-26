@@ -29,11 +29,13 @@ from tradeflow.features.broker.service import BrokerConnectionService
 from tradeflow.features.copy_trading.service import CopyTradingService
 from tradeflow.features.health.service import HealthService
 from tradeflow.features.journal.service import JournalService
+from tradeflow.features.notifications.service import NotificationService
 from tradeflow.features.risk.service import RiskService
 from tradeflow.integrations.brokers.manager import BrokerSessionManager
 from tradeflow.integrations.brokers.monitor import ConnectionMonitor
 from tradeflow.integrations.brokers.registry import BrokerAdapterRegistry
 from tradeflow.integrations.brokers.retry import RetryPolicy
+from tradeflow.notifications.dispatcher import NotificationDispatcher
 from tradeflow.risk.actions import RiskActionExecutor
 from tradeflow.risk.alerts import RiskAlertService
 from tradeflow.risk.evaluator import RiskEvaluator
@@ -54,6 +56,7 @@ class Container(containers.DeclarativeContainer):
             "tradeflow.features.risk.router",
             "tradeflow.features.journal.router",
             "tradeflow.features.analytics.router",
+            "tradeflow.features.notifications.router",
             "tradeflow.core.dependencies.auth",
         ],
     )
@@ -166,6 +169,12 @@ class Container(containers.DeclarativeContainer):
         redis=redis_client,
     )
 
+    notification_dispatcher: providers.Singleton[NotificationDispatcher] = providers.Singleton(
+        NotificationDispatcher,
+        settings=config,
+        redis=redis_client,
+    )
+
     risk_evaluator: providers.Singleton[RiskEvaluator] = providers.Singleton(
         RiskEvaluator,
         state_store=risk_state_store,
@@ -178,6 +187,7 @@ class Container(containers.DeclarativeContainer):
         retry_queue=copy_retry_queue,
         max_parallel_followers=config.provided.copy_max_parallel_followers,
         risk_evaluator=risk_evaluator,
+        notification_dispatcher=notification_dispatcher,
     )
 
     risk_action_executor: providers.Singleton[RiskActionExecutor] = providers.Singleton(
@@ -189,6 +199,7 @@ class Container(containers.DeclarativeContainer):
     risk_alert_service: providers.Singleton[RiskAlertService] = providers.Singleton(
         RiskAlertService,
         state_store=risk_state_store,
+        notification_dispatcher=notification_dispatcher,
     )
 
     risk_monitor: providers.Singleton[RiskMonitor] = providers.Singleton(
@@ -212,6 +223,10 @@ class Container(containers.DeclarativeContainer):
     journal_service: providers.Factory[JournalService] = providers.Factory(JournalService)
 
     analytics_service: providers.Factory[AnalyticsService] = providers.Factory(AnalyticsService)
+
+    notification_service: providers.Factory[NotificationService] = providers.Factory(
+        NotificationService,
+    )
 
     copy_trading_service: providers.Factory[CopyTradingService] = providers.Factory(
         CopyTradingService,

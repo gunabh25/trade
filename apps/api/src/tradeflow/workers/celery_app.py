@@ -25,6 +25,7 @@ celery_app.conf.update(
         "tradeflow.workers.tasks.*": {"queue": "default"},
         "tradeflow.workers.copy_tasks.*": {"queue": "copy"},
         "tradeflow.workers.risk_tasks.*": {"queue": "risk"},
+        "tradeflow.workers.notification_tasks.*": {"queue": "notifications"},
     },
     beat_schedule={
         "drain-copy-retry-queue": {
@@ -41,6 +42,14 @@ celery_app.conf.update(
         },
         "reset-daily-risk-sessions": {
             "task": "tradeflow.workers.risk_tasks.reset_daily_sessions",
+            "schedule": 3600.0,
+        },
+        "check-subscription-expiry": {
+            "task": "tradeflow.workers.notification_tasks.check_subscription_expiry",
+            "schedule": 86400.0,
+        },
+        "check-pnl-milestones": {
+            "task": "tradeflow.workers.notification_tasks.check_pnl_milestones",
             "schedule": 3600.0,
         },
     },

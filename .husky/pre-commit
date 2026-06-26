@@ -1,2 +1,3 @@
 #!/usr/bin/env sh
+pnpm --filter @tradeflow/types build
 pnpm exec lint-staged

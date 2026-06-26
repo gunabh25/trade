@@ -72,6 +72,18 @@ export type {
   SimulateLeaderEventRequest,
 } from './copy';
 export type {
+  InAppNotification,
+  NotificationChannel,
+  NotificationChannelSetting,
+  NotificationEvent,
+  NotificationListResponse,
+  NotificationPreference,
+  NotificationPreferences,
+  NotificationType,
+  UpdateChannelSettingRequest,
+  UpdatePreferenceRequest,
+} from './notifications';
+export type {
   CreateRiskRuleRequest,
   PreTradeCheckRequest,
   RiskBreach,

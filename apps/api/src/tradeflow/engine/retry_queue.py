@@ -32,10 +32,10 @@ class RetryQueue:
         payload: dict[str, Any],
         attempt: int = 1,
         delay_seconds: float = 1.0,
-    ) -> None:
+    ) -> str:
         if attempt > self._max_attempts:
             await self._move_to_dead_letter(execution_log_id, payload)
-            return
+            return "dead_letter"
 
         next_retry = datetime.now(tz=UTC) + timedelta(seconds=delay_seconds * (2 ** (attempt - 1)))
         item = json.dumps(
@@ -53,6 +53,7 @@ class RetryQueue:
             attempt=attempt,
             next_retry=next_retry.isoformat(),
         )
+        return "queued"
 
     async def dequeue_ready(self, limit: int = 50) -> list[dict[str, Any]]:
         now = datetime.now(tz=UTC).timestamp()

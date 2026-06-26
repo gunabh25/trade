@@ -14,6 +14,10 @@ from tradeflow.db.models.copy_trading import (
 )
 from tradeflow.db.models.journal import JournalScreenshot, Note, Strategy, TradeJournal
 from tradeflow.db.models.notification import Notification
+from tradeflow.db.models.notification_settings import (
+    NotificationChannelSetting,
+    NotificationPreference,
+)
 from tradeflow.db.models.oauth import OAuthAccount
 from tradeflow.db.models.risk import RiskBreach, RiskMonitorSnapshot, RiskRule
 from tradeflow.db.models.session import Session
@@ -32,6 +36,8 @@ __all__ = [
     "JournalScreenshot",
     "Note",
     "Notification",
+    "NotificationChannelSetting",
+    "NotificationPreference",
     "OAuthAccount",
     "Order",
     "OrderMapping",

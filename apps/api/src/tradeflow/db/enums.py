@@ -215,13 +215,33 @@ class TradeEmotion(StrEnum):
 
 
 class NotificationType(StrEnum):
+    TRADE_COPIED = "trade_copied"
     COPY_FAILURE = "copy_failure"
     CONNECTION_LOST = "connection_lost"
     RISK_BREACH = "risk_breach"
     POSITION_DRIFT = "position_drift"
     KILL_SWITCH = "kill_switch"
     BILLING = "billing"
+    PNL_MILESTONE = "pnl_milestone"
     SYSTEM = "system"
+
+
+class NotificationChannel(StrEnum):
+    IN_APP = "in_app"
+    EMAIL = "email"
+    TELEGRAM = "telegram"
+    DISCORD = "discord"
+    SLACK = "slack"
+    PUSH = "push"
+
+
+class NotificationEvent(StrEnum):
+    TRADE_COPIED = "trade_copied"
+    TRADE_FAILED = "trade_failed"
+    BROKER_OFFLINE = "broker_offline"
+    RISK_ALERT = "risk_alert"
+    SUBSCRIPTION_EXPIRY = "subscription_expiry"
+    PNL_MILESTONE = "pnl_milestone"
 
 
 class RiskBreachType(StrEnum):

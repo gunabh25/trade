@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
 from uuid import UUID
 
 from sqlalchemy import select
@@ -14,14 +15,22 @@ from tradeflow.db.models.copy_trading import CopyGroup, CopyGroupFollower
 from tradeflow.db.models.trading import TradingAccount
 from tradeflow.integrations.brokers.manager import BrokerSessionManager
 
+if TYPE_CHECKING:
+    from tradeflow.notifications.dispatcher import NotificationDispatcher
+
 logger = get_logger(__name__)
 
 
 class ConnectionRecovery:
     """Restores broker sessions for active copy groups on startup or disconnect."""
 
-    def __init__(self, session_manager: BrokerSessionManager) -> None:
+    def __init__(
+        self,
+        session_manager: BrokerSessionManager,
+        notification_dispatcher: NotificationDispatcher | None = None,
+    ) -> None:
         self._sessions = session_manager
+        self._notifications = notification_dispatcher
 
     async def recover_active_connections(self, db: AsyncSession) -> int:
         """Reconnect all broker connections used by active copy groups."""
@@ -47,6 +56,18 @@ class ConnectionRecovery:
                 recovered += 1
                 logger.info("connection_recovered", connection_id=str(connection_id))
             except Exception as exc:
+                connection = await db.get(BrokerConnection, connection_id)
+                if connection is not None:
+                    connection.status = ConnectionStatus.ERROR
+                    connection.last_error = str(exc)
+                    if self._notifications is not None:
+                        await self._notifications.notify_broker_offline(
+                            db,
+                            user_id=connection.user_id,
+                            broker=connection.broker.value,
+                            connection_name=connection.name,
+                            connection_id=connection.id,
+                        )
                 logger.error(
                     "connection_recovery_failed",
                     connection_id=str(connection_id),
@@ -72,6 +93,7 @@ class ConnectionRecovery:
             return True
         except Exception as exc:
             connection.status = ConnectionStatus.ERROR
+            connection.last_error = str(exc)
             await db.flush()
             logger.error(
                 "connection_recovery_failed",

@@ -19,6 +19,10 @@ if TYPE_CHECKING:
     from tradeflow.db.models.copy_trading import CopyGroup
     from tradeflow.db.models.journal import Note, Strategy, TradeJournal
     from tradeflow.db.models.notification import Notification
+    from tradeflow.db.models.notification_settings import (
+        NotificationChannelSetting,
+        NotificationPreference,
+    )
     from tradeflow.db.models.oauth import OAuthAccount
     from tradeflow.db.models.risk import RiskRule
     from tradeflow.db.models.session import Session
@@ -90,6 +94,14 @@ class User(Base, TimestampMixin, SoftDeleteMixin):
     trade_journals: Mapped[list["TradeJournal"]] = relationship(back_populates="user")
     notes: Mapped[list["Note"]] = relationship(back_populates="user")
     notifications: Mapped[list["Notification"]] = relationship(back_populates="user")
+    notification_channels: Mapped[list["NotificationChannelSetting"]] = relationship(
+        back_populates="user",
+        cascade="all, delete-orphan",
+    )
+    notification_preferences: Mapped[list["NotificationPreference"]] = relationship(
+        back_populates="user",
+        cascade="all, delete-orphan",
+    )
     subscriptions: Mapped[list["Subscription"]] = relationship(back_populates="user")
     billing_events: Mapped[list["BillingEvent"]] = relationship(back_populates="user")
     audit_logs: Mapped[list["AuditLog"]] = relationship(back_populates="user")

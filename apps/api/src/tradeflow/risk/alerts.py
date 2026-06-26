@@ -1,4 +1,4 @@
-"""Risk alert system — in-app notifications + Redis pub/sub."""
+"""Risk alert system — in-app notifications + Redis pub/sub + multi-channel delivery."""
 
 from __future__ import annotations
 
@@ -10,6 +10,7 @@ from tradeflow.core.logging import get_logger
 from tradeflow.db.enums import NotificationType, RiskAction
 from tradeflow.db.models.notification import Notification
 from tradeflow.db.models.risk import RiskBreach
+from tradeflow.notifications.dispatcher import NotificationDispatcher
 from tradeflow.risk.state import RiskStateStore
 from tradeflow.risk.types import RiskViolation
 
@@ -19,8 +20,13 @@ logger = get_logger(__name__)
 class RiskAlertService:
     """Delivers risk alerts via notifications and real-time channels."""
 
-    def __init__(self, state_store: RiskStateStore) -> None:
+    def __init__(
+        self,
+        state_store: RiskStateStore,
+        notification_dispatcher: NotificationDispatcher | None = None,
+    ) -> None:
         self._state = state_store
+        self._dispatcher = notification_dispatcher
 
     async def send_breach_alert(
         self,
@@ -29,34 +35,45 @@ class RiskAlertService:
         user_id: UUID,
         breach: RiskBreach,
     ) -> Notification:
-        title = f"Risk Breach: {breach.breach_type.value.replace('_', ' ').title()}"
-        body = breach.message
+        message = breach.message
         if breach.action_taken != RiskAction.BLOCK:
-            body += f" — Action: {breach.action_taken.value.replace('_', ' ')}"
+            message += f" — Action: {breach.action_taken.value.replace('_', ' ')}"
 
-        notification = Notification(
-            user_id=user_id,
-            type=NotificationType.RISK_BREACH,
-            title=title,
-            body=body,
-            action_url=f"/dashboard/risk?account={breach.trading_account_id}",
-            metadata_={
-                "breach_id": str(breach.id),
-                "breach_type": breach.breach_type.value,
-                "action_taken": breach.action_taken.value,
-                "account_id": str(breach.trading_account_id),
-            },
-        )
-        db.add(notification)
-        await db.flush()
+        if self._dispatcher is not None:
+            notification = await self._dispatcher.notify_risk_alert(
+                db,
+                user_id=user_id,
+                breach_type=breach.breach_type.value,
+                message=message,
+                account_id=breach.trading_account_id,
+                breach_id=breach.id,
+                action_taken=breach.action_taken.value,
+            )
+        else:
+            title = f"Risk Breach: {breach.breach_type.value.replace('_', ' ').title()}"
+            notification = Notification(
+                user_id=user_id,
+                type=NotificationType.RISK_BREACH,
+                title=title,
+                body=message,
+                action_url=f"/dashboard/risk?account={breach.trading_account_id}",
+                metadata_={
+                    "breach_id": str(breach.id),
+                    "breach_type": breach.breach_type.value,
+                    "action_taken": breach.action_taken.value,
+                    "account_id": str(breach.trading_account_id),
+                },
+            )
+            db.add(notification)
+            await db.flush()
 
         await self._state.publish_status(
             user_id,
             {
                 "type": "notification",
                 "notification_type": NotificationType.RISK_BREACH.value,
-                "title": title,
-                "body": body,
+                "title": notification.title,
+                "body": notification.body,
                 "breach_id": str(breach.id),
             },
         )
@@ -78,16 +95,28 @@ class RiskAlertService:
             else "Trading and copying may resume."
         )
 
-        notification = Notification(
-            user_id=user_id,
-            type=NotificationType.KILL_SWITCH,
-            title=title,
-            body=body,
-            action_url=f"/dashboard/risk?account={account_id}",
-            metadata_={"account_id": str(account_id), "activated": activated},
-        )
-        db.add(notification)
-        await db.flush()
+        if self._dispatcher is not None:
+            notification = await self._dispatcher.notify_risk_alert(
+                db,
+                user_id=user_id,
+                breach_type="kill_switch",
+                message=body,
+                account_id=account_id,
+            )
+            notification.type = NotificationType.KILL_SWITCH
+            notification.title = title
+            await db.flush()
+        else:
+            notification = Notification(
+                user_id=user_id,
+                type=NotificationType.KILL_SWITCH,
+                title=title,
+                body=body,
+                action_url=f"/dashboard/risk?account={account_id}",
+                metadata_={"account_id": str(account_id), "activated": activated},
+            )
+            db.add(notification)
+            await db.flush()
 
         await self._state.publish_status(
             user_id,

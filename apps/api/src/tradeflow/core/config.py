@@ -77,6 +77,9 @@ class Settings(BaseSettings):
     smtp_password: str | None = Field(default=None, alias="SMTP_PASSWORD")
     smtp_from_email: str = Field(default="noreply@tradeflow.ai", alias="SMTP_FROM_EMAIL")
 
+    # Notification integrations (optional)
+    telegram_bot_token: str | None = Field(default=None, alias="TELEGRAM_BOT_TOKEN")
+
     # Rate limiting / brute force
     auth_rate_limit_per_minute: int = Field(default=20, alias="AUTH_RATE_LIMIT_PER_MINUTE")
     login_max_attempts: int = Field(default=5, alias="LOGIN_MAX_ATTEMPTS")
