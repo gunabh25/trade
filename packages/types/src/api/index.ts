@@ -38,3 +38,44 @@ export type {
   JournalStrategy,
   StrategyPerformance,
 } from './journal';
+export type {
+  AnalyticsCalendarDay,
+  AnalyticsComparisonSeries,
+  AnalyticsDrawdownPoint,
+  AnalyticsEquityPoint,
+  AnalyticsHourCell,
+  AnalyticsLeaderboardEntry,
+  AnalyticsMetrics,
+  AnalyticsOverview,
+  AnalyticsPieSlice,
+  AnalyticsReturnPoint,
+} from './analytics';
+export type {
+  BrokerAccount,
+  BrokerConnection,
+  BrokerConnectionStatus,
+  BrokerHealth,
+  BrokerOrder,
+  BrokerPosition,
+  CreateBrokerConnectionRequest,
+  PlaceBrokerOrderRequest,
+  SupportedBrokers,
+} from './broker';
+export type {
+  AddCopyFollowerRequest,
+  CopyEngineHealth,
+  CopyEvent,
+  CopyGroup,
+  CopyGroupFollower,
+  CreateCopyGroupRequest,
+  ExecutionLog,
+  SimulateLeaderEventRequest,
+} from './copy';
+export type {
+  CreateRiskRuleRequest,
+  PreTradeCheckRequest,
+  RiskBreach,
+  RiskMonitorStatus,
+  RiskRule,
+  RiskRuleConfig,
+} from './risk';

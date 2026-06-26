@@ -26,10 +26,27 @@ import { StatWidgetsGrid } from '@/features/dashboard/components/stat-widgets';
 import { useDashboardData } from '@/features/dashboard/hooks/use-dashboard-data';
 
 export default function DashboardPage() {
-  const { data, loading, isEmpty } = useDashboardData();
+  const { data, loading, isEmpty, error, refetch } = useDashboardData();
 
   if (loading) {
     return <DashboardSkeleton />;
+  }
+
+  if (error && !data) {
+    return (
+      <div className="p-4 sm:p-6">
+        <EmptyState
+          icon={LayoutDashboard}
+          title="Could not load dashboard"
+          description={error}
+          action={
+            <Button size="sm" onClick={() => void refetch()}>
+              Retry
+            </Button>
+          }
+        />
+      </div>
+    );
   }
 
   if (isEmpty || !data) {

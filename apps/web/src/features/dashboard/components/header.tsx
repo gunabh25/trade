@@ -17,6 +17,8 @@ import type { DashboardData } from '@/features/dashboard/data/mock-dashboard-dat
 
 const pageTitles: Record<string, string> = {
   '/dashboard': 'Overview',
+  '/dashboard/analytics': 'Analytics',
+  '/journal': 'Journal',
   '/profile': 'Profile',
   '/sessions': 'Sessions',
   '/api-keys': 'API Keys',

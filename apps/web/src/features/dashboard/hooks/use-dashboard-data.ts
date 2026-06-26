@@ -1,39 +1,36 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 
-import {
-  mockDashboardData,
-  type DashboardData,
-} from '@/features/dashboard/data/mock-dashboard-data';
+import { fetchDashboardData, isDashboardEmpty } from '@/features/dashboard/api/dashboard-api';
+import type { DashboardData } from '@/features/dashboard/data/mock-dashboard-data';
+import { ApiClientError } from '@/lib/errors';
 
-interface UseDashboardDataOptions {
-  simulateEmpty?: boolean;
-  loadingMs?: number;
-}
-
-export function useDashboardData(options: UseDashboardDataOptions = {}) {
-  const { simulateEmpty = false, loadingMs = 900 } = options;
+export function useDashboardData() {
   const [data, setData] = useState<DashboardData | null>(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [isEmpty, setIsEmpty] = useState(false);
 
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      if (simulateEmpty) {
-        setIsEmpty(true);
-        setData(null);
-      } else {
-        setData(mockDashboardData);
-        setIsEmpty(false);
-      }
+  const load = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const next = await fetchDashboardData();
+      setData(next);
+      setIsEmpty(isDashboardEmpty(next));
+    } catch (err) {
+      setData(null);
+      setIsEmpty(true);
+      setError(err instanceof ApiClientError ? err.message : 'Failed to load dashboard data');
+    } finally {
       setLoading(false);
-    }, loadingMs);
+    }
+  }, []);
 
-    return () => {
-      clearTimeout(timer);
-    };
-  }, [loadingMs, simulateEmpty]);
+  useEffect(() => {
+    void load();
+  }, [load]);
 
-  return { data, loading, isEmpty };
+  return { data, loading, error, isEmpty, refetch: load };
 }

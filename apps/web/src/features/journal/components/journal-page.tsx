@@ -2,7 +2,14 @@
 
 import { BookOpen } from 'lucide-react';
 
-import { FadeInItem, FadeInStagger } from '@/features/dashboard/components/motion-primitives';
+import { Button } from '@tradeflow/ui';
+
+import { DashboardSkeleton } from '@/features/dashboard/components/dashboard-skeleton';
+import {
+  FadeInItem,
+  FadeInStagger,
+  EmptyState,
+} from '@/features/dashboard/components/motion-primitives';
 import {
   JournalCalendar,
   EmotionPerformanceChart,
@@ -16,6 +23,27 @@ import { useJournalData } from '@/features/journal/hooks/use-journal-data';
 
 export function JournalPage() {
   const data = useJournalData();
+
+  if (data.loading) {
+    return <DashboardSkeleton />;
+  }
+
+  if (data.error) {
+    return (
+      <div className="p-4 sm:p-6">
+        <EmptyState
+          icon={BookOpen}
+          title="Could not load journal"
+          description={data.error}
+          action={
+            <Button size="sm" onClick={() => void data.refetch()}>
+              Retry
+            </Button>
+          }
+        />
+      </div>
+    );
+  }
 
   return (
     <FadeInStagger className="space-y-6 p-4 sm:p-6">

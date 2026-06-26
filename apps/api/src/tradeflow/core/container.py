@@ -21,6 +21,7 @@ from tradeflow.db.session import create_session_factory
 from tradeflow.engine.mapping import TradeMappingStore
 from tradeflow.engine.orchestrator import CopyOrchestrator
 from tradeflow.engine.retry_queue import RetryQueue
+from tradeflow.features.analytics.service import AnalyticsService
 from tradeflow.features.auth.email_service import EmailService
 from tradeflow.features.auth.oauth_service import OAuthService
 from tradeflow.features.auth.service import AuthService
@@ -52,6 +53,7 @@ class Container(containers.DeclarativeContainer):
             "tradeflow.features.copy_trading.router",
             "tradeflow.features.risk.router",
             "tradeflow.features.journal.router",
+            "tradeflow.features.analytics.router",
             "tradeflow.core.dependencies.auth",
         ],
     )
@@ -208,6 +210,8 @@ class Container(containers.DeclarativeContainer):
     )
 
     journal_service: providers.Factory[JournalService] = providers.Factory(JournalService)
+
+    analytics_service: providers.Factory[AnalyticsService] = providers.Factory(AnalyticsService)
 
     copy_trading_service: providers.Factory[CopyTradingService] = providers.Factory(
         CopyTradingService,
