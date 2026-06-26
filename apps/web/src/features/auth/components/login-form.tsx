@@ -7,6 +7,7 @@ import { useRouter } from 'next/navigation';
 import { useMemo, useState } from 'react';
 
 import * as authApi from '@/features/auth/api/auth-api';
+import { ApiClientError } from '@/lib/errors';
 import { getOAuthUrl } from '@/lib/api/client';
 
 function GoogleIcon() {
@@ -87,7 +88,13 @@ export function LoginForm() {
       }
       router.push('/dashboard');
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Login failed');
+      setError(
+        err instanceof ApiClientError
+          ? err.message
+          : err instanceof Error
+            ? err.message
+            : 'Login failed',
+      );
     } finally {
       setLoading(false);
     }
@@ -110,6 +117,12 @@ export function LoginForm() {
       <div className="mb-8">
         <h1 className="text-3xl font-semibold tracking-tight text-white">Welcome Back</h1>
         <p className="mt-2 text-sm text-zinc-500">Access your trading command center.</p>
+        {process.env.NODE_ENV === 'development' ? (
+          <p className="mt-3 rounded-md border border-white/[0.08] bg-white/[0.03] px-3 py-2 text-xs text-zinc-400">
+            Dev login: <span className="text-zinc-300">demo@tradeflow.ai</span> /{' '}
+            <span className="text-zinc-300">DemoPass123</span>
+          </p>
+        ) : null}
       </div>
 
       {!challengeToken ? (

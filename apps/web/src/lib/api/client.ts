@@ -23,6 +23,8 @@ export interface RequestOptions extends Omit<RequestInit, 'body'> {
   body?: unknown;
   timeoutMs?: number;
   csrfToken?: string;
+  /** Skip warn-level logging for expected failures (e.g. unauthenticated /auth/me). */
+  silent?: boolean;
 }
 
 function getCsrfToken(): string | undefined {
@@ -37,7 +39,7 @@ export async function apiRequest<T>(
   path: string,
   options: RequestOptions = {},
 ): Promise<ApiResponse<T>> {
-  const { body, timeoutMs = DEFAULT_TIMEOUT_MS, headers, csrfToken, ...rest } = options;
+  const { body, timeoutMs = DEFAULT_TIMEOUT_MS, headers, csrfToken, silent, ...rest } = options;
   const url = `${getApiBaseUrl()}/api/${getApiVersion()}${path}`;
 
   const controller = new AbortController();
@@ -88,12 +90,14 @@ export async function apiRequest<T>(
     return responseBody as ApiResponse<T>;
   } catch (error) {
     if (error instanceof ApiClientError) {
-      logger.warn('api_request_failed', {
-        path,
-        code: error.code,
-        status: error.status,
-        requestId: error.requestId,
-      });
+      if (!(silent && error.status === 401)) {
+        logger.warn('api_request_failed', {
+          path,
+          code: error.code,
+          status: error.status,
+          requestId: error.requestId,
+        });
+      }
       throw error;
     }
 

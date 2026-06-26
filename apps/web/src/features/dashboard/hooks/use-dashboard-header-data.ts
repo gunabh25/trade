@@ -19,10 +19,14 @@ const EMPTY_HEADER: DashboardHeaderData = {
   notifications: [],
 };
 
-export function useDashboardHeaderData() {
+export function useDashboardHeaderData(enabled: boolean) {
   const [data, setData] = useState<DashboardHeaderData>(EMPTY_HEADER);
 
   const load = useCallback(async () => {
+    if (!enabled) {
+      return;
+    }
+
     try {
       const [connections, breaches] = await Promise.all([
         listBrokerConnections().catch(() => []),
@@ -55,11 +59,15 @@ export function useDashboardHeaderData() {
     } catch {
       setData(EMPTY_HEADER);
     }
-  }, []);
+  }, [enabled]);
 
   useEffect(() => {
+    if (!enabled) {
+      setData(EMPTY_HEADER);
+      return;
+    }
     void load();
-  }, [load]);
+  }, [enabled, load]);
 
   return data;
 }

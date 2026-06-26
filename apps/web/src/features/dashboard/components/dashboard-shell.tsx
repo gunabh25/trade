@@ -13,7 +13,7 @@ import { useDashboardHeaderData } from '@/features/dashboard/hooks/use-dashboard
 export function DashboardShell({ children }: { children: React.ReactNode }) {
   const { user, loading } = useAuth();
   const router = useRouter();
-  const headerData = useDashboardHeaderData();
+  const headerData = useDashboardHeaderData(!loading && !!user);
 
   useEffect(() => {
     if (!loading && !user) {

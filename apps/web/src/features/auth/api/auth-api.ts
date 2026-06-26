@@ -59,6 +59,7 @@ export async function login(payload: LoginRequest): Promise<AuthTokens | TwoFact
   const response = await apiRequest<Record<string, unknown>>('/auth/login', {
     method: 'POST',
     body: payload,
+    silent: true,
   });
   const data = response.data;
   if (data.requires_two_factor) {
@@ -94,7 +95,7 @@ export async function refreshSession(): Promise<AuthTokens> {
 }
 
 export async function getProfile(): Promise<UserProfile> {
-  const response = await apiRequest<Record<string, unknown>>('/auth/me');
+  const response = await apiRequest<Record<string, unknown>>('/auth/me', { silent: true });
   return mapUser(response.data);
 }
 
