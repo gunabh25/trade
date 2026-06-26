@@ -46,3 +46,5 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
     </TooltipProvider>
   );
 }
+
+export default DashboardShell;

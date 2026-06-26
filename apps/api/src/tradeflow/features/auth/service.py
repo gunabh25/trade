@@ -54,6 +54,14 @@ from tradeflow.features.auth.schemas import (
 logger = get_logger(__name__)
 
 
+def _role_name_str(name: RoleName | str) -> str:
+    return name.value if isinstance(name, RoleName) else str(name)
+
+
+def _user_role_names(user: User) -> list[str]:
+    return [_role_name_str(ur.role.name) for ur in user.user_roles]
+
+
 @dataclass(frozen=True)
 class AuthSessionBundle:
     access_token: str
@@ -241,7 +249,7 @@ class AuthService:
         stored.revoked_at = datetime.now(tz=UTC)
         stored.replaced_by_id = new_token.id
 
-        roles = [ur.role.name.value for ur in user.user_roles]
+        roles = _user_role_names(user)
         access = self._jwt.create_access_token(
             user.id,
             session_id=stored.session_id,
@@ -705,7 +713,7 @@ class AuthService:
         db.add(refresh)
         await db.flush()
 
-        roles = [ur.role.name.value for ur in user.user_roles]
+        roles = _user_role_names(user)
         access = self._jwt.create_access_token(user.id, session_id=session.id, roles=roles)
         csrf = generate_csrf_token()
 
@@ -831,7 +839,7 @@ class AuthService:
             avatar_url=user.avatar_url,
             email_verified=user.email_verified_at is not None,
             two_factor_enabled=user.two_factor_enabled,
-            roles=[ur.role.name.value for ur in user.user_roles],
+            roles=_user_role_names(user),
             created_at=user.created_at,
         )
 
