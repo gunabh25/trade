@@ -16,6 +16,7 @@ if TYPE_CHECKING:
     from tradeflow.db.models.auth import RefreshToken, VerificationToken
     from tradeflow.db.models.billing import BillingEvent, Subscription
     from tradeflow.db.models.broker import BrokerConnection
+    from tradeflow.db.models.copy_trading import CopyGroup
     from tradeflow.db.models.journal import Note, Strategy, TradeJournal
     from tradeflow.db.models.notification import Notification
     from tradeflow.db.models.oauth import OAuthAccount
@@ -96,6 +97,7 @@ class User(Base, TimestampMixin, SoftDeleteMixin):
     risk_rules: Mapped[list["RiskRule"]] = relationship(back_populates="user")
     orders: Mapped[list["Order"]] = relationship(back_populates="user")
     trades: Mapped[list["Trade"]] = relationship(back_populates="user")
+    copy_groups: Mapped[list["CopyGroup"]] = relationship(back_populates="user")
     refresh_tokens: Mapped[list["RefreshToken"]] = relationship(
         back_populates="user",
         cascade="all, delete-orphan",

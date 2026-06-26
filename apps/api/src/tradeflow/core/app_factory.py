@@ -75,6 +75,7 @@ def create_app(container: Container | None = None) -> FastAPI:
             "tradeflow.features.health.router",
             "tradeflow.features.auth.router",
             "tradeflow.features.broker.router",
+            "tradeflow.features.copy_trading.router",
             "tradeflow.core.dependencies.auth",
         ],
     )

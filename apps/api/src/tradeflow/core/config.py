@@ -93,6 +93,14 @@ class Settings(BaseSettings):
         alias="BROKER_HEALTH_CHECK_INTERVAL_SECONDS",
     )
 
+    # Copy engine
+    copy_retry_max_attempts: int = Field(default=5, alias="COPY_RETRY_MAX_ATTEMPTS")
+    copy_health_check_interval_seconds: float = Field(
+        default=15.0,
+        alias="COPY_HEALTH_CHECK_INTERVAL_SECONDS",
+    )
+    copy_max_parallel_followers: int = Field(default=10, alias="COPY_MAX_PARALLEL_FOLLOWERS")
+
     @property
     def cors_origins(self) -> list[str]:
         return [origin.strip() for origin in self.api_cors_origins.split(",") if origin.strip()]

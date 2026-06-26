@@ -1,5 +1,8 @@
 import os
 
+import pytest
+import redis.asyncio as aioredis
+
 os.environ.setdefault(
     "API_SECRET_KEY",
     "test-secret-key-minimum-thirty-two-characters-long",
@@ -18,3 +21,10 @@ os.environ.setdefault("CELERY_RESULT_BACKEND", "redis://localhost:6379/2")
 os.environ.setdefault("CELERY_TASK_ALWAYS_EAGER", "true")
 os.environ.setdefault("FRONTEND_URL", "http://localhost:3000")
 os.environ.setdefault("OAUTH_REDIRECT_BASE_URL", "http://testserver")
+
+
+@pytest.fixture
+async def redis_client():
+    client = aioredis.from_url(os.environ["REDIS_URL"], decode_responses=True)
+    yield client
+    await client.aclose()

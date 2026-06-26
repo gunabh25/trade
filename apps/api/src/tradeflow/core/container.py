@@ -18,10 +18,14 @@ from tradeflow.core.security.encryption import EncryptionService
 from tradeflow.core.security.jwt import JwtService
 from tradeflow.core.security.rate_limit import LoginProtection, RateLimiter
 from tradeflow.db.session import create_session_factory
+from tradeflow.engine.mapping import TradeMappingStore
+from tradeflow.engine.orchestrator import CopyOrchestrator
+from tradeflow.engine.retry_queue import RetryQueue
 from tradeflow.features.auth.email_service import EmailService
 from tradeflow.features.auth.oauth_service import OAuthService
 from tradeflow.features.auth.service import AuthService
 from tradeflow.features.broker.service import BrokerConnectionService
+from tradeflow.features.copy_trading.service import CopyTradingService
 from tradeflow.features.health.service import HealthService
 from tradeflow.integrations.brokers.manager import BrokerSessionManager
 from tradeflow.integrations.brokers.monitor import ConnectionMonitor
@@ -38,6 +42,7 @@ class Container(containers.DeclarativeContainer):
             "tradeflow.features.health.router",
             "tradeflow.features.auth.router",
             "tradeflow.features.broker.router",
+            "tradeflow.features.copy_trading.router",
             "tradeflow.core.dependencies.auth",
         ],
     )
@@ -132,6 +137,32 @@ class Container(containers.DeclarativeContainer):
         registry=broker_adapter_registry,
         session_manager=broker_session_manager,
         encryption_service=encryption_service,
+    )
+
+    trade_mapping_store: providers.Singleton[TradeMappingStore] = providers.Singleton(
+        TradeMappingStore,
+        redis=redis_client,
+    )
+
+    copy_retry_queue: providers.Singleton[RetryQueue] = providers.Singleton(
+        RetryQueue,
+        redis=redis_client,
+        max_attempts=config.provided.copy_retry_max_attempts,
+    )
+
+    copy_orchestrator: providers.Singleton[CopyOrchestrator] = providers.Singleton(
+        CopyOrchestrator,
+        session_manager=broker_session_manager,
+        mapping_store=trade_mapping_store,
+        retry_queue=copy_retry_queue,
+        max_parallel_followers=config.provided.copy_max_parallel_followers,
+    )
+
+    copy_trading_service: providers.Factory[CopyTradingService] = providers.Factory(
+        CopyTradingService,
+        orchestrator=copy_orchestrator,
+        mapping_store=trade_mapping_store,
+        retry_queue=copy_retry_queue,
     )
 
 

@@ -27,6 +27,9 @@ class BrokerOrderType(StrEnum):
     LIMIT = "limit"
     STOP = "stop"
     STOP_LIMIT = "stop_limit"
+    STOP_LOSS = "stop_loss"
+    TAKE_PROFIT = "take_profit"
+    TRAILING_STOP = "trailing_stop"
 
 
 class BrokerOrderStatus(StrEnum):

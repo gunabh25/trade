@@ -98,6 +98,70 @@ class OrderType(StrEnum):
     LIMIT = "limit"
     STOP = "stop"
     STOP_LIMIT = "stop_limit"
+    STOP_LOSS = "stop_loss"
+    TAKE_PROFIT = "take_profit"
+    TRAILING_STOP = "trailing_stop"
+
+
+class CopyMode(StrEnum):
+    """How follower order size is derived from the leader order."""
+
+    FIXED_QUANTITY = "fixed_quantity"
+    RISK_MULTIPLIER = "risk_multiplier"
+    PERCENTAGE_ALLOCATION = "percentage_allocation"
+    REVERSE_COPY = "reverse_copy"
+
+
+class CopyGroupStatus(StrEnum):
+    DRAFT = "draft"
+    ACTIVE = "active"
+    PAUSED = "paused"
+    STOPPED = "stopped"
+
+
+class CopyGroupMode(StrEnum):
+    SIM = "sim"
+    LIVE = "live"
+
+
+class CopyFollowerStatus(StrEnum):
+    ACTIVE = "active"
+    PAUSED = "paused"
+    LOCKED = "locked"
+
+
+class CopyEventAction(StrEnum):
+    PLACE = "place"
+    MODIFY = "modify"
+    CANCEL = "cancel"
+    FILL = "fill"
+    PARTIAL_FILL = "partial_fill"
+    FLATTEN = "flatten"
+    BREACH = "breach"
+
+
+class CopyEventResult(StrEnum):
+    SUCCESS = "success"
+    FAILURE = "failure"
+    SKIPPED = "skipped"
+    SIMULATED = "simulated"
+    RETRYING = "retrying"
+
+
+class OrderLegType(StrEnum):
+    ENTRY = "entry"
+    STOP = "stop"
+    TARGET = "target"
+    TRAILING = "trailing"
+
+
+class ExecutionLogStatus(StrEnum):
+    PENDING = "pending"
+    PROCESSING = "processing"
+    SUCCESS = "success"
+    FAILED = "failed"
+    RETRY_SCHEDULED = "retry_scheduled"
+    DEAD_LETTER = "dead_letter"
 
 
 class OrderStatus(StrEnum):

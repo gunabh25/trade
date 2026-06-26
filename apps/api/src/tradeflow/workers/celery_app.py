@@ -23,6 +23,17 @@ celery_app.conf.update(
     task_always_eager=settings.celery_task_always_eager,
     task_routes={
         "tradeflow.workers.tasks.*": {"queue": "default"},
+        "tradeflow.workers.copy_tasks.*": {"queue": "copy"},
+    },
+    beat_schedule={
+        "drain-copy-retry-queue": {
+            "task": "tradeflow.workers.copy_tasks.drain_retry_queue",
+            "schedule": 5.0,
+        },
+        "recover-broker-connections": {
+            "task": "tradeflow.workers.copy_tasks.recover_connections",
+            "schedule": 60.0,
+        },
     },
 )
 

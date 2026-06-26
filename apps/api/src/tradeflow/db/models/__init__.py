@@ -5,6 +5,13 @@ from tradeflow.db.models.audit import AuditLog
 from tradeflow.db.models.auth import RefreshToken, VerificationToken
 from tradeflow.db.models.billing import BillingEvent, Plan, Subscription
 from tradeflow.db.models.broker import BrokerConnection
+from tradeflow.db.models.copy_trading import (
+    CopyEvent,
+    CopyGroup,
+    CopyGroupFollower,
+    ExecutionLog,
+    OrderMapping,
+)
 from tradeflow.db.models.journal import Note, Strategy, TradeJournal
 from tradeflow.db.models.notification import Notification
 from tradeflow.db.models.oauth import OAuthAccount
@@ -18,10 +25,15 @@ __all__ = [
     "AuditLog",
     "BillingEvent",
     "BrokerConnection",
+    "CopyEvent",
+    "CopyGroup",
+    "CopyGroupFollower",
+    "ExecutionLog",
     "Note",
     "Notification",
     "OAuthAccount",
     "Order",
+    "OrderMapping",
     "Plan",
     "Position",
     "RefreshToken",
