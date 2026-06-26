@@ -6,6 +6,7 @@
 | ----------------------------------------- | -------------------------------------------------- |
 | [ARCHITECTURE.md](./ARCHITECTURE.md)      | Foundation architectural decisions                 |
 | [Database Design](./database/DATABASE.md) | PostgreSQL schema, ER diagram, indexes, migrations |
+| [Authentication API](./api/AUTH.md)       | Auth endpoints, JWT, OAuth, 2FA, security controls |
 | [README](../README.md)                    | Setup, commands, full decision log                 |
 
 ## Phase 0A — Product Research (Relay / prior planning)

@@ -14,7 +14,13 @@ from sqlalchemy.ext.asyncio import (
 )
 
 from tradeflow.core.config import Settings, get_settings
+from tradeflow.core.security.encryption import EncryptionService
+from tradeflow.core.security.jwt import JwtService
+from tradeflow.core.security.rate_limit import LoginProtection, RateLimiter
 from tradeflow.db.session import create_session_factory
+from tradeflow.features.auth.email_service import EmailService
+from tradeflow.features.auth.oauth_service import OAuthService
+from tradeflow.features.auth.service import AuthService
 from tradeflow.features.health.service import HealthService
 
 
@@ -25,6 +31,8 @@ class Container(containers.DeclarativeContainer):
         modules=[
             "tradeflow.api.v1.router",
             "tradeflow.features.health.router",
+            "tradeflow.features.auth.router",
+            "tradeflow.core.dependencies.auth",
         ],
     )
 
@@ -55,6 +63,40 @@ class Container(containers.DeclarativeContainer):
         settings=config,
         db_engine=db_engine,
         redis_client=redis_client,
+    )
+
+    jwt_service: providers.Singleton[JwtService] = providers.Singleton(JwtService, settings=config)
+    encryption_service: providers.Singleton[EncryptionService] = providers.Singleton(
+        EncryptionService,
+        settings=config,
+    )
+    email_service: providers.Singleton[EmailService] = providers.Singleton(
+        EmailService,
+        settings=config,
+    )
+    oauth_service: providers.Singleton[OAuthService] = providers.Singleton(
+        OAuthService,
+        settings=config,
+    )
+    rate_limiter: providers.Singleton[RateLimiter] = providers.Singleton(
+        RateLimiter,
+        redis=redis_client,
+    )
+    login_protection: providers.Singleton[LoginProtection] = providers.Singleton(
+        LoginProtection,
+        redis=redis_client,
+        max_attempts=config.provided.login_max_attempts,
+        lockout_seconds=config.provided.login_lockout_seconds,
+    )
+    auth_service: providers.Factory[AuthService] = providers.Factory(
+        AuthService,
+        settings=config,
+        jwt_service=jwt_service,
+        encryption_service=encryption_service,
+        email_service=email_service,
+        oauth_service=oauth_service,
+        rate_limiter=rate_limiter,
+        login_protection=login_protection,
     )
 
 

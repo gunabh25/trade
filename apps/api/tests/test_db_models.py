@@ -24,6 +24,8 @@ EXPECTED_TABLES = {
     "billing_events",
     "audit_logs",
     "api_keys",
+    "refresh_tokens",
+    "verification_tokens",
 }
 
 
@@ -47,6 +49,8 @@ def test_soft_delete_tables_have_deleted_at() -> None:
         "oauth_accounts",
         "audit_logs",
         "billing_events",
+        "verification_tokens",
+        "refresh_tokens",
     }
     soft_delete_tables = EXPECTED_TABLES - no_soft_delete
     for name in soft_delete_tables:

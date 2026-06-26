@@ -2,10 +2,12 @@ from __future__ import annotations
 
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
+from pathlib import Path
 from typing import Any
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
 from redis.asyncio import Redis
 from sqlalchemy.ext.asyncio import AsyncEngine
 
@@ -66,6 +68,8 @@ def create_app(container: Container | None = None) -> FastAPI:
     di_container.wire(
         modules=[
             "tradeflow.features.health.router",
+            "tradeflow.features.auth.router",
+            "tradeflow.core.dependencies.auth",
         ],
     )
 
@@ -81,6 +85,10 @@ def create_app(container: Container | None = None) -> FastAPI:
 
     register_exception_handlers(app)
     app.include_router(v1_router, prefix="/api")
+
+    avatar_dir = Path(settings.avatar_upload_dir)
+    avatar_dir.mkdir(parents=True, exist_ok=True)
+    app.mount("/uploads/avatars", StaticFiles(directory=str(avatar_dir)), name="avatars")
 
     @app.get("/", include_in_schema=False)
     async def root() -> dict[str, str]:

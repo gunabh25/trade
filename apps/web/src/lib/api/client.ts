@@ -20,13 +20,22 @@ function getApiVersion(): string {
 export interface RequestOptions extends Omit<RequestInit, 'body'> {
   body?: unknown;
   timeoutMs?: number;
+  csrfToken?: string;
+}
+
+function getCsrfToken(): string | undefined {
+  if (typeof document === 'undefined') {
+    return undefined;
+  }
+  const match = /(?:^|; )tf_csrf=([^;]*)/.exec(document.cookie);
+  return match?.[1] ? decodeURIComponent(match[1]) : undefined;
 }
 
 export async function apiRequest<T>(
   path: string,
   options: RequestOptions = {},
 ): Promise<ApiResponse<T>> {
-  const { body, timeoutMs = DEFAULT_TIMEOUT_MS, headers, ...rest } = options;
+  const { body, timeoutMs = DEFAULT_TIMEOUT_MS, headers, csrfToken, ...rest } = options;
   const url = `${getApiBaseUrl()}/api/${getApiVersion()}${path}`;
 
   const controller = new AbortController();
@@ -40,12 +49,18 @@ export async function apiRequest<T>(
     requestHeaders.set('Content-Type', 'application/json');
   }
 
+  const csrf = csrfToken ?? getCsrfToken();
+  if (csrf && rest.method && rest.method !== 'GET') {
+    requestHeaders.set('X-CSRF-Token', csrf);
+  }
+
   try {
     const init: RequestInit = {
       ...rest,
       headers: requestHeaders,
       signal: controller.signal,
       cache: 'no-store',
+      credentials: 'include',
     };
 
     if (body !== undefined) {
@@ -92,4 +107,8 @@ export async function apiRequest<T>(
 
 export function getPublicApiDocsUrl(): string {
   return `${getApiBaseUrl()}/api/docs`;
+}
+
+export function getOAuthUrl(provider: 'google' | 'github'): string {
+  return `${getApiBaseUrl()}/api/${getApiVersion()}/auth/oauth/${provider}`;
 }

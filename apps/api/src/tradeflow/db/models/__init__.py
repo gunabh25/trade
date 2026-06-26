@@ -2,6 +2,7 @@
 
 from tradeflow.db.models.api_key import ApiKey
 from tradeflow.db.models.audit import AuditLog
+from tradeflow.db.models.auth import RefreshToken, VerificationToken
 from tradeflow.db.models.billing import BillingEvent, Plan, Subscription
 from tradeflow.db.models.broker import BrokerConnection
 from tradeflow.db.models.journal import Note, Strategy, TradeJournal
@@ -23,6 +24,7 @@ __all__ = [
     "Order",
     "Plan",
     "Position",
+    "RefreshToken",
     "RiskRule",
     "Role",
     "Session",
@@ -33,4 +35,5 @@ __all__ = [
     "TradingAccount",
     "User",
     "UserRole",
+    "VerificationToken",
 ]

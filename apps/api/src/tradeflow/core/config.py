@@ -36,6 +36,56 @@ class Settings(BaseSettings):
     celery_result_backend: RedisDsn = Field(alias="CELERY_RESULT_BACKEND")
     celery_task_always_eager: bool = Field(default=False, alias="CELERY_TASK_ALWAYS_EAGER")
 
+    # Auth / JWT
+    jwt_algorithm: str = Field(default="HS256", alias="JWT_ALGORITHM")
+    jwt_access_token_expire_minutes: int = Field(
+        default=15,
+        alias="JWT_ACCESS_TOKEN_EXPIRE_MINUTES",
+    )
+    jwt_refresh_token_expire_days: int = Field(
+        default=7,
+        alias="JWT_REFRESH_TOKEN_EXPIRE_DAYS",
+    )
+    auth_access_cookie_name: str = Field(default="tf_access", alias="AUTH_ACCESS_COOKIE_NAME")
+    auth_refresh_cookie_name: str = Field(default="tf_refresh", alias="AUTH_REFRESH_COOKIE_NAME")
+    auth_csrf_cookie_name: str = Field(default="tf_csrf", alias="AUTH_CSRF_COOKIE_NAME")
+    auth_cookie_secure: bool = Field(default=False, alias="AUTH_COOKIE_SECURE")
+    auth_cookie_samesite: str = Field(default="lax", alias="AUTH_COOKIE_SAMESITE")
+    auth_cookie_domain: str | None = Field(default=None, alias="AUTH_COOKIE_DOMAIN")
+    frontend_url: str = Field(default="http://localhost:3000", alias="FRONTEND_URL")
+
+    # OAuth
+    google_oauth_client_id: str | None = Field(default=None, alias="GOOGLE_OAUTH_CLIENT_ID")
+    google_oauth_client_secret: str | None = Field(
+        default=None,
+        alias="GOOGLE_OAUTH_CLIENT_SECRET",
+    )
+    github_oauth_client_id: str | None = Field(default=None, alias="GITHUB_OAUTH_CLIENT_ID")
+    github_oauth_client_secret: str | None = Field(
+        default=None,
+        alias="GITHUB_OAUTH_CLIENT_SECRET",
+    )
+    oauth_redirect_base_url: str = Field(
+        default="http://localhost:8000",
+        alias="OAUTH_REDIRECT_BASE_URL",
+    )
+
+    # Email (SMTP optional — logs in dev when unset)
+    smtp_host: str | None = Field(default=None, alias="SMTP_HOST")
+    smtp_port: int = Field(default=587, alias="SMTP_PORT")
+    smtp_user: str | None = Field(default=None, alias="SMTP_USER")
+    smtp_password: str | None = Field(default=None, alias="SMTP_PASSWORD")
+    smtp_from_email: str = Field(default="noreply@tradeflow.ai", alias="SMTP_FROM_EMAIL")
+
+    # Rate limiting / brute force
+    auth_rate_limit_per_minute: int = Field(default=20, alias="AUTH_RATE_LIMIT_PER_MINUTE")
+    login_max_attempts: int = Field(default=5, alias="LOGIN_MAX_ATTEMPTS")
+    login_lockout_seconds: int = Field(default=900, alias="LOGIN_LOCKOUT_SECONDS")
+
+    # Avatar uploads
+    avatar_upload_dir: str = Field(default="uploads/avatars", alias="AVATAR_UPLOAD_DIR")
+    avatar_max_bytes: int = Field(default=2_097_152, alias="AVATAR_MAX_BYTES")
+
     @property
     def cors_origins(self) -> list[str]:
         return [origin.strip() for origin in self.api_cors_origins.split(",") if origin.strip()]

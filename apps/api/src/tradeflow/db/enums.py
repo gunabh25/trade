@@ -9,8 +9,15 @@ class RoleName(StrEnum):
 
 class OAuthProvider(StrEnum):
     GOOGLE = "google"
+    GITHUB = "github"
     APPLE = "apple"
     MICROSOFT = "microsoft"
+
+
+class VerificationTokenType(StrEnum):
+    EMAIL_VERIFICATION = "email_verification"
+    PASSWORD_RESET = "password_reset"
+    TWO_FACTOR_LOGIN = "two_factor_login"
 
 
 class BrokerType(StrEnum):

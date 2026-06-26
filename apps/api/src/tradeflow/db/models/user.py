@@ -13,6 +13,7 @@ from tradeflow.db.mixins import SoftDeleteMixin, TimestampMixin
 if TYPE_CHECKING:
     from tradeflow.db.models.api_key import ApiKey
     from tradeflow.db.models.audit import AuditLog
+    from tradeflow.db.models.auth import RefreshToken, VerificationToken
     from tradeflow.db.models.billing import BillingEvent, Subscription
     from tradeflow.db.models.broker import BrokerConnection
     from tradeflow.db.models.journal import Note, Strategy, TradeJournal
@@ -59,6 +60,12 @@ class User(Base, TimestampMixin, SoftDeleteMixin):
         nullable=True,
     )
     stripe_customer_id: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    avatar_url: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    bio: Mapped[str | None] = mapped_column(Text, nullable=True)
+    timezone: Mapped[str | None] = mapped_column(String(50), nullable=True, default="UTC")
+    two_factor_enabled: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    totp_secret_encrypted: Mapped[str | None] = mapped_column(Text, nullable=True)
+    backup_codes_encrypted: Mapped[str | None] = mapped_column(Text, nullable=True)
 
     user_roles: Mapped[list["UserRole"]] = relationship(
         back_populates="user",
@@ -89,6 +96,14 @@ class User(Base, TimestampMixin, SoftDeleteMixin):
     risk_rules: Mapped[list["RiskRule"]] = relationship(back_populates="user")
     orders: Mapped[list["Order"]] = relationship(back_populates="user")
     trades: Mapped[list["Trade"]] = relationship(back_populates="user")
+    refresh_tokens: Mapped[list["RefreshToken"]] = relationship(
+        back_populates="user",
+        cascade="all, delete-orphan",
+    )
+    verification_tokens: Mapped[list["VerificationToken"]] = relationship(
+        back_populates="user",
+        cascade="all, delete-orphan",
+    )
 
 
 class UserRole(Base, TimestampMixin):

@@ -12,6 +12,13 @@ export default [
   {
     ignores: ['.next/**', 'next-env.d.ts', 'eslint.config.mjs', 'postcss.config.mjs'],
   },
+  {
+    settings: {
+      next: {
+        rootDir: 'apps/web',
+      },
+    },
+  },
   ...base,
   ...compat.extends('next/core-web-vitals', 'next/typescript'),
 ];

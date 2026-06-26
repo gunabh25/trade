@@ -10,6 +10,7 @@ from tradeflow.db.base import Base
 from tradeflow.db.mixins import TimestampMixin
 
 if TYPE_CHECKING:
+    from tradeflow.db.models.auth import RefreshToken
     from tradeflow.db.models.user import User
 
 
@@ -39,3 +40,7 @@ class Session(Base, TimestampMixin):
     )
 
     user: Mapped["User"] = relationship(back_populates="sessions")
+    refresh_tokens: Mapped[list["RefreshToken"]] = relationship(
+        back_populates="session",
+        cascade="all, delete-orphan",
+    )
