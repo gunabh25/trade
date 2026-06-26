@@ -1,0 +1,28 @@
+{
+  "name": "tradeflow-ai",
+  "version": "0.1.0",
+  "private": true,
+  "description": "TradeFlow AI — cloud-based multi-account trade copier platform",
+  "packageManager": "pnpm@9.15.0",
+  "engines": {
+    "node": ">=22.0.0",
+    "pnpm": ">=9.0.0"
+  },
+  "scripts": {
+    "dev": "turbo run dev",
+    "build": "turbo run build",
+    "lint": "turbo run lint",
+    "typecheck": "turbo run typecheck",
+    "format": "prettier --write \"**/*.{ts,tsx,js,jsx,json,md,css,yml,yaml}\"",
+    "format:check": "prettier --check \"**/*.{ts,tsx,js,jsx,json,md,css,yml,yaml}\"",
+    "prepare": "husky"
+  },
+  "devDependencies": {
+    "@tradeflow/eslint-config": "workspace:*",
+    "husky": "^9.1.7",
+    "lint-staged": "^15.4.3",
+    "prettier": "^3.4.2",
+    "prettier-plugin-tailwindcss": "^0.6.11",
+    "turbo": "^2.3.3"
+  }
+}

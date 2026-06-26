@@ -1,0 +1,77 @@
+[project]
+name = "tradeflow-api"
+version = "0.1.0"
+description = "TradeFlow AI — FastAPI backend"
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+    "fastapi[standard]>=0.115.6",
+    "uvicorn[standard]>=0.34.0",
+    "pydantic>=2.10.4",
+    "pydantic-settings>=2.7.1",
+    "sqlalchemy[asyncio]>=2.0.36",
+    "asyncpg>=0.30.0",
+    "psycopg[binary]>=3.2.4",
+    "alembic>=1.14.0",
+    "redis>=5.2.1",
+    "celery[redis]>=5.4.0",
+    "dependency-injector>=4.45.0",
+    "structlog>=24.4.0",
+    "python-json-logger>=3.2.1",
+    "httpx>=0.28.1",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.3.4",
+    "pytest-asyncio>=0.25.2",
+    "pytest-cov>=6.0.0",
+    "httpx>=0.28.1",
+    "ruff>=0.9.2",
+    "mypy>=1.14.1",
+    "types-redis>=4.6.0.20241004",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/tradeflow"]
+
+[tool.ruff]
+target-version = "py312"
+line-length = 100
+src = ["src", "tests"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "N", "W", "UP", "B", "A", "C4", "SIM", "RUF"]
+ignore = ["B008", "TC001", "TC002", "UP046", "UP047"]
+
+[tool.ruff.lint.isort]
+known-first-party = ["tradeflow"]
+
+[tool.mypy]
+python_version = "3.12"
+strict = true
+plugins = ["pydantic.mypy"]
+mypy_path = "src"
+packages = ["tradeflow"]
+
+[[tool.mypy.overrides]]
+module = ["dependency_injector.*", "celery.*"]
+ignore_missing_imports = true
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+asyncio_default_fixture_loop_scope = "function"
+testpaths = ["tests"]
+pythonpath = ["src"]
+
+[tool.coverage.run]
+source = ["tradeflow"]
+branch = true
+
+[tool.coverage.report]
+fail_under = 80
+show_missing = true

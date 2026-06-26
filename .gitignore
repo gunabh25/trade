@@ -1,0 +1,49 @@
+# Dependencies
+node_modules
+.pnpm-store
+apps/api/.venv
+apps/api/venv
+
+# Build
+.next
+dist
+.turbo
+out
+*.egg-info
+__pycache__
+*.py[cod]
+.mypy_cache
+.ruff_cache
+.pytest_cache
+htmlcov
+.coverage
+
+# Environment
+.env
+.env.local
+.env.*.local
+!.env.example
+
+# IDE
+.idea
+.vscode/*
+!.vscode/extensions.json
+!.vscode/settings.json
+*.swp
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+logs
+*.log
+npm-debug.log*
+pnpm-debug.log*
+
+# Testing
+coverage
+playwright-report
+
+# Docker
+docker-data
