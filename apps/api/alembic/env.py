@@ -6,6 +6,7 @@ from alembic import context
 from sqlalchemy import engine_from_config, pool
 
 from tradeflow.core.config import get_settings
+from tradeflow.db import models  # noqa: F401 — register models with metadata
 from tradeflow.db.base import Base
 
 config = context.config
