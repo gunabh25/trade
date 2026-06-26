@@ -7,6 +7,7 @@ from datetime import UTC, datetime
 from decimal import Decimal
 
 from tradeflow.integrations.brokers.base import BaseBrokerAdapter
+from tradeflow.integrations.brokers.capabilities import BrokerCapabilities
 from tradeflow.integrations.brokers.retry import RetryPolicy
 from tradeflow.integrations.brokers.types import (
     BrokerAccount,
@@ -19,6 +20,8 @@ from tradeflow.integrations.brokers.types import (
     BrokerPositionSide,
     ModifyOrderRequest,
     PlaceOrderRequest,
+    StreamHandler,
+    StreamSubscription,
 )
 
 
@@ -44,6 +47,51 @@ class PaperBrokerAdapter(BaseBrokerAdapter):
         self._accounts: dict[str, BrokerAccount] = {}
         self._orders: dict[str, BrokerOrder] = {}
         self._positions: dict[str, BrokerPosition] = {}
+
+    @property
+    def capabilities(self) -> BrokerCapabilities:
+        return BrokerCapabilities(
+            supports_websocket=True,
+            supports_stream_market_data=True,
+            supports_stream_orders=True,
+            supports_stream_positions=True,
+            max_orders_per_second=100.0,
+            supported_asset_classes=("equity", "futures", "crypto"),
+            notes="In-memory simulation",
+        )
+
+    async def _validate_connection_impl(self) -> None:
+        if not self._accounts:
+            msg = "Paper account not initialized"
+            raise ValueError(msg)
+
+    async def _flatten_position_impl(self, account_id: str, symbol: str) -> BrokerOrder:
+        pos_id = f"{account_id}:{symbol}"
+        position = self._positions.get(pos_id)
+        if position is None:
+            msg = f"No position for {symbol}"
+            raise ValueError(msg)
+        close_side = (
+            BrokerOrderSide.SELL
+            if position.side == BrokerPositionSide.LONG
+            else BrokerOrderSide.BUY
+        )
+        return self._place_order_sync(
+            PlaceOrderRequest(
+                account_id=account_id,
+                symbol=symbol,
+                side=close_side,
+                order_type=BrokerOrderType.MARKET,
+                quantity=position.quantity,
+            ),
+        )
+
+    async def _stream_orders_impl(
+        self,
+        account_id: str,
+        handler: StreamHandler,
+    ) -> StreamSubscription:
+        return await self.websocket.subscribe(f"orders:{account_id}", handler)
 
     async def _connect_impl(self, credentials: BrokerCredentials) -> None:
         account_name = str(credentials.data.get("account_name", "Paper Account"))

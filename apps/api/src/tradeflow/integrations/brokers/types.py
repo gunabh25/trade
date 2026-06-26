@@ -2,12 +2,15 @@
 
 from __future__ import annotations
 
+from collections.abc import Awaitable, Callable
 from dataclasses import dataclass, field
 from datetime import datetime
 from decimal import Decimal
 from enum import StrEnum
 from typing import Any
 from uuid import UUID
+
+StreamHandler = Callable[[dict[str, Any]], Awaitable[None]]
 
 
 class BrokerHealthStatus(StrEnum):
@@ -121,6 +124,15 @@ class ConnectionHealth:
     reconnect_attempts: int = 0
     websocket_connected: bool = False
     latency_ms: float | None = None
+    metadata: dict[str, Any] = field(default_factory=dict)
+
+
+@dataclass
+class StreamSubscription:
+    """Handle returned from stream_* methods — call unsubscribe to stop."""
+
+    channel: str
+    unsubscribe: Callable[[], Awaitable[None]]
 
 
 @dataclass(frozen=True)

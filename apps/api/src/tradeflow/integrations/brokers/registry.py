@@ -10,6 +10,7 @@ from tradeflow.integrations.brokers.adapters.bybit import BybitBrokerAdapter
 from tradeflow.integrations.brokers.adapters.interactive_brokers import InteractiveBrokersAdapter
 from tradeflow.integrations.brokers.adapters.oanda import OandaBrokerAdapter
 from tradeflow.integrations.brokers.adapters.paper import PaperBrokerAdapter
+from tradeflow.integrations.brokers.adapters.rithmic import RithmicBrokerAdapter
 from tradeflow.integrations.brokers.adapters.tradingview import TradingViewWebhookAdapter
 from tradeflow.integrations.brokers.adapters.tradovate import TradovateBrokerAdapter
 from tradeflow.integrations.brokers.interface import BrokerAdapter
@@ -52,3 +53,4 @@ class BrokerAdapterRegistry:
         self.register(BrokerType.INTERACTIVE_BROKERS, _with_policy(InteractiveBrokersAdapter))
         self.register(BrokerType.TRADOVATE, _with_policy(TradovateBrokerAdapter))
         self.register(BrokerType.TRADINGVIEW, _with_policy(TradingViewWebhookAdapter))
+        self.register(BrokerType.RITHMIC, _with_policy(RithmicBrokerAdapter))

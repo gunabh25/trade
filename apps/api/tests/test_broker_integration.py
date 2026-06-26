@@ -87,6 +87,7 @@ def test_registry_supports_all_brokers() -> None:
         BrokerType.INTERACTIVE_BROKERS,
         BrokerType.TRADOVATE,
         BrokerType.TRADINGVIEW,
+        BrokerType.RITHMIC,
     }
     assert expected.issubset(supported)
 
