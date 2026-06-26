@@ -1,7 +1,18 @@
 'use client';
 
-import { AlertTriangle, Bell, CheckCheck, TrendingUp } from 'lucide-react';
-import { useState } from 'react';
+import {
+  AlertTriangle,
+  Bell,
+  CheckCheck,
+  ExternalLink,
+  TrendingDown,
+  TrendingUp,
+} from 'lucide-react';
+import Link from 'next/link';
+import { useRouter } from 'next/navigation';
+import { useCallback, useState } from 'react';
+
+import type { InAppNotification, NotificationType } from '@tradeflow/types/api';
 
 import {
   Badge,
@@ -14,26 +25,63 @@ import {
   cn,
 } from '@tradeflow/ui';
 
-import type { Notification } from '@/features/dashboard/data/mock-dashboard-data';
-import { markAllNotificationsRead } from '@/features/notifications/api/notifications-api';
+import {
+  markAllNotificationsRead,
+  markNotificationRead,
+} from '@/features/notifications/api/notifications-api';
+import { formatRelativeTime } from '@/lib/api/normalize';
 
 interface NotificationCenterProps {
-  notifications: Notification[];
+  notifications: InAppNotification[];
+  onNotificationsChange?: (notifications: InAppNotification[]) => void;
 }
 
-const typeIcons = {
-  trade: TrendingUp,
-  risk: AlertTriangle,
-  system: Bell,
-};
+function iconForType(type: NotificationType) {
+  if (type === 'trade_copied' || type === 'copy_failure' || type === 'large_profit') {
+    return TrendingUp;
+  }
+  if (
+    type === 'large_loss' ||
+    type === 'risk_breach' ||
+    type === 'kill_switch' ||
+    type === 'position_drift'
+  ) {
+    return type === 'large_loss' || type === 'kill_switch' ? TrendingDown : AlertTriangle;
+  }
+  return Bell;
+}
 
-export function NotificationCenter({ notifications: initial }: NotificationCenterProps) {
+export function NotificationCenter({
+  notifications: initial,
+  onNotificationsChange,
+}: NotificationCenterProps) {
+  const router = useRouter();
   const [notifications, setNotifications] = useState(initial);
+
+  const updateNotifications = useCallback(
+    (next: InAppNotification[]) => {
+      setNotifications(next);
+      onNotificationsChange?.(next);
+    },
+    [onNotificationsChange],
+  );
+
   const unreadCount = notifications.filter((n) => !n.read).length;
 
   function markAllRead() {
-    setNotifications((prev) => prev.map((n) => ({ ...n, read: true })));
+    updateNotifications(notifications.map((n) => ({ ...n, read: true })));
     void markAllNotificationsRead().catch(() => undefined);
+  }
+
+  function handleItemClick(notification: InAppNotification) {
+    if (!notification.read) {
+      const next = notifications.map((n) => (n.id === notification.id ? { ...n, read: true } : n));
+      updateNotifications(next);
+      void markNotificationRead(notification.id).catch(() => undefined);
+    }
+    if (notification.action_url) {
+      router.push(notification.action_url);
+    }
   }
 
   return (
@@ -43,7 +91,7 @@ export function NotificationCenter({ notifications: initial }: NotificationCente
           <Bell className="h-4 w-4" />
           {unreadCount > 0 ? (
             <span className="bg-primary text-primary-foreground absolute right-1.5 top-1.5 flex h-4 w-4 items-center justify-center rounded-full text-[10px] font-medium">
-              {unreadCount}
+              {unreadCount > 9 ? '9+' : unreadCount}
             </span>
           ) : null}
           <span className="sr-only">Notifications</span>
@@ -65,12 +113,16 @@ export function NotificationCenter({ notifications: initial }: NotificationCente
             <p className="text-muted-foreground p-6 text-center text-sm">No notifications</p>
           ) : (
             notifications.map((notification) => {
-              const Icon = typeIcons[notification.type];
+              const Icon = iconForType(notification.type);
               return (
-                <div
+                <button
                   key={notification.id}
+                  type="button"
+                  onClick={() => {
+                    handleItemClick(notification);
+                  }}
                   className={cn(
-                    'border-border/50 flex gap-3 border-b px-4 py-3 last:border-0',
+                    'border-border/50 hover:bg-accent/40 flex w-full gap-3 border-b px-4 py-3 text-left last:border-0',
                     !notification.read && 'bg-accent/30',
                   )}
                 >
@@ -86,18 +138,30 @@ export function NotificationCenter({ notifications: initial }: NotificationCente
                         </Badge>
                       ) : null}
                     </div>
-                    <p className="text-muted-foreground mt-0.5 text-xs">{notification.message}</p>
-                    <p className="text-muted-foreground/70 mt-1 text-[11px]">{notification.time}</p>
+                    <p className="text-muted-foreground mt-0.5 line-clamp-2 text-xs">
+                      {notification.body}
+                    </p>
+                    <p className="text-muted-foreground/70 mt-1 text-[11px]">
+                      {formatRelativeTime(notification.created_at)}
+                    </p>
                   </div>
-                </div>
+                </button>
               );
             })
           )}
         </ScrollArea>
         <Separator />
         <div className="p-2">
-          <Button variant="ghost" className="text-muted-foreground w-full text-xs" size="sm">
-            View all notifications
+          <Button
+            variant="ghost"
+            className="text-muted-foreground w-full text-xs"
+            size="sm"
+            asChild
+          >
+            <Link href="/dashboard/notifications">
+              View all notifications
+              <ExternalLink className="ml-1 h-3 w-3" />
+            </Link>
           </Button>
         </div>
       </PopoverContent>

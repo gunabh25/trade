@@ -34,7 +34,7 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
       <div className="bg-background flex min-h-screen">
         <DashboardSidebar />
         <div className="flex min-w-0 flex-1 flex-col">
-          <DashboardHeader data={headerData} />
+          <DashboardHeader data={headerData} onNotificationsChange={headerData.setNotifications} />
           <main className="flex-1 overflow-auto">{children}</main>
         </div>
       </div>

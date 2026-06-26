@@ -19,6 +19,10 @@ if TYPE_CHECKING:
     from tradeflow.db.models.copy_trading import CopyGroup
     from tradeflow.db.models.journal import Note, Strategy, TradeJournal
     from tradeflow.db.models.notification import Notification
+    from tradeflow.db.models.notification_platform import (
+        NotificationDigestItem,
+        NotificationUserSettings,
+    )
     from tradeflow.db.models.notification_settings import (
         NotificationChannelSetting,
         NotificationPreference,
@@ -99,6 +103,15 @@ class User(Base, TimestampMixin, SoftDeleteMixin):
         cascade="all, delete-orphan",
     )
     notification_preferences: Mapped[list["NotificationPreference"]] = relationship(
+        back_populates="user",
+        cascade="all, delete-orphan",
+    )
+    notification_user_settings: Mapped["NotificationUserSettings | None"] = relationship(
+        back_populates="user",
+        cascade="all, delete-orphan",
+        uselist=False,
+    )
+    notification_digest_items: Mapped[list["NotificationDigestItem"]] = relationship(
         back_populates="user",
         cascade="all, delete-orphan",
     )

@@ -2,6 +2,7 @@
 
 import {
   BarChart3,
+  Bell,
   BookOpen,
   Copy,
   CreditCard,
@@ -37,6 +38,7 @@ const navItems = [
   { href: '/dashboard/copy', label: 'Copy Trading', icon: Copy },
   { href: '/journal', label: 'Journal', icon: BookOpen },
   { href: '/dashboard/analytics', label: 'Analytics', icon: LineChart },
+  { href: '/dashboard/notifications', label: 'Notifications', icon: Bell },
   { href: '/dashboard/risk', label: 'Risk', icon: Shield },
   { href: '/profile', label: 'Profile', icon: Users },
   { href: '/sessions', label: 'Sessions', icon: BarChart3 },

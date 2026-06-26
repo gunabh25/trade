@@ -87,3 +87,58 @@ def test_pnl_milestone_template() -> None:
     )
     assert "$100,000 equity" in rendered.title
     assert "100,500.25" in rendered.body
+
+
+def test_large_profit_template() -> None:
+    settings = get_settings()
+    rendered = render_notification(
+        settings,
+        NotificationEvent.LARGE_PROFIT,
+        {"symbol": "ES", "pnl": 7500.0},
+    )
+    assert "ES" in rendered.title
+    assert "7,500.00" in rendered.body
+
+
+def test_large_loss_template() -> None:
+    settings = get_settings()
+    rendered = render_notification(
+        settings,
+        NotificationEvent.LARGE_LOSS,
+        {"symbol": "NQ", "pnl": -4200.0},
+    )
+    assert "NQ" in rendered.title
+    assert "4,200.00" in rendered.body
+
+
+def test_system_maintenance_template() -> None:
+    settings = get_settings()
+    rendered = render_notification(
+        settings,
+        NotificationEvent.SYSTEM_MAINTENANCE,
+        {"message": "Database upgrade", "starts_at": "2026-06-27T02:00:00Z"},
+    )
+    assert "System Maintenance" in rendered.title
+    assert "Database upgrade" in rendered.body
+
+
+def test_user_invitation_template() -> None:
+    settings = get_settings()
+    rendered = render_notification(
+        settings,
+        NotificationEvent.USER_INVITATION,
+        {"inviter_name": "Alex", "organization": "Alpha Fund"},
+    )
+    assert "Alex" in rendered.body
+    assert "Alpha Fund" in rendered.body
+
+
+def test_password_changed_template() -> None:
+    settings = get_settings()
+    rendered = render_notification(
+        settings,
+        NotificationEvent.PASSWORD_CHANGED,
+        {},
+    )
+    assert "Password Changed" in rendered.title
+    assert "password was changed" in rendered.body

@@ -14,6 +14,11 @@ from tradeflow.core.config import Settings
 from tradeflow.core.logging import get_logger
 from tradeflow.db.enums import NotificationChannel, NotificationEvent
 from tradeflow.db.models.notification import Notification
+from tradeflow.db.models.notification_platform import (
+    NotificationDelivery,
+    NotificationDigestItem,
+    NotificationUserSettings,
+)
 from tradeflow.db.models.notification_settings import (
     NotificationChannelSetting,
     NotificationPreference,
@@ -23,6 +28,7 @@ from tradeflow.notifications.channels.discord import DiscordChannel
 from tradeflow.notifications.channels.email import EmailNotificationChannel
 from tradeflow.notifications.channels.push import PushChannel
 from tradeflow.notifications.channels.slack import SlackChannel
+from tradeflow.notifications.channels.sms import SmsChannel
 from tradeflow.notifications.channels.telegram import TelegramChannel
 from tradeflow.notifications.events import EVENT_TO_NOTIFICATION_TYPE
 from tradeflow.notifications.templates import RenderedNotification, render_notification
@@ -68,6 +74,33 @@ DEFAULT_EVENT_CHANNELS: dict[NotificationEvent, set[NotificationChannel]] = {
         NotificationChannel.EMAIL,
         NotificationChannel.PUSH,
     },
+    NotificationEvent.LARGE_PROFIT: {
+        NotificationChannel.IN_APP,
+        NotificationChannel.EMAIL,
+        NotificationChannel.TELEGRAM,
+        NotificationChannel.PUSH,
+    },
+    NotificationEvent.LARGE_LOSS: {
+        NotificationChannel.IN_APP,
+        NotificationChannel.EMAIL,
+        NotificationChannel.TELEGRAM,
+        NotificationChannel.DISCORD,
+        NotificationChannel.SLACK,
+        NotificationChannel.PUSH,
+    },
+    NotificationEvent.SYSTEM_MAINTENANCE: {
+        NotificationChannel.IN_APP,
+        NotificationChannel.EMAIL,
+        NotificationChannel.PUSH,
+    },
+    NotificationEvent.USER_INVITATION: {
+        NotificationChannel.IN_APP,
+        NotificationChannel.EMAIL,
+    },
+    NotificationEvent.PASSWORD_CHANGED: {
+        NotificationChannel.IN_APP,
+        NotificationChannel.EMAIL,
+    },
 }
 
 
@@ -82,6 +115,7 @@ class NotificationDispatcher:
         self._discord = DiscordChannel()
         self._slack = SlackChannel()
         self._push = PushChannel()
+        self._sms = SmsChannel()
 
     async def dispatch(
         self,
@@ -108,15 +142,28 @@ class NotificationDispatcher:
         await db.flush()
 
         await self._publish_realtime(user_id, notification, event)
+        if await self._is_muted(db, user_id):
+            return notification
+
         channels = await self._resolve_channels(db, user_id, event)
         external = [c for c in channels if c != NotificationChannel.IN_APP]
         if external:
-            await self._enqueue_external_delivery(
-                user_id=user_id,
-                event=event.value,
-                rendered=rendered,
-                channels=[c.value for c in external],
-            )
+            digest_enabled = await self._digest_enabled(db, user_id)
+            if digest_enabled:
+                await self._queue_for_digest(
+                    db,
+                    user_id=user_id,
+                    event=event,
+                    rendered=rendered,
+                    channels=external,
+                )
+            else:
+                await self._enqueue_external_delivery(
+                    user_id=user_id,
+                    event=event.value,
+                    rendered=rendered,
+                    channels=[c.value for c in external],
+                )
 
         logger.info(
             "notification_dispatched",
@@ -159,6 +206,16 @@ class NotificationDispatcher:
                 config=config,
                 rendered=rendered,
             )
+            delivery = NotificationDelivery(
+                user_id=user_id,
+                event_type=event_value,
+                channel=channel.value,
+                status="sent" if result.success else "failed",
+                attempts=1,
+                last_error=result.error,
+                payload={"title": rendered.title},
+            )
+            db.add(delivery)
             results.append(
                 {
                     "channel": result.channel,
@@ -316,6 +373,126 @@ class NotificationDispatcher:
             metadata=metadata,
         )
 
+    async def notify_large_profit(
+        self,
+        db: AsyncSession,
+        *,
+        user_id: UUID,
+        symbol: str,
+        pnl: float,
+        account_id: UUID | None = None,
+    ) -> Notification:
+        metadata: dict[str, Any] = {"symbol": symbol, "pnl": pnl}
+        if account_id:
+            metadata["account_id"] = str(account_id)
+        return await self.dispatch(
+            db,
+            user_id=user_id,
+            event=NotificationEvent.LARGE_PROFIT,
+            payload={"symbol": symbol, "pnl": pnl},
+            metadata=metadata,
+        )
+
+    async def notify_large_loss(
+        self,
+        db: AsyncSession,
+        *,
+        user_id: UUID,
+        symbol: str,
+        pnl: float,
+        account_id: UUID | None = None,
+    ) -> Notification:
+        metadata: dict[str, Any] = {"symbol": symbol, "pnl": pnl}
+        if account_id:
+            metadata["account_id"] = str(account_id)
+        return await self.dispatch(
+            db,
+            user_id=user_id,
+            event=NotificationEvent.LARGE_LOSS,
+            payload={"symbol": symbol, "pnl": pnl},
+            metadata=metadata,
+        )
+
+    async def notify_system_maintenance(
+        self,
+        db: AsyncSession,
+        *,
+        user_id: UUID,
+        message: str,
+        starts_at: str | None = None,
+    ) -> Notification:
+        return await self.dispatch(
+            db,
+            user_id=user_id,
+            event=NotificationEvent.SYSTEM_MAINTENANCE,
+            payload={"message": message, "starts_at": starts_at},
+            metadata={"message": message, "starts_at": starts_at},
+        )
+
+    async def notify_user_invitation(
+        self,
+        db: AsyncSession,
+        *,
+        user_id: UUID,
+        inviter_name: str,
+        organization: str | None = None,
+    ) -> Notification:
+        return await self.dispatch(
+            db,
+            user_id=user_id,
+            event=NotificationEvent.USER_INVITATION,
+            payload={"inviter_name": inviter_name, "organization": organization},
+            metadata={"inviter_name": inviter_name, "organization": organization},
+        )
+
+    async def notify_password_changed(
+        self,
+        db: AsyncSession,
+        *,
+        user_id: UUID,
+    ) -> Notification:
+        return await self.dispatch(
+            db,
+            user_id=user_id,
+            event=NotificationEvent.PASSWORD_CHANGED,
+            payload={},
+            metadata={"changed_at": "now"},
+        )
+
+    async def _is_muted(self, db: AsyncSession, user_id: UUID) -> bool:
+        from datetime import UTC, datetime
+
+        settings = await db.get(NotificationUserSettings, user_id)
+        if settings is None or settings.muted_until is None:
+            return False
+        return settings.muted_until > datetime.now(tz=UTC)
+
+    async def _digest_enabled(self, db: AsyncSession, user_id: UUID) -> bool:
+        settings = await db.get(NotificationUserSettings, user_id)
+        return bool(settings and settings.digest_enabled)
+
+    async def _queue_for_digest(
+        self,
+        db: AsyncSession,
+        *,
+        user_id: UUID,
+        event: NotificationEvent,
+        rendered: RenderedNotification,
+        channels: list[NotificationChannel],
+    ) -> None:
+        for channel in channels:
+            db.add(
+                NotificationDigestItem(
+                    user_id=user_id,
+                    event_type=event,
+                    channel=channel,
+                    title=rendered.title,
+                    body=rendered.body,
+                    rendered=_rendered_to_dict(rendered),
+                ),
+            )
+        await db.flush()
+
     async def _resolve_channels(
         self,
         db: AsyncSession,
@@ -374,6 +551,8 @@ class NotificationDispatcher:
             )
         if channel in {NotificationChannel.DISCORD, NotificationChannel.SLACK}:
             return bool(config.get("webhook_url"))
+        if channel == NotificationChannel.SMS:
+            return bool(config.get("phone_number"))
         return False
 
     async def _send_channel(
@@ -394,6 +573,8 @@ class NotificationDispatcher:
             return await self._slack.send(config=config, rendered=rendered)
         if channel == NotificationChannel.PUSH:
             return await self._push.send(config=config, rendered=rendered)
+        if channel == NotificationChannel.SMS:
+            return await self._sms.send(config=config, rendered=rendered)
         msg = f"Unsupported channel: {channel}"
         raise ValueError(msg)
 

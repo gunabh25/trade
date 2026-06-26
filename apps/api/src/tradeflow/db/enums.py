@@ -252,6 +252,10 @@ class NotificationType(StrEnum):
     KILL_SWITCH = "kill_switch"
     BILLING = "billing"
     PNL_MILESTONE = "pnl_milestone"
+    LARGE_PROFIT = "large_profit"
+    LARGE_LOSS = "large_loss"
+    USER_INVITATION = "user_invitation"
+    PASSWORD_CHANGED = "password_changed"
     SYSTEM = "system"
 
 
@@ -262,6 +266,7 @@ class NotificationChannel(StrEnum):
     DISCORD = "discord"
     SLACK = "slack"
     PUSH = "push"
+    SMS = "sms"
 
 
 class NotificationEvent(StrEnum):
@@ -271,6 +276,11 @@ class NotificationEvent(StrEnum):
     RISK_ALERT = "risk_alert"
     SUBSCRIPTION_EXPIRY = "subscription_expiry"
     PNL_MILESTONE = "pnl_milestone"
+    LARGE_PROFIT = "large_profit"
+    LARGE_LOSS = "large_loss"
+    SYSTEM_MAINTENANCE = "system_maintenance"
+    USER_INVITATION = "user_invitation"
+    PASSWORD_CHANGED = "password_changed"
 
 
 class RiskBreachType(StrEnum):

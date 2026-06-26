@@ -5,14 +5,13 @@ import { useCallback, useEffect, useState } from 'react';
 import type { BrokerConnection, InAppNotification } from '@tradeflow/types/api';
 
 import { listBrokerConnections } from '@/features/broker/api/broker-api';
-import type { Notification, Workspace } from '@/features/dashboard/data/mock-dashboard-data';
+import type { Workspace } from '@/features/dashboard/data/mock-dashboard-data';
 import { listNotifications } from '@/features/notifications/api/notifications-api';
-import { formatRelativeTime } from '@/lib/api/normalize';
 
 interface DashboardHeaderData {
   workspaces: Workspace[];
   activeWorkspaceId: string;
-  notifications: Notification[];
+  notifications: InAppNotification[];
 }
 
 const EMPTY_HEADER: DashboardHeaderData = {
@@ -22,27 +21,6 @@ const EMPTY_HEADER: DashboardHeaderData = {
 };
 
 const EMPTY_CONNECTIONS: BrokerConnection[] = [];
-
-function mapNotificationType(type: InAppNotification['type']): Notification['type'] {
-  if (type === 'trade_copied' || type === 'copy_failure') {
-    return 'trade';
-  }
-  if (type === 'risk_breach' || type === 'kill_switch' || type === 'position_drift') {
-    return 'risk';
-  }
-  return 'system';
-}
-
-function toHeaderNotification(item: InAppNotification): Notification {
-  return {
-    id: item.id,
-    title: item.title,
-    message: item.body,
-    time: formatRelativeTime(item.created_at),
-    read: item.read,
-    type: mapNotificationType(item.type),
-  };
-}
 
 export function useDashboardHeaderData(enabled: boolean) {
   const [data, setData] = useState<DashboardHeaderData>(EMPTY_HEADER);
@@ -67,12 +45,10 @@ export function useDashboardHeaderData(enabled: boolean) {
             }))
           : EMPTY_HEADER.workspaces;
 
-      const notifications = (notificationResponse?.items ?? []).map(toHeaderNotification);
-
       setData({
         workspaces,
         activeWorkspaceId: workspaces[0]?.id ?? 'default',
-        notifications,
+        notifications: notificationResponse?.items ?? [],
       });
     } catch {
       setData(EMPTY_HEADER);
@@ -87,5 +63,11 @@ export function useDashboardHeaderData(enabled: boolean) {
     void load();
   }, [enabled, load]);
 
-  return data;
+  return {
+    ...data,
+    reload: load,
+    setNotifications: (notifications: InAppNotification[]) => {
+      setData((prev) => ({ ...prev, notifications }));
+    },
+  };
 }

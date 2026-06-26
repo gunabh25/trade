@@ -119,6 +119,11 @@ class Container(containers.DeclarativeContainer):
         max_attempts=config.provided.login_max_attempts,
         lockout_seconds=config.provided.login_lockout_seconds,
     )
+    notification_dispatcher: providers.Singleton[NotificationDispatcher] = providers.Singleton(
+        NotificationDispatcher,
+        settings=config,
+        redis=redis_client,
+    )
     auth_service: providers.Factory[AuthService] = providers.Factory(
         AuthService,
         settings=config,
@@ -128,6 +133,7 @@ class Container(containers.DeclarativeContainer):
         oauth_service=oauth_service,
         rate_limiter=rate_limiter,
         login_protection=login_protection,
+        notification_dispatcher=notification_dispatcher,
     )
 
     broker_retry_policy: providers.Singleton[RetryPolicy] = providers.Singleton(
@@ -182,12 +188,6 @@ class Container(containers.DeclarativeContainer):
 
     risk_state_store: providers.Singleton[RiskStateStore] = providers.Singleton(
         RiskStateStore,
-        redis=redis_client,
-    )
-
-    notification_dispatcher: providers.Singleton[NotificationDispatcher] = providers.Singleton(
-        NotificationDispatcher,
-        settings=config,
         redis=redis_client,
     )
 

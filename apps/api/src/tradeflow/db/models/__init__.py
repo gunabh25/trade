@@ -22,6 +22,11 @@ from tradeflow.db.models.copy_trading import (
 )
 from tradeflow.db.models.journal import JournalScreenshot, Note, Strategy, TradeJournal
 from tradeflow.db.models.notification import Notification
+from tradeflow.db.models.notification_platform import (
+    NotificationDelivery,
+    NotificationDigestItem,
+    NotificationUserSettings,
+)
 from tradeflow.db.models.notification_settings import (
     NotificationChannelSetting,
     NotificationPreference,
@@ -49,7 +54,10 @@ __all__ = [
     "Note",
     "Notification",
     "NotificationChannelSetting",
+    "NotificationDelivery",
+    "NotificationDigestItem",
     "NotificationPreference",
+    "NotificationUserSettings",
     "OAuthAccount",
     "Order",
     "OrderMapping",

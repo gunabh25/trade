@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from uuid import UUID
 
 from sqlalchemy import func, select, update
@@ -10,6 +10,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from tradeflow.db.enums import NotificationChannel, NotificationEvent
 from tradeflow.db.models.notification import Notification
+from tradeflow.db.models.notification_platform import NotificationUserSettings
 from tradeflow.db.models.notification_settings import (
     NotificationChannelSetting,
     NotificationPreference,
@@ -18,10 +19,12 @@ from tradeflow.features.notifications.schemas import (
     ChannelSettingResponse,
     NotificationPreferencesResponse,
     NotificationResponse,
+    NotificationUserSettingsResponse,
     PreferenceResponse,
+    UpdateNotificationUserSettingsRequest,
 )
 from tradeflow.notifications.dispatcher import DEFAULT_EVENT_CHANNELS
-from tradeflow.notifications.events import ALL_NOTIFICATION_EVENTS
+from tradeflow.notifications.events import ALL_NOTIFICATION_EVENTS, EVENT_LABELS
 
 
 class NotificationService:
@@ -87,6 +90,84 @@ class NotificationService:
         await db.flush()
         return int(result.rowcount or 0)
 
+    async def unread_count(self, db: AsyncSession, user_id: UUID) -> int:
+        count = await db.scalar(
+            select(func.count())
+            .select_from(Notification)
+            .where(
+                Notification.user_id == user_id,
+                Notification.read_at.is_(None),
+                Notification.deleted_at.is_(None),
+            ),
+        )
+        return int(count or 0)
+
+    async def get_user_settings(
+        self,
+        db: AsyncSession,
+        user_id: UUID,
+    ) -> NotificationUserSettingsResponse:
+        row = await db.get(NotificationUserSettings, user_id)
+        if row is None:
+            return NotificationUserSettingsResponse()
+        return NotificationUserSettingsResponse(
+            muted_until=row.muted_until,
+            digest_enabled=row.digest_enabled,
+            digest_frequency=row.digest_frequency,
+            digest_hour_utc=row.digest_hour_utc,
+        )
+
+    async def update_user_settings(
+        self,
+        db: AsyncSession,
+        user_id: UUID,
+        payload: UpdateNotificationUserSettingsRequest,
+    ) -> NotificationUserSettingsResponse:
+        row = await db.get(NotificationUserSettings, user_id)
+        if row is None:
+            row = NotificationUserSettings(user_id=user_id)
+            db.add(row)
+
+        if payload.clear_mute:
+            row.muted_until = None
+        elif payload.mute_hours is not None:
+            row.muted_until = datetime.now(tz=UTC) + timedelta(hours=payload.mute_hours)
+        elif payload.muted_until is not None:
+            row.muted_until = payload.muted_until
+
+        if payload.digest_enabled is not None:
+            row.digest_enabled = payload.digest_enabled
+        if payload.digest_frequency is not None:
+            row.digest_frequency = payload.digest_frequency
+        if payload.digest_hour_utc is not None:
+            row.digest_hour_utc = payload.digest_hour_utc
+
+        await db.flush()
+        return NotificationUserSettingsResponse(
+            muted_until=row.muted_until,
+            digest_enabled=row.digest_enabled,
+            digest_frequency=row.digest_frequency,
+            digest_hour_utc=row.digest_hour_utc,
+        )
+
+    async def bulk_update_preferences(
+        self,
+        db: AsyncSession,
+        user_id: UUID,
+        preferences: list[tuple[NotificationEvent, NotificationChannel, bool]],
+    ) -> list[PreferenceResponse]:
+        results: list[PreferenceResponse] = []
+        for event_type, channel, enabled in preferences:
+            item = await self.upsert_preference(
+                db,
+                user_id,
+                event_type,
+                channel,
+                enabled=enabled,
+            )
+            results.append(item)
+        return results
+
     async def get_preferences(
         self,
         db: AsyncSession,
@@ -126,6 +207,7 @@ class NotificationService:
             preferences=preferences,
             available_events=ALL_NOTIFICATION_EVENTS,
             available_channels=list(NotificationChannel),
+            event_labels={event.value: label for event, label in EVENT_LABELS.items()},
         )
 
     async def upsert_channel_setting(

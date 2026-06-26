@@ -12,9 +12,13 @@ from tradeflow.core.dependencies.auth import CurrentUser, DbSession
 from tradeflow.core.responses import SuccessResponse, success
 from tradeflow.db.enums import NotificationChannel
 from tradeflow.features.notifications.schemas import (
+    BulkUpdatePreferencesRequest,
     NotificationPreferencesResponse,
     NotificationResponse,
+    NotificationUserSettingsResponse,
+    UnreadCountResponse,
     UpdateChannelSettingRequest,
+    UpdateNotificationUserSettingsRequest,
     UpdatePreferenceRequest,
 )
 from tradeflow.features.notifications.service import NotificationService
@@ -95,6 +99,55 @@ async def mark_all_notifications_read(
 
 
 @router.get(
+    "/unread-count",
+    response_model=SuccessResponse[UnreadCountResponse],
+    summary="Get unread notification count",
+)
+@inject
+async def get_unread_count(
+    request: Request,
+    db: DbSession,
+    user: CurrentUser,
+    notification_service: NotificationService = Depends(Provide[Container.notification_service]),
+) -> SuccessResponse[UnreadCountResponse]:
+    count = await notification_service.unread_count(db, user.id)
+    return success(UnreadCountResponse(count=count), request_id=request.state.request_id)
+
+
+@router.get(
+    "/settings",
+    response_model=SuccessResponse[NotificationUserSettingsResponse],
+    summary="Get mute and digest settings",
+)
+@inject
+async def get_notification_settings(
+    request: Request,
+    db: DbSession,
+    user: CurrentUser,
+    notification_service: NotificationService = Depends(Provide[Container.notification_service]),
+) -> SuccessResponse[NotificationUserSettingsResponse]:
+    settings = await notification_service.get_user_settings(db, user.id)
+    return success(settings, request_id=request.state.request_id)
+
+
+@router.put(
+    "/settings",
+    response_model=SuccessResponse[NotificationUserSettingsResponse],
+    summary="Update mute and digest settings",
+)
+@inject
+async def update_notification_settings(
+    body: UpdateNotificationUserSettingsRequest,
+    request: Request,
+    db: DbSession,
+    user: CurrentUser,
+    notification_service: NotificationService = Depends(Provide[Container.notification_service]),
+) -> SuccessResponse[NotificationUserSettingsResponse]:
+    settings = await notification_service.update_user_settings(db, user.id, body)
+    return success(settings, request_id=request.state.request_id)
+
+
+@router.get(
     "/preferences",
     response_model=SuccessResponse[NotificationPreferencesResponse],
     summary="Get notification channel settings and event preferences",
@@ -155,3 +208,27 @@ async def update_notification_preference(
         enabled=body.enabled,
     )
     return success(item.model_dump(), request_id=request.state.request_id)
+
+
+@router.put(
+    "/preferences/bulk",
+    response_model=SuccessResponse[dict[str, object]],
+    summary="Bulk update event/channel notification preferences",
+)
+@inject
+async def bulk_update_notification_preferences(
+    body: BulkUpdatePreferencesRequest,
+    request: Request,
+    db: DbSession,
+    user: CurrentUser,
+    notification_service: NotificationService = Depends(Provide[Container.notification_service]),
+) -> SuccessResponse[dict[str, object]]:
+    items = await notification_service.bulk_update_preferences(
+        db,
+        user.id,
+        [(pref.event_type, pref.channel, pref.enabled) for pref in body.preferences],
+    )
+    return success(
+        {"updated": len(items), "preferences": [item.model_dump() for item in items]},
+        request_id=request.state.request_id,
+    )

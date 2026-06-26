@@ -106,6 +106,7 @@ export type {
   SimulateLeaderEventRequest,
 } from './copy';
 export type {
+  BulkUpdatePreferencesRequest,
   InAppNotification,
   NotificationChannel,
   NotificationChannelSetting,
@@ -114,7 +115,10 @@ export type {
   NotificationPreference,
   NotificationPreferences,
   NotificationType,
+  NotificationUserSettings,
+  UnreadCountResponse,
   UpdateChannelSettingRequest,
+  UpdateNotificationUserSettingsRequest,
   UpdatePreferenceRequest,
 } from './notifications';
 export type {

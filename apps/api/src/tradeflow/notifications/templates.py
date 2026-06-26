@@ -44,6 +44,11 @@ def render_notification(
         NotificationEvent.RISK_ALERT: _risk_alert,
         NotificationEvent.SUBSCRIPTION_EXPIRY: _subscription_expiry,
         NotificationEvent.PNL_MILESTONE: _pnl_milestone,
+        NotificationEvent.LARGE_PROFIT: _large_profit,
+        NotificationEvent.LARGE_LOSS: _large_loss,
+        NotificationEvent.SYSTEM_MAINTENANCE: _system_maintenance,
+        NotificationEvent.USER_INVITATION: _user_invitation,
+        NotificationEvent.PASSWORD_CHANGED: _password_changed,
     }
     renderer = renderers.get(event)
     if renderer is None:
@@ -150,6 +155,84 @@ def _pnl_milestone(settings: Settings, payload: dict[str, Any]) -> RenderedNotif
         action_url=action_url,
         accent_color=0x3B82F6,
         emoji="📈",
+    )
+
+
+def _large_profit(settings: Settings, payload: dict[str, Any]) -> RenderedNotification:
+    symbol = str(payload.get("symbol", "—"))
+    pnl = payload.get("pnl")
+    pnl_text = f"${pnl:,.2f}" if isinstance(pnl, (int, float)) else ""
+    title = f"Large Profit: {symbol}"
+    body = f"Significant gain detected — {pnl_text} on {symbol}."
+    return _build(
+        settings,
+        title=title,
+        body=body,
+        action_url="/dashboard/analytics",
+        accent_color=0x22C55E,
+        emoji="💰",
+    )
+
+
+def _large_loss(settings: Settings, payload: dict[str, Any]) -> RenderedNotification:
+    symbol = str(payload.get("symbol", "—"))
+    pnl = payload.get("pnl")
+    pnl_text = f"${abs(pnl):,.2f}" if isinstance(pnl, (int, float)) else ""
+    title = f"Large Loss: {symbol}"
+    body = f"Significant loss detected — {pnl_text} on {symbol}."
+    return _build(
+        settings,
+        title=title,
+        body=body,
+        action_url="/dashboard/risk",
+        accent_color=0xEF4444,
+        emoji="📉",
+    )
+
+
+def _system_maintenance(settings: Settings, payload: dict[str, Any]) -> RenderedNotification:
+    message = str(payload.get("message", "Scheduled maintenance is planned."))
+    starts = payload.get("starts_at")
+    when = f" Starting {starts}." if starts else ""
+    title = "System Maintenance"
+    body = f"{message}{when}"
+    return _build(
+        settings,
+        title=title,
+        body=body,
+        action_url="/dashboard",
+        accent_color=0x64748B,
+        emoji="🔧",
+    )
+
+
+def _user_invitation(settings: Settings, payload: dict[str, Any]) -> RenderedNotification:
+    inviter = str(payload.get("inviter_name", "A team member"))
+    org = payload.get("organization")
+    org_text = f" to {org}" if org else ""
+    title = "You've Been Invited"
+    body = f"{inviter} invited you{org_text} to TradeFlow AI."
+    return _build(
+        settings,
+        title=title,
+        body=body,
+        action_url="/register",
+        accent_color=0x3B82F6,
+        emoji="✉️",
+    )
+
+
+def _password_changed(settings: Settings, payload: dict[str, Any]) -> RenderedNotification:
+    _ = payload
+    title = "Password Changed"
+    body = "Your account password was changed. If this wasn't you, contact support immediately."
+    return _build(
+        settings,
+        title=title,
+        body=body,
+        action_url="/profile",
+        accent_color=0xF59E0B,
+        emoji="🔐",
     )
 
 

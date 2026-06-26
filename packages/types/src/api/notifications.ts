@@ -7,9 +7,20 @@ export type NotificationType =
   | 'kill_switch'
   | 'billing'
   | 'pnl_milestone'
+  | 'large_profit'
+  | 'large_loss'
+  | 'user_invitation'
+  | 'password_changed'
   | 'system';
 
-export type NotificationChannel = 'in_app' | 'email' | 'telegram' | 'discord' | 'slack' | 'push';
+export type NotificationChannel =
+  | 'in_app'
+  | 'email'
+  | 'telegram'
+  | 'discord'
+  | 'slack'
+  | 'push'
+  | 'sms';
 
 export type NotificationEvent =
   | 'trade_copied'
@@ -17,7 +28,12 @@ export type NotificationEvent =
   | 'broker_offline'
   | 'risk_alert'
   | 'subscription_expiry'
-  | 'pnl_milestone';
+  | 'pnl_milestone'
+  | 'large_profit'
+  | 'large_loss'
+  | 'system_maintenance'
+  | 'user_invitation'
+  | 'password_changed';
 
 export interface InAppNotification {
   id: string;
@@ -57,6 +73,14 @@ export interface NotificationPreferences {
   preferences: NotificationPreference[];
   available_events: NotificationEvent[];
   available_channels: NotificationChannel[];
+  event_labels: Record<string, string>;
+}
+
+export interface NotificationUserSettings {
+  muted_until: string | null;
+  digest_enabled: boolean;
+  digest_frequency: 'daily' | 'weekly';
+  digest_hour_utc: number;
 }
 
 export interface UpdateChannelSettingRequest {
@@ -68,4 +92,21 @@ export interface UpdatePreferenceRequest {
   event_type: NotificationEvent;
   channel: NotificationChannel;
   enabled: boolean;
+}
+
+export interface BulkUpdatePreferencesRequest {
+  preferences: UpdatePreferenceRequest[];
+}
+
+export interface UpdateNotificationUserSettingsRequest {
+  muted_until?: string | null;
+  mute_hours?: number;
+  clear_mute?: boolean;
+  digest_enabled?: boolean;
+  digest_frequency?: 'daily' | 'weekly';
+  digest_hour_utc?: number;
+}
+
+export interface UnreadCountResponse {
+  count: number;
 }

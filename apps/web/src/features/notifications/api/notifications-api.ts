@@ -1,10 +1,13 @@
 import type {
+  BulkUpdatePreferencesRequest,
   InAppNotification,
   NotificationChannel,
   NotificationListResponse,
   NotificationPreferences,
   NotificationType,
+  NotificationUserSettings,
   UpdateChannelSettingRequest,
+  UpdateNotificationUserSettingsRequest,
   UpdatePreferenceRequest,
 } from '@tradeflow/types/api';
 
@@ -61,6 +64,11 @@ export async function listNotifications(params?: {
   };
 }
 
+export async function getUnreadNotificationCount(): Promise<number> {
+  const response = await apiRequest<{ count?: number }>('/notifications/unread-count');
+  return toNumber(response.data.count, 0);
+}
+
 export async function markNotificationRead(notificationId: string): Promise<InAppNotification> {
   const response = await apiRequest<Record<string, unknown>>(
     `/notifications/${notificationId}/read`,
@@ -81,6 +89,21 @@ export async function getNotificationPreferences(): Promise<NotificationPreferen
   return response.data;
 }
 
+export async function getNotificationSettings(): Promise<NotificationUserSettings> {
+  const response = await apiRequest<NotificationUserSettings>('/notifications/settings');
+  return response.data;
+}
+
+export async function updateNotificationSettings(
+  body: UpdateNotificationUserSettingsRequest,
+): Promise<NotificationUserSettings> {
+  const response = await apiRequest<NotificationUserSettings>('/notifications/settings', {
+    method: 'PUT',
+    body,
+  });
+  return response.data;
+}
+
 export async function updateNotificationChannel(
   channel: NotificationChannel,
   body: UpdateChannelSettingRequest,
@@ -93,6 +116,15 @@ export async function updateNotificationChannel(
 
 export async function updateNotificationPreference(body: UpdatePreferenceRequest): Promise<void> {
   await apiRequest('/notifications/preferences', {
+    method: 'PUT',
+    body,
+  });
+}
+
+export async function bulkUpdateNotificationPreferences(
+  body: BulkUpdatePreferencesRequest,
+): Promise<void> {
+  await apiRequest('/notifications/preferences/bulk', {
     method: 'PUT',
     body,
   });

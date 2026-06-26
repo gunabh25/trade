@@ -50,6 +50,7 @@ from tradeflow.features.auth.schemas import (
     UpdateProfileRequest,
     UserProfileResponse,
 )
+from tradeflow.notifications.dispatcher import NotificationDispatcher
 
 logger = get_logger(__name__)
 
@@ -89,6 +90,7 @@ class AuthService:
         oauth_service: OAuthService,
         rate_limiter: RateLimiter,
         login_protection: LoginProtection,
+        notification_dispatcher: NotificationDispatcher,
     ) -> None:
         self._settings = settings
         self._jwt = jwt_service
@@ -97,6 +99,7 @@ class AuthService:
         self._oauth = oauth_service
         self._rate_limiter = rate_limiter
         self._login_protection = login_protection
+        self._notifications = notification_dispatcher
 
     async def register(
         self,
@@ -349,6 +352,7 @@ class AuthService:
             .where(RefreshToken.user_id == user.id, RefreshToken.revoked_at.is_(None))
             .values(revoked_at=datetime.now(tz=UTC)),
         )
+        await self._notifications.notify_password_changed(db, user_id=user.id)
         await db.commit()
 
     async def get_profile(self, db: AsyncSession, user_id: UUID) -> UserProfileResponse:

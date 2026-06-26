@@ -55,6 +55,10 @@ celery_app.conf.update(
             "task": "tradeflow.workers.notification_tasks.check_pnl_milestones",
             "schedule": 3600.0,
         },
+        "send-notification-digests": {
+            "task": "tradeflow.workers.notification_tasks.send_notification_digests",
+            "schedule": 3600.0,
+        },
         "snapshot-billing-usage": {
             "task": "tradeflow.workers.billing_tasks.snapshot_usage",
             "schedule": 86400.0,

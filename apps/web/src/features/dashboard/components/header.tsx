@@ -3,6 +3,8 @@
 import { Search } from 'lucide-react';
 import { usePathname } from 'next/navigation';
 
+import type { InAppNotification } from '@tradeflow/types/api';
+
 import { Input, Separator } from '@tradeflow/ui';
 
 import { NotificationCenter } from '@/features/dashboard/components/notification-center';
@@ -18,6 +20,7 @@ import type { DashboardData } from '@/features/dashboard/data/mock-dashboard-dat
 const pageTitles: Record<string, string> = {
   '/dashboard': 'Overview',
   '/dashboard/analytics': 'Analytics',
+  '/dashboard/notifications': 'Notifications',
   '/journal': 'Journal',
   '/profile': 'Profile',
   '/sessions': 'Sessions',
@@ -25,10 +28,13 @@ const pageTitles: Record<string, string> = {
 };
 
 interface DashboardHeaderProps {
-  data: Pick<DashboardData, 'workspaces' | 'activeWorkspaceId' | 'notifications'>;
+  data: Pick<DashboardData, 'workspaces' | 'activeWorkspaceId'> & {
+    notifications: InAppNotification[];
+  };
+  onNotificationsChange?: (notifications: InAppNotification[]) => void;
 }
 
-export function DashboardHeader({ data }: DashboardHeaderProps) {
+export function DashboardHeader({ data, onNotificationsChange }: DashboardHeaderProps) {
   const pathname = usePathname();
   const title = pageTitles[pathname] ?? 'Overview';
 
@@ -47,7 +53,10 @@ export function DashboardHeader({ data }: DashboardHeaderProps) {
             className="border-border/60 bg-muted/30 h-9 w-56 pl-9 text-sm"
           />
         </div>
-        <NotificationCenter notifications={data.notifications} />
+        <NotificationCenter
+          notifications={data.notifications}
+          {...(onNotificationsChange ? { onNotificationsChange } : {})}
+        />
         <UserMenu />
       </div>
     </header>
