@@ -26,6 +26,7 @@ celery_app.conf.update(
         "tradeflow.workers.copy_tasks.*": {"queue": "copy"},
         "tradeflow.workers.risk_tasks.*": {"queue": "risk"},
         "tradeflow.workers.notification_tasks.*": {"queue": "notifications"},
+        "tradeflow.workers.billing_tasks.*": {"queue": "default"},
     },
     beat_schedule={
         "drain-copy-retry-queue": {
@@ -51,6 +52,10 @@ celery_app.conf.update(
         "check-pnl-milestones": {
             "task": "tradeflow.workers.notification_tasks.check_pnl_milestones",
             "schedule": 3600.0,
+        },
+        "snapshot-billing-usage": {
+            "task": "tradeflow.workers.billing_tasks.snapshot_usage",
+            "schedule": 86400.0,
         },
     },
 )

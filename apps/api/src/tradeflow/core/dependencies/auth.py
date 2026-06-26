@@ -11,6 +11,7 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 from tradeflow.core.container import Container
 from tradeflow.core.errors import UnauthorizedError
 from tradeflow.core.security.cookies import get_access_token_from_request
+from tradeflow.db.enums import RoleName
 from tradeflow.db.models.user import User
 from tradeflow.features.auth.service import AuthService
 
@@ -58,3 +59,15 @@ async def get_current_user_context(
 
 
 CurrentUser = Annotated[CurrentUserContext, Depends(get_current_user_context)]
+
+
+async def require_admin(user: CurrentUser) -> CurrentUserContext:
+    roles = {ur.role.name for ur in user.user.user_roles}
+    if RoleName.ADMIN not in roles:
+        from tradeflow.core.errors import ForbiddenError
+
+        raise ForbiddenError("Admin access required")
+    return user
+
+
+AdminUser = Annotated[CurrentUserContext, Depends(require_admin)]

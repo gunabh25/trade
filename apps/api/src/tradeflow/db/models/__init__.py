@@ -3,7 +3,14 @@
 from tradeflow.db.models.api_key import ApiKey
 from tradeflow.db.models.audit import AuditLog
 from tradeflow.db.models.auth import RefreshToken, VerificationToken
-from tradeflow.db.models.billing import BillingEvent, Plan, Subscription
+from tradeflow.db.models.billing import (
+    BillingEvent,
+    Coupon,
+    Invoice,
+    Plan,
+    Subscription,
+    UsageRecord,
+)
 from tradeflow.db.models.broker import BrokerConnection
 from tradeflow.db.models.copy_trading import (
     CopyEvent,
@@ -32,7 +39,9 @@ __all__ = [
     "CopyEvent",
     "CopyGroup",
     "CopyGroupFollower",
+    "Coupon",
     "ExecutionLog",
+    "Invoice",
     "JournalScreenshot",
     "Note",
     "Notification",
@@ -54,6 +63,7 @@ __all__ = [
     "Trade",
     "TradeJournal",
     "TradingAccount",
+    "UsageRecord",
     "User",
     "UserRole",
     "VerificationToken",

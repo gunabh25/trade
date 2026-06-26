@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from datetime import UTC, datetime
+from typing import TYPE_CHECKING
 from uuid import UUID
 
 from sqlalchemy import select
@@ -11,7 +12,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from tradeflow.core.errors import NotFoundError
 from tradeflow.core.logging import get_logger
 from tradeflow.core.security.encryption import EncryptionService
-from tradeflow.db.enums import BrokerType, ConnectionStatus
+from tradeflow.db.enums import BrokerType, ConnectionStatus, UsageMetric
 from tradeflow.db.models.broker import BrokerConnection
 from tradeflow.features.broker.schemas import (
     BrokerAccountResponse,
@@ -35,6 +36,9 @@ from tradeflow.integrations.brokers.types import (
     PlaceOrderRequest as BrokerPlaceOrderRequest,
 )
 
+if TYPE_CHECKING:
+    from tradeflow.features.billing.entitlements import EntitlementService
+
 logger = get_logger(__name__)
 
 
@@ -46,10 +50,12 @@ class BrokerConnectionService:
         registry: BrokerAdapterRegistry,
         session_manager: BrokerSessionManager,
         encryption_service: EncryptionService,
+        entitlements: EntitlementService | None = None,
     ) -> None:
         self._registry = registry
         self._sessions = session_manager
         self._encryption = encryption_service
+        self._entitlements = entitlements
 
     def list_supported_brokers(self) -> SupportedBrokersResponse:
         return SupportedBrokersResponse(
@@ -62,6 +68,12 @@ class BrokerConnectionService:
         user_id: UUID,
         payload: CreateBrokerConnectionRequest,
     ) -> BrokerConnectionResponse:
+        if self._entitlements is not None:
+            await self._entitlements.assert_within_limit(
+                db,
+                user_id,
+                UsageMetric.BROKER_CONNECTIONS,
+            )
         connection = BrokerConnection(
             user_id=user_id,
             broker=payload.broker,

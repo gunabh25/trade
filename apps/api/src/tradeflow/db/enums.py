@@ -80,12 +80,41 @@ class BillingEventType(StrEnum):
     SUBSCRIPTION_UPDATED = "subscription_updated"
     SUBSCRIPTION_CANCELED = "subscription_canceled"
     REFUND = "refund"
+    TRIAL_STARTED = "trial_started"
+    TRIAL_ENDED = "trial_ended"
+    COUPON_APPLIED = "coupon_applied"
 
 
 class BillingEventStatus(StrEnum):
     PENDING = "pending"
     SUCCEEDED = "succeeded"
     FAILED = "failed"
+
+
+class InvoiceStatus(StrEnum):
+    DRAFT = "draft"
+    OPEN = "open"
+    PAID = "paid"
+    VOID = "void"
+    UNCOLLECTIBLE = "uncollectible"
+
+
+class CouponDiscountType(StrEnum):
+    PERCENT = "percent"
+    AMOUNT = "amount"
+
+
+class CouponDuration(StrEnum):
+    ONCE = "once"
+    REPEATING = "repeating"
+    FOREVER = "forever"
+
+
+class UsageMetric(StrEnum):
+    TRADING_ACCOUNTS = "trading_accounts"
+    BROKER_CONNECTIONS = "broker_connections"
+    COPY_GROUPS = "copy_groups"
+    API_REQUESTS = "api_requests"
 
 
 class OrderSide(StrEnum):

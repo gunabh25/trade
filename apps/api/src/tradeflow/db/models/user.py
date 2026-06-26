@@ -14,7 +14,7 @@ if TYPE_CHECKING:
     from tradeflow.db.models.api_key import ApiKey
     from tradeflow.db.models.audit import AuditLog
     from tradeflow.db.models.auth import RefreshToken, VerificationToken
-    from tradeflow.db.models.billing import BillingEvent, Subscription
+    from tradeflow.db.models.billing import BillingEvent, Invoice, Subscription, UsageRecord
     from tradeflow.db.models.broker import BrokerConnection
     from tradeflow.db.models.copy_trading import CopyGroup
     from tradeflow.db.models.journal import Note, Strategy, TradeJournal
@@ -104,6 +104,8 @@ class User(Base, TimestampMixin, SoftDeleteMixin):
     )
     subscriptions: Mapped[list["Subscription"]] = relationship(back_populates="user")
     billing_events: Mapped[list["BillingEvent"]] = relationship(back_populates="user")
+    invoices: Mapped[list["Invoice"]] = relationship(back_populates="user")
+    usage_records: Mapped[list["UsageRecord"]] = relationship(back_populates="user")
     audit_logs: Mapped[list["AuditLog"]] = relationship(back_populates="user")
     api_keys: Mapped[list["ApiKey"]] = relationship(back_populates="user")
     risk_rules: Mapped[list["RiskRule"]] = relationship(back_populates="user")

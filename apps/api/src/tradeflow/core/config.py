@@ -80,6 +80,12 @@ class Settings(BaseSettings):
     # Notification integrations (optional)
     telegram_bot_token: str | None = Field(default=None, alias="TELEGRAM_BOT_TOKEN")
 
+    # Stripe billing (optional — dev mode when unset)
+    stripe_secret_key: str | None = Field(default=None, alias="STRIPE_SECRET_KEY")
+    stripe_publishable_key: str | None = Field(default=None, alias="STRIPE_PUBLISHABLE_KEY")
+    stripe_webhook_secret: str | None = Field(default=None, alias="STRIPE_WEBHOOK_SECRET")
+    stripe_trial_days_default: int = Field(default=14, alias="STRIPE_TRIAL_DAYS_DEFAULT")
+
     # Rate limiting / brute force
     auth_rate_limit_per_minute: int = Field(default=20, alias="AUTH_RATE_LIMIT_PER_MINUTE")
     login_max_attempts: int = Field(default=5, alias="LOGIN_MAX_ATTEMPTS")
@@ -121,6 +127,18 @@ class Settings(BaseSettings):
     @property
     def is_development(self) -> bool:
         return self.app_env.lower() == "development"
+
+    @property
+    def stripe_enabled(self) -> bool:
+        return bool(self.stripe_secret_key)
+
+    @property
+    def billing_success_url(self) -> str:
+        return f"{self.frontend_url.rstrip('/')}/dashboard/billing?checkout=success"
+
+    @property
+    def billing_cancel_url(self) -> str:
+        return f"{self.frontend_url.rstrip('/')}/dashboard/billing?checkout=canceled"
 
     @field_validator("api_secret_key")
     @classmethod

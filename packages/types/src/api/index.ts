@@ -21,6 +21,15 @@ export type {
   UserProfile,
 } from './auth';
 export type {
+  BillingOverview,
+  CheckoutRequest,
+  CouponInfo,
+  Invoice,
+  Plan,
+  Subscription,
+  UsageItem,
+} from './billing';
+export type {
   ComponentHealth,
   HealthStatus,
   HealthSummaryResponse,

@@ -25,6 +25,8 @@ from tradeflow.features.analytics.service import AnalyticsService
 from tradeflow.features.auth.email_service import EmailService
 from tradeflow.features.auth.oauth_service import OAuthService
 from tradeflow.features.auth.service import AuthService
+from tradeflow.features.billing.entitlements import EntitlementService
+from tradeflow.features.billing.service import BillingService
 from tradeflow.features.broker.service import BrokerConnectionService
 from tradeflow.features.copy_trading.service import CopyTradingService
 from tradeflow.features.health.service import HealthService
@@ -35,6 +37,7 @@ from tradeflow.integrations.brokers.manager import BrokerSessionManager
 from tradeflow.integrations.brokers.monitor import ConnectionMonitor
 from tradeflow.integrations.brokers.registry import BrokerAdapterRegistry
 from tradeflow.integrations.brokers.retry import RetryPolicy
+from tradeflow.integrations.stripe.client import StripeClient
 from tradeflow.notifications.dispatcher import NotificationDispatcher
 from tradeflow.risk.actions import RiskActionExecutor
 from tradeflow.risk.alerts import RiskAlertService
@@ -57,6 +60,7 @@ class Container(containers.DeclarativeContainer):
             "tradeflow.features.journal.router",
             "tradeflow.features.analytics.router",
             "tradeflow.features.notifications.router",
+            "tradeflow.features.billing.router",
             "tradeflow.core.dependencies.auth",
         ],
     )
@@ -146,11 +150,21 @@ class Container(containers.DeclarativeContainer):
         encryption_service=encryption_service,
     )
 
+    stripe_client: providers.Singleton[StripeClient] = providers.Singleton(
+        StripeClient,
+        settings=config,
+    )
+
+    entitlement_service: providers.Factory[EntitlementService] = providers.Factory(
+        EntitlementService,
+    )
+
     broker_service: providers.Factory[BrokerConnectionService] = providers.Factory(
         BrokerConnectionService,
         registry=broker_adapter_registry,
         session_manager=broker_session_manager,
         encryption_service=encryption_service,
+        entitlements=entitlement_service,
     )
 
     trade_mapping_store: providers.Singleton[TradeMappingStore] = providers.Singleton(
@@ -226,6 +240,14 @@ class Container(containers.DeclarativeContainer):
 
     notification_service: providers.Factory[NotificationService] = providers.Factory(
         NotificationService,
+    )
+
+    billing_service: providers.Factory[BillingService] = providers.Factory(
+        BillingService,
+        settings=config,
+        stripe_client=stripe_client,
+        entitlements=entitlement_service,
+        notification_dispatcher=notification_dispatcher,
     )
 
     copy_trading_service: providers.Factory[CopyTradingService] = providers.Factory(

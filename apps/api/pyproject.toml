@@ -27,6 +27,7 @@ dependencies = [
     "python-multipart>=0.0.20",
     "aiofiles>=24.1.0",
     "email-validator>=2.2.0",
+    "stripe>=11.5.0",
 ]
 
 [project.optional-dependencies]
@@ -67,7 +68,7 @@ mypy_path = "src"
 packages = ["tradeflow"]
 
 [[tool.mypy.overrides]]
-module = ["dependency_injector.*", "celery.*", "authlib.*", "jwt.*"]
+module = ["dependency_injector.*", "celery.*", "authlib.*", "jwt.*", "stripe.*"]
 ignore_missing_imports = true
 
 [tool.pytest.ini_options]
