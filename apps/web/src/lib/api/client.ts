@@ -6,7 +6,9 @@ import { logger } from '@/lib/logging';
 const DEFAULT_TIMEOUT_MS = 10_000;
 
 function getApiBaseUrl(): string {
-  const baseUrl = process.env.NEXT_PUBLIC_API_URL;
+  const baseUrl =
+    process.env.NEXT_PUBLIC_API_URL ??
+    (process.env.NODE_ENV === 'development' ? 'http://localhost:8000' : undefined);
   if (!baseUrl) {
     throw new Error('NEXT_PUBLIC_API_URL is not configured');
   }
