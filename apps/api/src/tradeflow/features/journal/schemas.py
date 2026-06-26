@@ -69,6 +69,7 @@ class JournalEntryResponse(BaseModel):
     quantity: int | None
     entry_price: Decimal | None
     exit_price: Decimal | None
+    grade: int | None = None
     trade_id: UUID | None
     strategy_id: UUID | None
     trading_account_id: UUID | None
@@ -96,6 +97,7 @@ class CreateJournalEntryRequest(BaseModel):
     quantity: int | None = Field(default=None, ge=1)
     entry_price: Decimal | None = None
     exit_price: Decimal | None = None
+    grade: int | None = Field(default=None, ge=1, le=5)
     trade_id: UUID | None = None
     strategy_id: UUID | None = None
     trading_account_id: UUID | None = None
@@ -117,6 +119,7 @@ class UpdateJournalEntryRequest(BaseModel):
     quantity: int | None = Field(default=None, ge=1)
     entry_price: Decimal | None = None
     exit_price: Decimal | None = None
+    grade: int | None = Field(default=None, ge=1, le=5)
     strategy_id: UUID | None = None
 
 
@@ -184,3 +187,25 @@ class EmotionStatsResponse(BaseModel):
     count: int
     total_pnl: Decimal
     win_rate: float
+
+
+class WeekdayPerformanceResponse(BaseModel):
+    weekday: str
+    weekday_index: int
+    trade_count: int
+    total_pnl: Decimal
+    win_rate: float
+
+
+class SymbolPerformanceResponse(BaseModel):
+    symbol: str
+    trade_count: int
+    total_pnl: Decimal
+    win_rate: float
+    avg_pnl: Decimal
+
+
+class MistakeStatsResponse(BaseModel):
+    mistake: str
+    count: int
+    total_pnl: Decimal

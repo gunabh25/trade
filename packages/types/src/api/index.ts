@@ -54,6 +54,7 @@ export type {
 } from './health';
 export type {
   CalendarDay,
+  CreateJournalEntryPayload,
   EmotionStats,
   JournalEntry,
   JournalListResponse,
@@ -61,7 +62,10 @@ export type {
   JournalSource,
   JournalStats,
   JournalStrategy,
+  MistakeStats,
   StrategyPerformance,
+  SymbolPerformance,
+  WeekdayPerformance,
 } from './journal';
 export type {
   AnalyticsCalendarDay,

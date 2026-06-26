@@ -1,11 +1,15 @@
 import type {
   CalendarDay,
+  CreateJournalEntryPayload,
   EmotionStats,
   JournalEntry,
   JournalListResponse,
   JournalStats,
   JournalStrategy,
+  MistakeStats,
   StrategyPerformance,
+  SymbolPerformance,
+  WeekdayPerformance,
 } from '@tradeflow/types/api';
 
 import { apiRequest } from '@/lib/api/client';
@@ -16,6 +20,26 @@ import {
   toString,
   toStringArray,
 } from '@/lib/api/normalize';
+
+function getApiBaseUrl(): string {
+  const baseUrl =
+    process.env.NEXT_PUBLIC_API_URL ??
+    (process.env.NODE_ENV === 'development' ? 'http://localhost:8000' : undefined);
+  if (!baseUrl) {
+    throw new Error('NEXT_PUBLIC_API_URL is not configured');
+  }
+  return baseUrl.replace(/\/$/, '');
+}
+
+function getApiVersion(): string {
+  return process.env.NEXT_PUBLIC_API_VERSION ?? 'v1';
+}
+
+function getCsrfToken(): string | undefined {
+  if (typeof document === 'undefined') return undefined;
+  const match = /(?:^|; )tf_csrf=([^;]*)/.exec(document.cookie);
+  return match?.[1] ? decodeURIComponent(match[1]) : undefined;
+}
 
 function normalizeStrategy(raw: Record<string, unknown>): JournalStrategy {
   return {
@@ -30,7 +54,7 @@ function normalizeStrategy(raw: Record<string, unknown>): JournalStrategy {
   };
 }
 
-function normalizeEntry(raw: Record<string, unknown>): JournalEntry {
+export function normalizeEntry(raw: Record<string, unknown>): JournalEntry {
   const strategyRaw = raw.strategy;
   return {
     id: toString(raw.id),
@@ -50,6 +74,7 @@ function normalizeEntry(raw: Record<string, unknown>): JournalEntry {
     quantity: raw.quantity != null ? toNumber(raw.quantity) : null,
     entry_price: toNullableNumber(raw.entry_price),
     exit_price: toNullableNumber(raw.exit_price),
+    grade: raw.grade != null ? toNumber(raw.grade) : null,
     trade_id: toNullableString(raw.trade_id),
     strategy_id: toNullableString(raw.strategy_id),
     trading_account_id: toNullableString(raw.trading_account_id),
@@ -94,26 +119,31 @@ function normalizeStats(raw: Record<string, unknown>): JournalStats {
 export interface JournalEntriesQuery {
   q?: string;
   strategy_id?: string;
+  symbol?: string;
   tag?: string;
   emotion?: string;
   page?: number;
   page_size?: number;
 }
 
-export async function listJournalEntries(
-  query: JournalEntriesQuery = {},
-): Promise<JournalListResponse> {
+function buildQueryString(query: JournalEntriesQuery): string {
   const params = new URLSearchParams();
   if (query.q) params.set('q', query.q);
   if (query.strategy_id) params.set('strategy_id', query.strategy_id);
+  if (query.symbol) params.set('symbol', query.symbol);
   if (query.tag) params.set('tag', query.tag);
   if (query.emotion) params.set('emotion', query.emotion);
   if (query.page) params.set('page', String(query.page));
   if (query.page_size) params.set('page_size', String(query.page_size));
-
   const qs = params.toString();
+  return qs ? `?${qs}` : '';
+}
+
+export async function listJournalEntries(
+  query: JournalEntriesQuery = {},
+): Promise<JournalListResponse> {
   const response = await apiRequest<Record<string, unknown>>(
-    `/journal/entries${qs ? `?${qs}` : ''}`,
+    `/journal/entries${buildQueryString(query)}`,
   );
   const data = response.data;
   const entriesRaw = Array.isArray(data.entries) ? data.entries : [];
@@ -174,6 +204,37 @@ export async function getEmotionStats(): Promise<EmotionStats[]> {
   }));
 }
 
+export async function getWeekdayPerformance(): Promise<WeekdayPerformance[]> {
+  const response = await apiRequest<Record<string, unknown>[]>('/journal/stats/by-weekday');
+  return response.data.map((item) => ({
+    weekday: toString(item.weekday),
+    weekday_index: toNumber(item.weekday_index),
+    trade_count: toNumber(item.trade_count),
+    total_pnl: toNumber(item.total_pnl),
+    win_rate: toNumber(item.win_rate),
+  }));
+}
+
+export async function getSymbolPerformance(): Promise<SymbolPerformance[]> {
+  const response = await apiRequest<Record<string, unknown>[]>('/journal/stats/by-symbol');
+  return response.data.map((item) => ({
+    symbol: toString(item.symbol),
+    trade_count: toNumber(item.trade_count),
+    total_pnl: toNumber(item.total_pnl),
+    win_rate: toNumber(item.win_rate),
+    avg_pnl: toNumber(item.avg_pnl),
+  }));
+}
+
+export async function getMistakeStats(): Promise<MistakeStats[]> {
+  const response = await apiRequest<Record<string, unknown>[]>('/journal/stats/mistakes');
+  return response.data.map((item) => ({
+    mistake: toString(item.mistake),
+    count: toNumber(item.count),
+    total_pnl: toNumber(item.total_pnl),
+  }));
+}
+
 export async function listJournalTags(): Promise<string[]> {
   const response = await apiRequest<string[]>('/journal/tags');
   return response.data;
@@ -182,6 +243,31 @@ export async function listJournalTags(): Promise<string[]> {
 export async function getJournalEntry(entryId: string): Promise<JournalEntry> {
   const response = await apiRequest<Record<string, unknown>>(`/journal/entries/${entryId}`);
   return normalizeEntry(response.data);
+}
+
+export async function createJournalEntry(
+  payload: CreateJournalEntryPayload,
+): Promise<JournalEntry> {
+  const response = await apiRequest<Record<string, unknown>>('/journal/entries', {
+    method: 'POST',
+    body: payload,
+  });
+  return normalizeEntry(response.data);
+}
+
+export async function updateJournalEntry(
+  entryId: string,
+  payload: Partial<CreateJournalEntryPayload>,
+): Promise<JournalEntry> {
+  const response = await apiRequest<Record<string, unknown>>(`/journal/entries/${entryId}`, {
+    method: 'PUT',
+    body: payload,
+  });
+  return normalizeEntry(response.data);
+}
+
+export async function deleteJournalEntry(entryId: string): Promise<void> {
+  await apiRequest(`/journal/entries/${entryId}`, { method: 'DELETE' });
 }
 
 export async function importJournalTrades(payload?: {
@@ -196,4 +282,60 @@ export async function importJournalTrades(payload?: {
     imported: toNumber(response.data.imported),
     skipped: toNumber(response.data.skipped),
   };
+}
+
+export async function uploadJournalScreenshot(
+  entryId: string,
+  file: File,
+  caption?: string,
+): Promise<JournalEntry> {
+  const formData = new FormData();
+  formData.append('file', file);
+  if (caption) formData.append('caption', caption);
+
+  const csrf = getCsrfToken();
+  const headers = new Headers();
+  if (csrf) headers.set('X-CSRF-Token', csrf);
+
+  const response = await fetch(
+    `${getApiBaseUrl()}/api/${getApiVersion()}/journal/entries/${entryId}/screenshots/upload`,
+    {
+      method: 'POST',
+      body: formData,
+      credentials: 'include',
+      headers,
+    },
+  );
+
+  if (!response.ok) {
+    throw new Error('Failed to upload screenshot');
+  }
+
+  const body = (await response.json()) as { data?: Record<string, unknown> };
+  if (body.data) {
+    return normalizeEntry(body.data);
+  }
+  return getJournalEntry(entryId);
+}
+
+export async function downloadJournalExport(
+  format: 'csv' | 'pdf',
+  query: JournalEntriesQuery = {},
+): Promise<void> {
+  const url = `${getApiBaseUrl()}/api/${getApiVersion()}/journal/export/${format}${buildQueryString(query)}`;
+  const response = await fetch(url, { credentials: 'include' });
+  if (!response.ok) throw new Error(`Export failed (${String(response.status)})`);
+
+  const blob = await response.blob();
+  const objectUrl = URL.createObjectURL(blob);
+  const anchor = document.createElement('a');
+  anchor.href = objectUrl;
+  anchor.download = `journal-export.${format}`;
+  anchor.click();
+  URL.revokeObjectURL(objectUrl);
+}
+
+export function getScreenshotUrl(fileUrl: string): string {
+  if (fileUrl.startsWith('http')) return fileUrl;
+  return `${getApiBaseUrl()}${fileUrl}`;
 }

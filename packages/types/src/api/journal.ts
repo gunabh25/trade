@@ -37,6 +37,7 @@ export interface JournalEntry {
   quantity: number | null;
   entry_price: number | null;
   exit_price: number | null;
+  grade: number | null;
   trade_id: string | null;
   strategy_id: string | null;
   trading_account_id: string | null;
@@ -82,6 +83,48 @@ export interface EmotionStats {
   count: number;
   total_pnl: number;
   win_rate: number;
+}
+
+export interface WeekdayPerformance {
+  weekday: string;
+  weekday_index: number;
+  trade_count: number;
+  total_pnl: number;
+  win_rate: number;
+}
+
+export interface SymbolPerformance {
+  symbol: string;
+  trade_count: number;
+  total_pnl: number;
+  win_rate: number;
+  avg_pnl: number;
+}
+
+export interface MistakeStats {
+  mistake: string;
+  count: number;
+  total_pnl: number;
+}
+
+export interface CreateJournalEntryPayload {
+  title: string;
+  session_date: string;
+  content?: string | null;
+  notes?: string | null;
+  mood?: string | null;
+  pnl?: number | null;
+  tags?: string[];
+  emotions?: string[];
+  mistakes?: string[];
+  lessons_learned?: string | null;
+  symbol?: string | null;
+  side?: string | null;
+  quantity?: number | null;
+  entry_price?: number | null;
+  exit_price?: number | null;
+  grade?: number | null;
+  strategy_id?: string | null;
 }
 
 export interface JournalListResponse {

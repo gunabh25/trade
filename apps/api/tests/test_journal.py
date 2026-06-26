@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from datetime import date
+from datetime import UTC, date, datetime
 from decimal import Decimal
 from uuid import uuid4
 
@@ -51,6 +51,51 @@ def test_filter_params_defaults() -> None:
     params = JournalFilterParams()
     assert params.page == 1
     assert params.page_size == 20
+
+
+def test_export_csv() -> None:
+    from tradeflow.features.journal.export import export_entries_csv
+    from tradeflow.features.journal.schemas import JournalEntryResponse
+
+    entry = JournalEntryResponse(
+        id=uuid4(),
+        title="Test",
+        content=None,
+        notes=None,
+        mood=None,
+        session_date=date.today(),
+        pnl=Decimal("100"),
+        tags=["tag1"],
+        emotions=["calm"],
+        mistakes=["chased entry"],
+        lessons_learned="Wait",
+        source=JournalSource.MANUAL,
+        symbol="ES",
+        side=TradeSide.LONG,
+        quantity=Decimal("1"),
+        entry_price=Decimal("100"),
+        exit_price=Decimal("101"),
+        grade=4,
+        trade_id=None,
+        strategy_id=None,
+        trading_account_id=None,
+        strategy=None,
+        screenshots=[],
+        created_at=datetime.now(tz=UTC),
+        updated_at=datetime.now(tz=UTC),
+    )
+    csv_bytes = export_entries_csv([entry])
+    assert b"ES" in csv_bytes
+    assert b"4" in csv_bytes
+
+
+def test_grade_validation() -> None:
+    req = CreateJournalEntryRequest(
+        title="Graded trade",
+        session_date=date.today(),
+        grade=5,
+    )
+    assert req.grade == 5
 
 
 def test_journal_source_enum() -> None:

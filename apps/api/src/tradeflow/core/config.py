@@ -95,6 +95,10 @@ class Settings(BaseSettings):
     avatar_upload_dir: str = Field(default="uploads/avatars", alias="AVATAR_UPLOAD_DIR")
     avatar_max_bytes: int = Field(default=2_097_152, alias="AVATAR_MAX_BYTES")
 
+    # Journal screenshot uploads
+    journal_upload_dir: str = Field(default="uploads/journal", alias="JOURNAL_UPLOAD_DIR")
+    journal_max_bytes: int = Field(default=5_242_880, alias="JOURNAL_MAX_BYTES")
+
     # Broker integrations
     broker_retry_max_attempts: int = Field(default=3, alias="BROKER_RETRY_MAX_ATTEMPTS")
     broker_health_check_interval_seconds: float = Field(

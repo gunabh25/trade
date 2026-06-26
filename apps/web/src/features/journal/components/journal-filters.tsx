@@ -1,19 +1,62 @@
 'use client';
 
-import { Download, Plus, Search, X } from 'lucide-react';
+import { Download, FileText, Loader2, Plus, Search, Upload, X } from 'lucide-react';
+import { useRef, useState } from 'react';
 
-import { Badge, Button, Input, ScrollArea, cn } from '@tradeflow/ui';
+import {
+  Badge,
+  Button,
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+  Input,
+  ScrollArea,
+  cn,
+} from '@tradeflow/ui';
 
-import { EMOTIONS } from '@/features/journal/data/mock-journal-data';
+import { downloadJournalExport } from '@/features/journal/api/journal-api';
+import { EMOTIONS } from '@/features/journal/constants';
 import type { JournalData } from '@/features/journal/hooks/use-journal-data';
 
 interface JournalFiltersProps {
   data: JournalData;
+  searchInputRef?: React.RefObject<HTMLInputElement | null>;
+  onNewEntry: () => void;
+  onImport: () => void;
+  importing?: boolean;
 }
 
-export function JournalFilters({ data }: JournalFiltersProps) {
+export function JournalFilters({
+  data,
+  searchInputRef,
+  onNewEntry,
+  onImport,
+  importing,
+}: JournalFiltersProps) {
+  const localRef = useRef<HTMLInputElement>(null);
+  const inputRef = searchInputRef ?? localRef;
+  const [exporting, setExporting] = useState<'csv' | 'pdf' | null>(null);
+
   const hasFilters =
-    data.search.length > 0 || data.selectedTag !== null || data.selectedStrategy !== null;
+    data.search.length > 0 ||
+    data.selectedTag !== null ||
+    data.selectedStrategy !== null ||
+    data.selectedEmotion !== null;
+
+  const handleExport = async (format: 'csv' | 'pdf') => {
+    setExporting(format);
+    try {
+      await downloadJournalExport(format, {
+        ...(data.search ? { q: data.search } : {}),
+        ...(data.selectedStrategy ? { strategy_id: data.selectedStrategy } : {}),
+        ...(data.selectedTag ? { tag: data.selectedTag } : {}),
+        ...(data.selectedEmotion ? { emotion: data.selectedEmotion } : {}),
+      });
+    } finally {
+      setExporting(null);
+    }
+  };
 
   return (
     <div className="space-y-3">
@@ -21,7 +64,8 @@ export function JournalFilters({ data }: JournalFiltersProps) {
         <div className="relative flex-1">
           <Search className="text-muted-foreground absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2" />
           <Input
-            placeholder="Search trades, notes, tags, lessons..."
+            ref={inputRef}
+            placeholder="Search trades, notes, tags, lessons… (/)"
             value={data.search}
             onChange={(e) => {
               data.setSearch(e.target.value);
@@ -29,12 +73,44 @@ export function JournalFilters({ data }: JournalFiltersProps) {
             className="pl-9"
           />
         </div>
-        <div className="flex gap-2">
-          <Button variant="outline" size="sm" className="gap-1.5">
-            <Download className="h-4 w-4" />
+        <div className="flex flex-wrap gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            className="gap-1.5"
+            disabled={importing}
+            onClick={onImport}
+          >
+            {importing ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              <Upload className="h-4 w-4" />
+            )}
             <span className="hidden sm:inline">Import Trades</span>
           </Button>
-          <Button size="sm" className="gap-1.5">
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline" size="sm" className="gap-1.5">
+                {exporting ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <Download className="h-4 w-4" />
+                )}
+                <span className="hidden sm:inline">Export</span>
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem onClick={() => void handleExport('csv')}>
+                <FileText className="mr-2 h-4 w-4" />
+                Export CSV
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => void handleExport('pdf')}>
+                <FileText className="mr-2 h-4 w-4" />
+                Export PDF
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+          <Button size="sm" className="gap-1.5" onClick={onNewEntry}>
             <Plus className="h-4 w-4" />
             <span className="hidden sm:inline">New Entry</span>
           </Button>
@@ -86,6 +162,28 @@ export function JournalFilters({ data }: JournalFiltersProps) {
         </div>
       </ScrollArea>
 
+      <ScrollArea className="w-full whitespace-nowrap lg:hidden">
+        <div className="flex gap-2 pb-1">
+          <FilterChip
+            label="All Emotions"
+            active={!data.selectedEmotion}
+            onClick={() => {
+              data.setSelectedEmotion(null);
+            }}
+          />
+          {EMOTIONS.map((emotion) => (
+            <FilterChip
+              key={emotion}
+              label={emotion}
+              active={data.selectedEmotion === emotion}
+              onClick={() => {
+                data.setSelectedEmotion(data.selectedEmotion === emotion ? null : emotion);
+              }}
+            />
+          ))}
+        </div>
+      </ScrollArea>
+
       {hasFilters ? (
         <Button
           variant="ghost"
@@ -95,6 +193,7 @@ export function JournalFilters({ data }: JournalFiltersProps) {
             data.setSearch('');
             data.setSelectedTag(null);
             data.setSelectedStrategy(null);
+            data.setSelectedEmotion(null);
           }}
         >
           <X className="h-3 w-3" />
@@ -107,8 +206,22 @@ export function JournalFilters({ data }: JournalFiltersProps) {
           Emotions
         </p>
         <div className="flex flex-wrap gap-1.5">
+          <FilterChip
+            label="All"
+            active={!data.selectedEmotion}
+            onClick={() => {
+              data.setSelectedEmotion(null);
+            }}
+          />
           {EMOTIONS.map((emotion) => (
-            <Badge key={emotion} variant="outline" className="text-[10px] capitalize">
+            <Badge
+              key={emotion}
+              variant={data.selectedEmotion === emotion ? 'default' : 'outline'}
+              className="cursor-pointer text-[10px] capitalize"
+              onClick={() => {
+                data.setSelectedEmotion(data.selectedEmotion === emotion ? null : emotion);
+              }}
+            >
               {emotion}
             </Badge>
           ))}
@@ -134,7 +247,7 @@ function FilterChip({
       type="button"
       onClick={onClick}
       className={cn(
-        'inline-flex shrink-0 items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-medium transition-colors',
+        'inline-flex shrink-0 items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-medium capitalize transition-colors',
         active
           ? 'border-primary/50 bg-primary/10 text-foreground'
           : 'border-border/60 text-muted-foreground hover:border-border hover:text-foreground',

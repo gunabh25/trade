@@ -102,6 +102,7 @@ class TradeJournal(Base, TimestampMixin, SoftDeleteMixin):
     quantity: Mapped[int | None] = mapped_column(Integer, nullable=True)
     entry_price: Mapped[Decimal | None] = mapped_column(Numeric(18, 8), nullable=True)
     exit_price: Mapped[Decimal | None] = mapped_column(Numeric(18, 8), nullable=True)
+    grade: Mapped[int | None] = mapped_column(Integer, nullable=True)
     metadata_: Mapped[dict[str, object] | None] = mapped_column("metadata", JSONB, nullable=True)
 
     user: Mapped["User"] = relationship(back_populates="trade_journals")

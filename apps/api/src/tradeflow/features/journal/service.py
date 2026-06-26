@@ -2,19 +2,24 @@
 
 from __future__ import annotations
 
+import uuid
 from datetime import UTC, date, datetime, time
 from decimal import Decimal
+from pathlib import Path
 from uuid import UUID
 
+import aiofiles
 from sqlalchemy import func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
-from tradeflow.core.errors import NotFoundError
+from tradeflow.core.config import Settings, get_settings
+from tradeflow.core.errors import ForbiddenError, NotFoundError
 from tradeflow.core.logging import get_logger
 from tradeflow.db.enums import JournalSource, TradeStatus
 from tradeflow.db.models.journal import JournalScreenshot, Strategy, TradeJournal
 from tradeflow.db.models.trading import Trade
+from tradeflow.features.journal.export import export_entries_csv, export_entries_pdf
 from tradeflow.features.journal.schemas import (
     AddScreenshotRequest,
     CalendarDayResponse,
@@ -26,11 +31,14 @@ from tradeflow.features.journal.schemas import (
     JournalEntryResponse,
     JournalFilterParams,
     JournalStatsResponse,
+    MistakeStatsResponse,
     ScreenshotResponse,
     StrategyPerformanceResponse,
     StrategyResponse,
+    SymbolPerformanceResponse,
     UpdateJournalEntryRequest,
     UpdateStrategyRequest,
+    WeekdayPerformanceResponse,
 )
 
 logger = get_logger(__name__)
@@ -38,6 +46,9 @@ logger = get_logger(__name__)
 
 class JournalService:
     """CRUD, import, search, filters, statistics for the trading journal."""
+
+    def __init__(self, settings: Settings | None = None) -> None:
+        self._settings = settings or get_settings()
 
     async def create_entry(
         self,
@@ -62,6 +73,7 @@ class JournalService:
             quantity=payload.quantity,
             entry_price=payload.entry_price,
             exit_price=payload.exit_price,
+            grade=payload.grade,
             trade_id=payload.trade_id,
             strategy_id=payload.strategy_id,
             trading_account_id=payload.trading_account_id,
@@ -69,6 +81,7 @@ class JournalService:
         )
         db.add(entry)
         await db.flush()
+        await db.commit()
         return await self._load_entry(db, user_id, entry.id)
 
     async def update_entry(
@@ -85,6 +98,7 @@ class JournalService:
             else:
                 setattr(entry, field, value)
         await db.flush()
+        await db.commit()
         return await self._load_entry(db, user_id, entry_id)
 
     async def delete_entry(
@@ -95,6 +109,7 @@ class JournalService:
     ) -> None:
         entry = await self._get_entry(db, user_id, entry_id)
         entry.deleted_at = datetime.now(tz=UTC)
+        await db.commit()
 
     async def get_entry(
         self,
@@ -189,6 +204,7 @@ class JournalService:
             imported += 1
 
         await db.flush()
+        await db.commit()
         logger.info("journal_trades_imported", user_id=str(user_id), imported=imported)
         return ImportTradesResponse(imported=imported, skipped=skipped)
 
@@ -369,6 +385,198 @@ class JournalService:
                 tags.update(tag_list)
         return sorted(tags)
 
+    async def get_weekday_performance(
+        self,
+        db: AsyncSession,
+        user_id: UUID,
+    ) -> list[WeekdayPerformanceResponse]:
+        entries = await db.scalars(
+            select(TradeJournal).where(
+                TradeJournal.user_id == user_id,
+                TradeJournal.deleted_at.is_(None),
+                TradeJournal.pnl.isnot(None),
+            ),
+        )
+        weekdays = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
+        by_day: dict[int, list[Decimal]] = {i: [] for i in range(7)}
+        for entry in entries.all():
+            if entry.pnl is None:
+                continue
+            idx = entry.session_date.weekday()
+            by_day[idx].append(entry.pnl)
+
+        results: list[WeekdayPerformanceResponse] = []
+        for idx, pnls in by_day.items():
+            if not pnls:
+                continue
+            wins = sum(1 for p in pnls if p > 0)
+            results.append(
+                WeekdayPerformanceResponse(
+                    weekday=weekdays[idx],
+                    weekday_index=idx,
+                    trade_count=len(pnls),
+                    total_pnl=sum(pnls, Decimal("0")),
+                    win_rate=wins / len(pnls) * 100,
+                ),
+            )
+        return sorted(results, key=lambda r: r.weekday_index)
+
+    async def get_symbol_performance(
+        self,
+        db: AsyncSession,
+        user_id: UUID,
+    ) -> list[SymbolPerformanceResponse]:
+        entries = await db.scalars(
+            select(TradeJournal).where(
+                TradeJournal.user_id == user_id,
+                TradeJournal.deleted_at.is_(None),
+                TradeJournal.symbol.isnot(None),
+                TradeJournal.pnl.isnot(None),
+            ),
+        )
+        by_symbol: dict[str, list[Decimal]] = {}
+        for entry in entries.all():
+            if not entry.symbol or entry.pnl is None:
+                continue
+            by_symbol.setdefault(entry.symbol, []).append(entry.pnl)
+
+        results: list[SymbolPerformanceResponse] = []
+        for symbol, pnls in by_symbol.items():
+            wins = sum(1 for p in pnls if p > 0)
+            total = sum(pnls, Decimal("0"))
+            results.append(
+                SymbolPerformanceResponse(
+                    symbol=symbol,
+                    trade_count=len(pnls),
+                    total_pnl=total,
+                    win_rate=wins / len(pnls) * 100 if pnls else 0.0,
+                    avg_pnl=total / len(pnls) if pnls else Decimal("0"),
+                ),
+            )
+        return sorted(results, key=lambda r: r.total_pnl, reverse=True)
+
+    async def get_mistake_stats(
+        self,
+        db: AsyncSession,
+        user_id: UUID,
+    ) -> list[MistakeStatsResponse]:
+        entries = await db.scalars(
+            select(TradeJournal).where(
+                TradeJournal.user_id == user_id,
+                TradeJournal.deleted_at.is_(None),
+                TradeJournal.mistakes.isnot(None),
+            ),
+        )
+        by_mistake: dict[str, list[Decimal]] = {}
+        for entry in entries.all():
+            if not entry.mistakes:
+                continue
+            pnl = entry.pnl or Decimal("0")
+            for mistake in entry.mistakes:
+                by_mistake.setdefault(mistake, []).append(pnl)
+
+        return [
+            MistakeStatsResponse(
+                mistake=mistake,
+                count=len(pnls),
+                total_pnl=sum(pnls, Decimal("0")),
+            )
+            for mistake, pnls in sorted(by_mistake.items(), key=lambda x: -len(x[1]))
+        ]
+
+    async def export_csv(
+        self,
+        db: AsyncSession,
+        user_id: UUID,
+        filters: JournalFilterParams,
+    ) -> bytes:
+        entries, _ = await self.list_entries(
+            db,
+            user_id,
+            JournalFilterParams(
+                q=filters.q,
+                strategy_id=filters.strategy_id,
+                symbol=filters.symbol,
+                tag=filters.tag,
+                emotion=filters.emotion,
+                date_from=filters.date_from,
+                date_to=filters.date_to,
+                source=filters.source,
+                page=1,
+                page_size=10_000,
+            ),
+        )
+        return export_entries_csv(entries)
+
+    async def export_pdf(
+        self,
+        db: AsyncSession,
+        user_id: UUID,
+        filters: JournalFilterParams,
+    ) -> bytes:
+        entries, _ = await self.list_entries(
+            db,
+            user_id,
+            JournalFilterParams(
+                q=filters.q,
+                strategy_id=filters.strategy_id,
+                symbol=filters.symbol,
+                tag=filters.tag,
+                emotion=filters.emotion,
+                date_from=filters.date_from,
+                date_to=filters.date_to,
+                source=filters.source,
+                page=1,
+                page_size=500,
+            ),
+        )
+        return export_entries_pdf(entries)
+
+    async def upload_screenshot(
+        self,
+        db: AsyncSession,
+        user_id: UUID,
+        entry_id: UUID,
+        *,
+        filename: str,
+        content: bytes,
+        caption: str | None = None,
+    ) -> ScreenshotResponse:
+        allowed = {".jpg", ".jpeg", ".png", ".webp", ".gif"}
+        ext = Path(filename).suffix.lower()
+        if ext not in allowed:
+            raise ForbiddenError(f"Unsupported image type: {ext or 'unknown'}")
+
+        if len(content) > self._settings.journal_max_bytes:
+            raise ForbiddenError("Screenshot exceeds maximum file size")
+
+        entry = await self._get_entry(db, user_id, entry_id)
+        upload_dir = Path(self._settings.journal_upload_dir) / str(user_id)
+        upload_dir.mkdir(parents=True, exist_ok=True)
+        file_id = uuid.uuid4()
+        dest = upload_dir / f"{file_id}{ext}"
+        async with aiofiles.open(dest, "wb") as handle:
+            await handle.write(content)
+
+        file_url = f"/uploads/journal/{user_id}/{file_id}{ext}"
+        count = await db.scalar(
+            select(func.count())
+            .select_from(JournalScreenshot)
+            .where(JournalScreenshot.journal_id == entry.id),
+        )
+        sort_order = int(count or 0)
+        screenshot = JournalScreenshot(
+            journal_id=entry.id,
+            file_url=file_url,
+            caption=caption,
+            sort_order=sort_order,
+        )
+        db.add(screenshot)
+        await db.flush()
+        await db.refresh(screenshot)
+        await db.commit()
+        return ScreenshotResponse.model_validate(screenshot)
+
     async def add_screenshot(
         self,
         db: AsyncSession,
@@ -387,6 +595,7 @@ class JournalService:
         db.add(screenshot)
         await db.flush()
         await db.refresh(screenshot)
+        await db.commit()
         return ScreenshotResponse.model_validate(screenshot)
 
     async def create_strategy(
@@ -399,6 +608,7 @@ class JournalService:
         db.add(strategy)
         await db.flush()
         await db.refresh(strategy)
+        await db.commit()
         return StrategyResponse.model_validate(strategy)
 
     async def update_strategy(
@@ -413,6 +623,7 @@ class JournalService:
             setattr(strategy, field, value)
         await db.flush()
         await db.refresh(strategy)
+        await db.commit()
         return StrategyResponse.model_validate(strategy)
 
     async def list_strategies(
@@ -534,6 +745,7 @@ class JournalService:
             quantity=entry.quantity,
             entry_price=entry.entry_price,
             exit_price=entry.exit_price,
+            grade=entry.grade,
             trade_id=entry.trade_id,
             strategy_id=entry.strategy_id,
             trading_account_id=entry.trading_account_id,

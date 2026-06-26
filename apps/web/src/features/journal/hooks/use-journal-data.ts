@@ -8,14 +8,21 @@ import type {
   JournalEntry,
   JournalStats,
   JournalStrategy,
+  MistakeStats,
   StrategyPerformance,
+  SymbolPerformance,
+  WeekdayPerformance,
 } from '@tradeflow/types/api';
 
 import {
   getEmotionStats,
   getJournalCalendar,
   getJournalStats,
+  getMistakeStats,
   getStrategyPerformance,
+  getSymbolPerformance,
+  getWeekdayPerformance,
+  importJournalTrades,
   listJournalEntries,
   listJournalStrategies,
   listJournalTags,
@@ -38,11 +45,15 @@ const EMPTY_STATS: JournalStats = {
   avg_rr: null,
 };
 
+export type JournalView = 'log' | 'timeline' | 'analytics';
+
 export function useJournalData() {
   const [search, setSearch] = useState('');
   const [selectedTag, setSelectedTag] = useState<string | null>(null);
   const [selectedStrategy, setSelectedStrategy] = useState<string | null>(null);
+  const [selectedEmotion, setSelectedEmotion] = useState<string | null>(null);
   const [selectedEntry, setSelectedEntry] = useState<JournalEntry | null>(null);
+  const [activeView, setActiveView] = useState<JournalView>('log');
   const [calendarMonth, setCalendarMonth] = useState(() => {
     const now = new Date();
     return { year: now.getFullYear(), month: now.getMonth() + 1 };
@@ -54,8 +65,12 @@ export function useJournalData() {
   const [strategies, setStrategies] = useState<JournalStrategy[]>([]);
   const [strategyPerformance, setStrategyPerformance] = useState<StrategyPerformance[]>([]);
   const [emotionStats, setEmotionStats] = useState<EmotionStats[]>([]);
+  const [weekdayPerformance, setWeekdayPerformance] = useState<WeekdayPerformance[]>([]);
+  const [symbolPerformance, setSymbolPerformance] = useState<SymbolPerformance[]>([]);
+  const [mistakeStats, setMistakeStats] = useState<MistakeStats[]>([]);
   const [tags, setTags] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
+  const [importing, setImporting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const load = useCallback(async () => {
@@ -66,6 +81,7 @@ export function useJournalData() {
       if (search) entriesQuery.q = search;
       if (selectedTag) entriesQuery.tag = selectedTag;
       if (selectedStrategy) entriesQuery.strategy_id = selectedStrategy;
+      if (selectedEmotion) entriesQuery.emotion = selectedEmotion;
 
       const [
         entriesResult,
@@ -74,6 +90,9 @@ export function useJournalData() {
         strategiesResult,
         perfResult,
         emotionsResult,
+        weekdayResult,
+        symbolResult,
+        mistakesResult,
         tagsResult,
       ] = await Promise.all([
         listJournalEntries(entriesQuery),
@@ -82,6 +101,9 @@ export function useJournalData() {
         listJournalStrategies(),
         getStrategyPerformance(),
         getEmotionStats(),
+        getWeekdayPerformance(),
+        getSymbolPerformance(),
+        getMistakeStats(),
         listJournalTags(),
       ]);
 
@@ -91,13 +113,23 @@ export function useJournalData() {
       setStrategies(strategiesResult);
       setStrategyPerformance(perfResult);
       setEmotionStats(emotionsResult);
+      setWeekdayPerformance(weekdayResult);
+      setSymbolPerformance(symbolResult);
+      setMistakeStats(mistakesResult);
       setTags(tagsResult);
     } catch (err) {
       setError(err instanceof ApiClientError ? err.message : 'Failed to load journal');
     } finally {
       setLoading(false);
     }
-  }, [calendarMonth.month, calendarMonth.year, search, selectedStrategy, selectedTag]);
+  }, [
+    calendarMonth.month,
+    calendarMonth.year,
+    search,
+    selectedEmotion,
+    selectedStrategy,
+    selectedTag,
+  ]);
 
   useEffect(() => {
     const timer = setTimeout(
@@ -118,11 +150,45 @@ export function useJournalData() {
     }
     setSelectedEntry((current) => {
       if (current && entries.some((entry) => entry.id === current.id)) {
-        return current;
+        return entries.find((e) => e.id === current.id) ?? current;
       }
       return entries[0] ?? null;
     });
   }, [entries]);
+
+  const importTrades = useCallback(async () => {
+    setImporting(true);
+    try {
+      await importJournalTrades();
+      await load();
+    } finally {
+      setImporting(false);
+    }
+  }, [load]);
+
+  const upsertEntry = useCallback((entry: JournalEntry) => {
+    setEntries((current) => {
+      const idx = current.findIndex((e) => e.id === entry.id);
+      if (idx >= 0) {
+        const next = [...current];
+        next[idx] = entry;
+        return next;
+      }
+      return [entry, ...current];
+    });
+    setSelectedEntry(entry);
+  }, []);
+
+  const navigateEntry = useCallback(
+    (direction: 'prev' | 'next') => {
+      if (entries.length === 0) return;
+      const idx = selectedEntry ? entries.findIndex((e) => e.id === selectedEntry.id) : -1;
+      const nextIdx =
+        direction === 'next' ? Math.min(idx + 1, entries.length - 1) : Math.max(idx - 1, 0);
+      setSelectedEntry(entries[nextIdx] ?? null);
+    },
+    [entries, selectedEntry],
+  );
 
   const filteredEntries = useMemo(() => entries, [entries]);
 
@@ -137,6 +203,9 @@ export function useJournalData() {
     strategies,
     strategyPerformance,
     emotionStats,
+    weekdayPerformance,
+    symbolPerformance,
+    mistakeStats,
     tags,
     search,
     setSearch,
@@ -144,10 +213,18 @@ export function useJournalData() {
     setSelectedTag,
     selectedStrategy,
     setSelectedStrategy,
+    selectedEmotion,
+    setSelectedEmotion,
     selectedEntry,
     setSelectedEntry,
     calendarMonth,
     setCalendarMonth,
+    activeView,
+    setActiveView,
+    importing,
+    importTrades,
+    upsertEntry,
+    navigateEntry,
   };
 }
 

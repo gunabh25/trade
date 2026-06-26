@@ -2,7 +2,14 @@
 
 import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
 
-import type { CalendarDay, EmotionStats, StrategyPerformance } from '@tradeflow/types/api';
+import type {
+  CalendarDay,
+  EmotionStats,
+  MistakeStats,
+  StrategyPerformance,
+  SymbolPerformance,
+  WeekdayPerformance,
+} from '@tradeflow/types/api';
 
 import {
   Card,
@@ -17,7 +24,7 @@ import {
   cn,
 } from '@tradeflow/ui';
 
-import { formatCurrency } from '@/features/journal/data/mock-journal-data';
+import { formatCurrency } from '@/features/journal/utils/format';
 
 const chartTooltipStyle = {
   backgroundColor: 'hsl(240 5% 7%)',
@@ -171,6 +178,151 @@ export function EmotionPerformanceChart({ data }: { data: EmotionStats[] }) {
               formatter={(value) => [formatCurrency(Number(value)), 'P&L']}
             />
             <Bar dataKey="pnl" radius={[0, 4, 4, 0]} />
+          </BarChart>
+        </ResponsiveContainer>
+      </CardContent>
+    </Card>
+  );
+}
+
+export function WeekdayPerformanceChart({ data }: { data: WeekdayPerformance[] }) {
+  const chartData = data.map((d) => ({
+    name: d.weekday.slice(0, 3),
+    pnl: d.total_pnl,
+    winRate: d.win_rate,
+    fill: d.total_pnl >= 0 ? 'hsl(142 71% 45%)' : 'hsl(0 84% 60%)',
+  }));
+
+  return (
+    <Card className="border-border/60 bg-card/80 shadow-none">
+      <CardHeader className="pb-2">
+        <CardTitle className="text-base font-medium">Performance by Weekday</CardTitle>
+        <CardDescription>P&L distribution across trading days</CardDescription>
+      </CardHeader>
+      <CardContent>
+        <ResponsiveContainer width="100%" height={220}>
+          <BarChart data={chartData} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
+            <CartesianGrid stroke="hsl(240 4% 14%)" strokeDasharray="3 3" vertical={false} />
+            <XAxis
+              dataKey="name"
+              axisLine={false}
+              tickLine={false}
+              tick={{ fill: 'hsl(240 5% 64%)', fontSize: 11 }}
+            />
+            <YAxis
+              axisLine={false}
+              tickLine={false}
+              tick={{ fill: 'hsl(240 5% 64%)', fontSize: 11 }}
+              width={44}
+              tickFormatter={(v: number) => `$${v}`}
+            />
+            <Tooltip
+              contentStyle={chartTooltipStyle}
+              formatter={(value, _n, props) => {
+                const payload = props.payload as { winRate: number };
+                return [
+                  `${formatCurrency(Number(value))} · ${payload.winRate.toFixed(0)}% WR`,
+                  'P&L',
+                ];
+              }}
+            />
+            <Bar dataKey="pnl" radius={[4, 4, 0, 0]} />
+          </BarChart>
+        </ResponsiveContainer>
+      </CardContent>
+    </Card>
+  );
+}
+
+export function SymbolPerformanceChart({ data }: { data: SymbolPerformance[] }) {
+  const chartData = data.slice(0, 8).map((s) => ({
+    symbol: s.symbol,
+    pnl: s.total_pnl,
+    fill: s.total_pnl >= 0 ? 'hsl(142 71% 45%)' : 'hsl(0 84% 60%)',
+  }));
+
+  return (
+    <Card className="border-border/60 bg-card/80 shadow-none">
+      <CardHeader className="pb-2">
+        <CardTitle className="text-base font-medium">Performance by Symbol</CardTitle>
+        <CardDescription>Top symbols by total P&L</CardDescription>
+      </CardHeader>
+      <CardContent>
+        <ResponsiveContainer width="100%" height={220}>
+          <BarChart
+            data={chartData}
+            layout="vertical"
+            margin={{ top: 4, right: 8, left: 0, bottom: 0 }}
+          >
+            <CartesianGrid stroke="hsl(240 4% 14%)" strokeDasharray="3 3" horizontal={false} />
+            <XAxis
+              type="number"
+              axisLine={false}
+              tickLine={false}
+              tick={{ fill: 'hsl(240 5% 64%)', fontSize: 11 }}
+              tickFormatter={(v: number) => `$${v}`}
+            />
+            <YAxis
+              type="category"
+              dataKey="symbol"
+              axisLine={false}
+              tickLine={false}
+              tick={{ fill: 'hsl(240 5% 64%)', fontSize: 11 }}
+              width={48}
+            />
+            <Tooltip
+              contentStyle={chartTooltipStyle}
+              formatter={(value) => [formatCurrency(Number(value)), 'P&L']}
+            />
+            <Bar dataKey="pnl" radius={[0, 4, 4, 0]} />
+          </BarChart>
+        </ResponsiveContainer>
+      </CardContent>
+    </Card>
+  );
+}
+
+export function MistakeStatsChart({ data }: { data: MistakeStats[] }) {
+  const chartData = data.slice(0, 8).map((m) => ({
+    mistake: m.mistake.length > 18 ? `${m.mistake.slice(0, 16)}…` : m.mistake,
+    count: m.count,
+    fill: 'hsl(0 84% 60%)',
+  }));
+
+  return (
+    <Card className="border-border/60 bg-card/80 shadow-none">
+      <CardHeader className="pb-2">
+        <CardTitle className="text-base font-medium">Most Common Mistakes</CardTitle>
+        <CardDescription>Frequency of logged mistakes</CardDescription>
+      </CardHeader>
+      <CardContent>
+        <ResponsiveContainer width="100%" height={220}>
+          <BarChart
+            data={chartData}
+            layout="vertical"
+            margin={{ top: 4, right: 8, left: 0, bottom: 0 }}
+          >
+            <CartesianGrid stroke="hsl(240 4% 14%)" strokeDasharray="3 3" horizontal={false} />
+            <XAxis
+              type="number"
+              axisLine={false}
+              tickLine={false}
+              tick={{ fill: 'hsl(240 5% 64%)', fontSize: 11 }}
+              allowDecimals={false}
+            />
+            <YAxis
+              type="category"
+              dataKey="mistake"
+              axisLine={false}
+              tickLine={false}
+              tick={{ fill: 'hsl(240 5% 64%)', fontSize: 10 }}
+              width={100}
+            />
+            <Tooltip
+              contentStyle={chartTooltipStyle}
+              formatter={(value) => [String(value), 'Count']}
+            />
+            <Bar dataKey="count" radius={[0, 4, 4, 0]} />
           </BarChart>
         </ResponsiveContainer>
       </CardContent>

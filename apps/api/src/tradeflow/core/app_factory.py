@@ -103,6 +103,10 @@ def create_app(container: Container | None = None) -> FastAPI:
     avatar_dir.mkdir(parents=True, exist_ok=True)
     app.mount("/uploads/avatars", StaticFiles(directory=str(avatar_dir)), name="avatars")
 
+    journal_dir = Path(settings.journal_upload_dir)
+    journal_dir.mkdir(parents=True, exist_ok=True)
+    app.mount("/uploads/journal", StaticFiles(directory=str(journal_dir)), name="journal")
+
     @app.get("/", include_in_schema=False)
     async def root() -> dict[str, str]:
         return {

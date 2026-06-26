@@ -15,7 +15,7 @@ import {
   cn,
 } from '@tradeflow/ui';
 
-import { formatCurrency } from '@/features/journal/data/mock-journal-data';
+import { formatCurrency, formatGrade } from '@/features/journal/utils/format';
 
 interface JournalEntryListProps {
   entries: JournalEntry[];
@@ -72,6 +72,9 @@ export function JournalEntryList({ entries, selectedId, onSelect }: JournalEntry
                       <span className="text-muted-foreground text-xs">{entry.symbol}</span>
                     ) : null}
                     <span className="text-muted-foreground text-xs">{entry.session_date}</span>
+                    {entry.grade ? (
+                      <span className="text-[10px] text-amber-400">{formatGrade(entry.grade)}</span>
+                    ) : null}
                     {entry.source === 'auto_import' ? (
                       <Badge variant="outline" className="text-[10px]">
                         auto

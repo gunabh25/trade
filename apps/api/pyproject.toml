@@ -28,6 +28,7 @@ dependencies = [
     "aiofiles>=24.1.0",
     "email-validator>=2.2.0",
     "stripe>=11.5.0",
+    "reportlab>=4.2.5",
     "websockets>=14.1",
 ]
 

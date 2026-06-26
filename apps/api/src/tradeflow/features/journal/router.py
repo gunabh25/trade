@@ -5,7 +5,8 @@ from __future__ import annotations
 from uuid import UUID
 
 from dependency_injector.wiring import Provide, inject
-from fastapi import APIRouter, Depends, Query, Request
+from fastapi import APIRouter, Depends, File, Query, Request, UploadFile
+from fastapi.responses import Response
 
 from tradeflow.core.container import Container
 from tradeflow.core.dependencies.auth import CurrentUser, DbSession
@@ -22,11 +23,14 @@ from tradeflow.features.journal.schemas import (
     JournalEntryResponse,
     JournalFilterParams,
     JournalStatsResponse,
+    MistakeStatsResponse,
     ScreenshotResponse,
     StrategyPerformanceResponse,
     StrategyResponse,
+    SymbolPerformanceResponse,
     UpdateJournalEntryRequest,
     UpdateStrategyRequest,
+    WeekdayPerformanceResponse,
 )
 from tradeflow.features.journal.service import JournalService
 
@@ -172,6 +176,33 @@ async def add_screenshot(
 
 
 @router.post(
+    "/entries/{entry_id}/screenshots/upload",
+    response_model=SuccessResponse[ScreenshotResponse],
+    summary="Upload screenshot file for journal entry",
+)
+@inject
+async def upload_screenshot(
+    request: Request,
+    entry_id: UUID,
+    db: DbSession,
+    user: CurrentUser,
+    file: UploadFile = File(...),
+    caption: str | None = None,
+    journal_service: JournalService = Depends(Provide[Container.journal_service]),
+) -> SuccessResponse[ScreenshotResponse]:
+    content = await file.read()
+    screenshot = await journal_service.upload_screenshot(
+        db,
+        user.id,
+        entry_id,
+        filename=file.filename or "screenshot.png",
+        content=content,
+        caption=caption,
+    )
+    return success(screenshot, request_id=getattr(request.state, "request_id", None))
+
+
+@router.post(
     "/import",
     response_model=SuccessResponse[ImportTradesResponse],
     summary="Auto-import closed trades into journal",
@@ -261,6 +292,153 @@ async def get_emotion_stats(
 ) -> SuccessResponse[list[EmotionStatsResponse]]:
     data = await journal_service.get_emotion_stats(db, user.id)
     return success(data, request_id=getattr(request.state, "request_id", None))
+
+
+@router.get(
+    "/stats/by-weekday",
+    response_model=SuccessResponse[list[WeekdayPerformanceResponse]],
+    summary="Performance breakdown by weekday",
+)
+@inject
+async def get_weekday_performance(
+    request: Request,
+    db: DbSession,
+    user: CurrentUser,
+    journal_service: JournalService = Depends(Provide[Container.journal_service]),
+) -> SuccessResponse[list[WeekdayPerformanceResponse]]:
+    data = await journal_service.get_weekday_performance(db, user.id)
+    return success(data, request_id=getattr(request.state, "request_id", None))
+
+
+@router.get(
+    "/stats/by-symbol",
+    response_model=SuccessResponse[list[SymbolPerformanceResponse]],
+    summary="Performance breakdown by symbol",
+)
+@inject
+async def get_symbol_performance(
+    request: Request,
+    db: DbSession,
+    user: CurrentUser,
+    journal_service: JournalService = Depends(Provide[Container.journal_service]),
+) -> SuccessResponse[list[SymbolPerformanceResponse]]:
+    data = await journal_service.get_symbol_performance(db, user.id)
+    return success(data, request_id=getattr(request.state, "request_id", None))
+
+
+@router.get(
+    "/stats/mistakes",
+    response_model=SuccessResponse[list[MistakeStatsResponse]],
+    summary="Most common mistakes",
+)
+@inject
+async def get_mistake_stats(
+    request: Request,
+    db: DbSession,
+    user: CurrentUser,
+    journal_service: JournalService = Depends(Provide[Container.journal_service]),
+) -> SuccessResponse[list[MistakeStatsResponse]]:
+    data = await journal_service.get_mistake_stats(db, user.id)
+    return success(data, request_id=getattr(request.state, "request_id", None))
+
+
+def _parse_filters(
+    *,
+    q: str | None,
+    strategy_id: UUID | None,
+    symbol: str | None,
+    tag: str | None,
+    emotion: str | None,
+    date_from: str | None,
+    date_to: str | None,
+    source: JournalSource | None,
+) -> JournalFilterParams:
+    from datetime import date as date_type
+
+    return JournalFilterParams(
+        q=q,
+        strategy_id=strategy_id,
+        symbol=symbol,
+        tag=tag,
+        emotion=emotion,
+        date_from=date_type.fromisoformat(date_from) if date_from else None,
+        date_to=date_type.fromisoformat(date_to) if date_to else None,
+        source=source,
+        page=1,
+        page_size=10_000,
+    )
+
+
+@router.get(
+    "/export/csv",
+    summary="Export journal entries as CSV",
+)
+@inject
+async def export_csv(
+    db: DbSession,
+    user: CurrentUser,
+    q: str | None = None,
+    strategy_id: UUID | None = None,
+    symbol: str | None = None,
+    tag: str | None = None,
+    emotion: str | None = None,
+    date_from: str | None = None,
+    date_to: str | None = None,
+    source: JournalSource | None = None,
+    journal_service: JournalService = Depends(Provide[Container.journal_service]),
+) -> Response:
+    filters = _parse_filters(
+        q=q,
+        strategy_id=strategy_id,
+        symbol=symbol,
+        tag=tag,
+        emotion=emotion,
+        date_from=date_from,
+        date_to=date_to,
+        source=source,
+    )
+    data = await journal_service.export_csv(db, user.id, filters)
+    return Response(
+        content=data,
+        media_type="text/csv",
+        headers={"Content-Disposition": 'attachment; filename="journal-export.csv"'},
+    )
+
+
+@router.get(
+    "/export/pdf",
+    summary="Export journal entries as PDF",
+)
+@inject
+async def export_pdf(
+    db: DbSession,
+    user: CurrentUser,
+    q: str | None = None,
+    strategy_id: UUID | None = None,
+    symbol: str | None = None,
+    tag: str | None = None,
+    emotion: str | None = None,
+    date_from: str | None = None,
+    date_to: str | None = None,
+    source: JournalSource | None = None,
+    journal_service: JournalService = Depends(Provide[Container.journal_service]),
+) -> Response:
+    filters = _parse_filters(
+        q=q,
+        strategy_id=strategy_id,
+        symbol=symbol,
+        tag=tag,
+        emotion=emotion,
+        date_from=date_from,
+        date_to=date_to,
+        source=source,
+    )
+    data = await journal_service.export_pdf(db, user.id, filters)
+    return Response(
+        content=data,
+        media_type="application/pdf",
+        headers={"Content-Disposition": 'attachment; filename="journal-export.pdf"'},
+    )
 
 
 @router.get(

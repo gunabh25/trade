@@ -4,7 +4,7 @@ import { BarChart3, Percent, Target, TrendingDown, TrendingUp, Trophy } from 'lu
 
 import { Card, CardContent, cn } from '@tradeflow/ui';
 
-import { formatCurrency } from '@/features/journal/data/mock-journal-data';
+import { formatCurrency } from '@/features/journal/utils/format';
 import type { JournalStats } from '@tradeflow/types/api';
 
 interface JournalStatsBarProps {
