@@ -21,7 +21,12 @@ from tradeflow.db.session import create_session_factory
 from tradeflow.features.auth.email_service import EmailService
 from tradeflow.features.auth.oauth_service import OAuthService
 from tradeflow.features.auth.service import AuthService
+from tradeflow.features.broker.service import BrokerConnectionService
 from tradeflow.features.health.service import HealthService
+from tradeflow.integrations.brokers.manager import BrokerSessionManager
+from tradeflow.integrations.brokers.monitor import ConnectionMonitor
+from tradeflow.integrations.brokers.registry import BrokerAdapterRegistry
+from tradeflow.integrations.brokers.retry import RetryPolicy
 
 
 class Container(containers.DeclarativeContainer):
@@ -32,6 +37,7 @@ class Container(containers.DeclarativeContainer):
             "tradeflow.api.v1.router",
             "tradeflow.features.health.router",
             "tradeflow.features.auth.router",
+            "tradeflow.features.broker.router",
             "tradeflow.core.dependencies.auth",
         ],
     )
@@ -97,6 +103,35 @@ class Container(containers.DeclarativeContainer):
         oauth_service=oauth_service,
         rate_limiter=rate_limiter,
         login_protection=login_protection,
+    )
+
+    broker_retry_policy: providers.Singleton[RetryPolicy] = providers.Singleton(
+        RetryPolicy,
+        max_attempts=config.provided.broker_retry_max_attempts,
+    )
+
+    broker_adapter_registry: providers.Singleton[BrokerAdapterRegistry] = providers.Singleton(
+        BrokerAdapterRegistry,
+        retry_policy=broker_retry_policy,
+    )
+
+    connection_monitor: providers.Singleton[ConnectionMonitor] = providers.Singleton(
+        ConnectionMonitor,
+        health_check_interval_seconds=config.provided.broker_health_check_interval_seconds,
+    )
+
+    broker_session_manager: providers.Singleton[BrokerSessionManager] = providers.Singleton(
+        BrokerSessionManager,
+        registry=broker_adapter_registry,
+        monitor=connection_monitor,
+        encryption_service=encryption_service,
+    )
+
+    broker_service: providers.Factory[BrokerConnectionService] = providers.Factory(
+        BrokerConnectionService,
+        registry=broker_adapter_registry,
+        session_manager=broker_session_manager,
+        encryption_service=encryption_service,
     )
 
 

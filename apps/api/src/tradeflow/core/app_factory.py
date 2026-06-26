@@ -18,6 +18,7 @@ from tradeflow.core.container import Container
 from tradeflow.core.exception_handlers import register_exception_handlers
 from tradeflow.core.logging import configure_logging, get_logger
 from tradeflow.core.middleware import RequestContextMiddleware
+from tradeflow.integrations.brokers.monitor import ConnectionMonitor
 
 logger = get_logger(__name__)
 
@@ -30,6 +31,7 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
 
     db_engine: AsyncEngine = container.db_engine()
     redis_client: Redis[Any] = container.redis_client()
+    connection_monitor: ConnectionMonitor = container.connection_monitor()
 
     logger.info(
         "application_starting",
@@ -38,9 +40,12 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
         version=__version__,
     )
 
+    await connection_monitor.start()
+
     try:
         yield
     finally:
+        await connection_monitor.stop()
         await redis_client.close()
         await db_engine.dispose()
         logger.info("application_shutdown_complete")
@@ -69,6 +74,7 @@ def create_app(container: Container | None = None) -> FastAPI:
         modules=[
             "tradeflow.features.health.router",
             "tradeflow.features.auth.router",
+            "tradeflow.features.broker.router",
             "tradeflow.core.dependencies.auth",
         ],
     )

@@ -21,7 +21,13 @@ class VerificationTokenType(StrEnum):
 
 
 class BrokerType(StrEnum):
+    PAPER = "paper"
+    BINANCE = "binance"
+    BYBIT = "bybit"
+    OANDA = "oanda"
+    INTERACTIVE_BROKERS = "interactive_brokers"
     TRADOVATE = "tradovate"
+    TRADINGVIEW = "tradingview"
     RITHMIC = "rithmic"
     NINJATRADER = "ninjatrader"
     PROJECTX = "projectx"

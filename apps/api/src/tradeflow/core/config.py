@@ -86,6 +86,13 @@ class Settings(BaseSettings):
     avatar_upload_dir: str = Field(default="uploads/avatars", alias="AVATAR_UPLOAD_DIR")
     avatar_max_bytes: int = Field(default=2_097_152, alias="AVATAR_MAX_BYTES")
 
+    # Broker integrations
+    broker_retry_max_attempts: int = Field(default=3, alias="BROKER_RETRY_MAX_ATTEMPTS")
+    broker_health_check_interval_seconds: float = Field(
+        default=30.0,
+        alias="BROKER_HEALTH_CHECK_INTERVAL_SECONDS",
+    )
+
     @property
     def cors_origins(self) -> list[str]:
         return [origin.strip() for origin in self.api_cors_origins.split(",") if origin.strip()]
