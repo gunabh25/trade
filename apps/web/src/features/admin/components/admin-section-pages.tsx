@@ -32,7 +32,9 @@ import {
 
 import {
   adminSearch,
+  adminDisconnectBroker,
   assignUserRole,
+  bulkUserAction,
   createAnnouncement,
   createFeatureFlag,
   deleteAnnouncement,
@@ -60,6 +62,9 @@ import {
 import {
   AdminPageHeader,
   DataTable,
+  ExportCsvButton,
+  FilterBar,
+  SelectableDataTable,
   StatCard,
   StatusBadge,
 } from '@/features/admin/components/admin-ui';
@@ -214,6 +219,7 @@ export function AdminUsersPage() {
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [selected, setSelected] = useState<Set<string>>(new Set());
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -247,6 +253,29 @@ export function AdminUsersPage() {
     void load();
   };
 
+  const toggleSelect = (id: string) => {
+    setSelected((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+
+  const toggleAll = () => {
+    setSelected((prev) => {
+      if (users.every((u) => prev.has(u.id))) return new Set();
+      return new Set(users.map((u) => u.id));
+    });
+  };
+
+  const runBulk = async (action: 'activate' | 'deactivate') => {
+    if (selected.size === 0) return;
+    await bulkUserAction([...selected], action);
+    setSelected(new Set());
+    void load();
+  };
+
   if (loading && users.length === 0) return <LoadingBlock />;
   if (error)
     return <ErrorBlock title="Users unavailable" message={error} onRetry={() => void load()} />;
@@ -255,29 +284,48 @@ export function AdminUsersPage() {
     <div>
       <AdminPageHeader title="Users" description="Manage accounts, roles, and access." />
       <div className="space-y-4 p-4 sm:p-6">
-        <div className="flex gap-2">
-          <Input
-            placeholder="Filter by email…"
-            value={q}
-            onChange={(e) => {
-              setQ(e.target.value);
-            }}
+        <FilterBar
+          value={q}
+          onChange={setQ}
+          placeholder="Filter by email…"
+          onSubmit={() => {
+            setPage(1);
+            void load();
+          }}
+        >
+          <ExportCsvButton
+            filename="users.csv"
+            headers={['Email', 'Name', 'Roles', 'Active', 'Created']}
+            rows={users.map((u) => [
+              u.email,
+              [u.first_name, u.last_name].filter(Boolean).join(' '),
+              u.roles.join(';'),
+              u.is_active ? 'yes' : 'no',
+              formatDate(u.created_at),
+            ])}
           />
-          <Button
-            variant="outline"
-            onClick={() => {
-              setPage(1);
-              void load();
-            }}
-          >
-            Filter
-          </Button>
-        </div>
+        </FilterBar>
+
+        {selected.size > 0 ? (
+          <div className="flex flex-wrap gap-2">
+            <Button size="sm" onClick={() => void runBulk('activate')}>
+              Activate ({selected.size})
+            </Button>
+            <Button size="sm" variant="destructive" onClick={() => void runBulk('deactivate')}>
+              Deactivate ({selected.size})
+            </Button>
+          </div>
+        ) : null}
+
         <Card>
           <CardContent className="pt-6">
-            <DataTable
+            <SelectableDataTable
               columns={['Email', 'Name', 'Roles', 'Status', 'Actions']}
-              rows={users.map((user) => [
+              items={users}
+              selectedIds={selected}
+              onToggle={toggleSelect}
+              onToggleAll={toggleAll}
+              renderRow={(user) => [
                 user.email,
                 [user.first_name, user.last_name].filter(Boolean).join(' ') || '—',
                 user.roles.map((r) => (
@@ -305,7 +353,7 @@ export function AdminUsersPage() {
                     </Button>
                   ))}
                 </div>,
-              ])}
+              ]}
               emptyMessage="No users found"
             />
           </CardContent>
@@ -515,19 +563,45 @@ export function AdminBrokersPage() {
     void load();
   }, [load]);
 
+  const disconnect = async (id: string) => {
+    await adminDisconnectBroker(id);
+    void load();
+  };
+
   if (loading) return <LoadingBlock />;
 
   return (
     <div>
       <AdminPageHeader
-        title="Broker Status"
-        description="Live connection health across all accounts."
+        title="Broker Connections"
+        description="Live connection health and admin disconnect actions."
       />
-      <div className="p-4 sm:p-6">
+      <div className="space-y-4 p-4 sm:p-6">
+        <ExportCsvButton
+          filename="broker-connections.csv"
+          headers={['User', 'Broker', 'Name', 'Status', 'Live', 'Latency']}
+          rows={items.map((b) => [
+            b.user_email,
+            b.broker,
+            b.name,
+            b.status,
+            b.live_connected === null ? '—' : b.live_connected ? 'yes' : 'no',
+            b.live_latency_ms != null ? String(b.live_latency_ms) : '—',
+          ])}
+        />
         <Card>
           <CardContent className="pt-6">
             <DataTable
-              columns={['User', 'Broker', 'Name', 'Status', 'Live', 'Latency', 'Last error']}
+              columns={[
+                'User',
+                'Broker',
+                'Name',
+                'Status',
+                'Live',
+                'Latency',
+                'Last error',
+                'Actions',
+              ]}
               rows={items.map((b) => [
                 b.user_email,
                 b.broker,
@@ -536,6 +610,14 @@ export function AdminBrokersPage() {
                 b.live_connected === null ? '—' : b.live_connected ? 'Yes' : 'No',
                 b.live_latency_ms != null ? `${b.live_latency_ms} ms` : '—',
                 b.last_error ?? '—',
+                <Button
+                  key="disconnect"
+                  size="sm"
+                  variant="outline"
+                  onClick={() => void disconnect(b.id)}
+                >
+                  Disconnect
+                </Button>,
               ])}
               emptyMessage="No broker connections"
             />

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from datetime import datetime
+from typing import Literal
 from uuid import UUID
 
 from pydantic import BaseModel, Field
@@ -29,6 +30,8 @@ class AdminOverviewResponse(BaseModel):
     broker_errors: int
     published_announcements: int
     enabled_feature_flags: int
+    total_organizations: int = 0
+    total_trading_accounts: int = 0
 
 
 class AdminUserResponse(BaseModel):
@@ -218,3 +221,66 @@ class AdminSubscriptionSummary(BaseModel):
     plan_name: str
     trial_ends_at: datetime | None
     current_period_end: datetime | None
+
+
+class AdminOrganizationResponse(BaseModel):
+    id: UUID
+    name: str
+    slug: str
+    plan_code: str
+    is_active: bool
+    owner_user_id: UUID | None
+    owner_email: str | None
+    member_count: int
+    created_at: datetime
+
+
+class CreateOrganizationRequest(BaseModel):
+    name: str = Field(min_length=2, max_length=200)
+    slug: str = Field(min_length=2, max_length=100, pattern=r"^[a-z0-9-]+$")
+    plan_code: str = "free"
+    owner_user_id: UUID | None = None
+
+
+class UpdateOrganizationRequest(BaseModel):
+    name: str | None = None
+    plan_code: str | None = None
+    is_active: bool | None = None
+    owner_user_id: UUID | None = None
+
+
+class AdminTradingAccountResponse(BaseModel):
+    id: UUID
+    user_id: UUID
+    user_email: str
+    broker_connection_id: UUID
+    name: str
+    external_account_id: str
+    account_type: str
+    account_role: str
+    status: str
+    currency: str
+    balance: float | None
+    created_at: datetime
+
+
+class AdminNotificationDeliveryResponse(BaseModel):
+    id: UUID
+    user_id: UUID
+    user_email: str | None
+    event_type: str
+    channel: str
+    status: str
+    attempts: int
+    last_error: str | None
+    created_at: datetime
+
+
+class BulkUserActionRequest(BaseModel):
+    user_ids: list[UUID] = Field(min_length=1, max_length=100)
+    action: Literal["activate", "deactivate"]
+
+
+class BulkUserActionResponse(BaseModel):
+    updated: int
+    user_ids: list[UUID]

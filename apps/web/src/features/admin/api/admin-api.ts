@@ -3,12 +3,18 @@ import type {
   AdminAuditLog,
   AdminBrokerStatus,
   AdminCreateCouponRequest,
+  AdminFailedLogin,
   AdminHealth,
+  AdminNotificationDelivery,
+  AdminOrganization,
   AdminOverview,
   AdminPermissions,
+  AdminPlatformMetrics,
   AdminSearchResult,
+  AdminSecurityEvent,
   AdminSubscription,
   AdminSupportTicket,
+  AdminTradingAccount,
   AdminUpdatePlanRequest,
   AdminUser,
   Announcement,
@@ -368,4 +374,118 @@ export function formatMrr(cents: number): string {
 export function formatDate(iso: string | null | undefined): string {
   if (!iso) return '—';
   return new Date(iso).toLocaleString();
+}
+
+export async function bulkUserAction(
+  userIds: string[],
+  action: 'activate' | 'deactivate',
+): Promise<{ updated: number }> {
+  const response = await apiRequest<{ updated: number }>('/admin/users/bulk', {
+    method: 'POST',
+    body: { user_ids: userIds, action },
+  });
+  return response.data;
+}
+
+export async function listOrganizations(params?: {
+  q?: string;
+  page?: number;
+}): Promise<{ items: AdminOrganization[]; meta: PaginatedMeta }> {
+  const search = new URLSearchParams();
+  if (params?.q) search.set('q', params.q);
+  if (params?.page) search.set('page', String(params.page));
+  const qs = search.toString();
+  const response = await apiRequest<{
+    items: AdminOrganization[];
+    meta: PaginatedMeta;
+  }>(`/admin/organizations${qs ? `?${qs}` : ''}`);
+  return response.data;
+}
+
+export async function createOrganization(body: {
+  name: string;
+  slug: string;
+  plan_code?: string;
+  owner_user_id?: string;
+}): Promise<AdminOrganization> {
+  const response = await apiRequest<AdminOrganization>('/admin/organizations', {
+    method: 'POST',
+    body,
+  });
+  return response.data;
+}
+
+export async function updateOrganization(
+  orgId: string,
+  body: { name?: string; plan_code?: string; is_active?: boolean },
+): Promise<AdminOrganization> {
+  const response = await apiRequest<AdminOrganization>(`/admin/organizations/${orgId}`, {
+    method: 'PATCH',
+    body,
+  });
+  return response.data;
+}
+
+export async function listTradingAccounts(params?: { q?: string; page?: number }): Promise<{
+  items: AdminTradingAccount[];
+  meta: PaginatedMeta;
+}> {
+  const search = new URLSearchParams();
+  if (params?.q) search.set('q', params.q);
+  if (params?.page) search.set('page', String(params.page));
+  const qs = search.toString();
+  const response = await apiRequest<{
+    items: AdminTradingAccount[];
+    meta: PaginatedMeta;
+  }>(`/admin/trading-accounts${qs ? `?${qs}` : ''}`);
+  return response.data;
+}
+
+export async function listNotificationDeliveries(params?: {
+  status?: string;
+  page?: number;
+}): Promise<{
+  items: AdminNotificationDelivery[];
+  meta: PaginatedMeta;
+}> {
+  const search = new URLSearchParams();
+  if (params?.status) search.set('status', params.status);
+  if (params?.page) search.set('page', String(params.page));
+  const qs = search.toString();
+  const response = await apiRequest<{
+    items: AdminNotificationDelivery[];
+    meta: PaginatedMeta;
+  }>(`/admin/notifications/deliveries${qs ? `?${qs}` : ''}`);
+  return response.data;
+}
+
+export async function adminDisconnectBroker(connectionId: string): Promise<AdminBrokerStatus> {
+  const response = await apiRequest<AdminBrokerStatus>(
+    `/admin/brokers/${connectionId}/disconnect`,
+    { method: 'POST' },
+  );
+  return response.data;
+}
+
+export async function getAdminMetrics(): Promise<AdminPlatformMetrics> {
+  const response = await apiRequest<AdminPlatformMetrics>('/admin/metrics');
+  return response.data;
+}
+
+export async function listSecurityEvents(params?: {
+  page?: number;
+}): Promise<{ items: AdminSecurityEvent[]; meta: PaginatedMeta }> {
+  const search = new URLSearchParams();
+  if (params?.page) search.set('page', String(params.page));
+  const qs = search.toString();
+  const response = await apiRequest<{
+    items: AdminSecurityEvent[];
+    meta: PaginatedMeta;
+  }>(`/admin/security/events${qs ? `?${qs}` : ''}`);
+  return response.data;
+}
+
+export async function listFailedLogins(): Promise<AdminFailedLogin[]> {
+  const response = await apiRequest<AdminFailedLogin[]>('/admin/security/failed-logins');
+  return response.data;
 }

@@ -11,14 +11,18 @@ from tradeflow.core.container import Container
 from tradeflow.core.dependencies.auth import AdminUser, DbSession
 from tradeflow.core.responses import SuccessResponse, success
 from tradeflow.db.enums import RoleName, SupportTicketStatus, SystemLogLevel
+from tradeflow.features.admin.observability import AdminObservabilityService
 from tradeflow.features.admin.schemas import (
     AdminRoleAssignmentRequest,
     AdminUpdateUserRequest,
+    BulkUserActionRequest,
     CreateAnnouncementRequest,
     CreateFeatureFlagRequest,
+    CreateOrganizationRequest,
     CreateSupportTicketRequest,
     UpdateAnnouncementRequest,
     UpdateFeatureFlagRequest,
+    UpdateOrganizationRequest,
     UpdateSupportTicketRequest,
 )
 from tradeflow.features.admin.service import AdminService
@@ -78,6 +82,24 @@ async def list_users(
     )
 
 
+@router.post("/users/bulk", response_model=SuccessResponse[dict[str, object]])
+@inject
+async def bulk_user_action(
+    body: BulkUserActionRequest,
+    request: Request,
+    db: DbSession,
+    admin: AdminUser,
+    admin_service: AdminService = Depends(Provide[Container.admin_service]),
+) -> SuccessResponse[dict[str, object]]:
+    result = await admin_service.bulk_user_action(
+        db,
+        body.user_ids,
+        body.action,
+        admin.id,
+    )
+    return success(result.model_dump(), request_id=request.state.request_id)
+
+
 @router.patch("/users/{user_id}", response_model=SuccessResponse[dict[str, object]])
 @inject
 async def update_user(
@@ -128,6 +150,106 @@ async def revoke_role(
 ) -> SuccessResponse[dict[str, object]]:
     user = await admin_service.revoke_role(db, user_id, role, admin.id)
     return success(user.model_dump(), request_id=request.state.request_id)
+
+
+@router.get("/organizations", response_model=SuccessResponse[dict[str, object]])
+@inject
+async def list_organizations(
+    request: Request,
+    db: DbSession,
+    _admin: AdminUser,
+    q: str | None = None,
+    page: int = Query(default=1, ge=1),
+    page_size: int = Query(default=20, ge=1, le=100),
+    admin_service: AdminService = Depends(Provide[Container.admin_service]),
+) -> SuccessResponse[dict[str, object]]:
+    items, total = await admin_service.list_organizations(db, q=q, page=page, page_size=page_size)
+    return success(
+        {
+            "items": [i.model_dump() for i in items],
+            "meta": {"page": page, "pageSize": page_size, "total": total},
+        },
+        request_id=request.state.request_id,
+    )
+
+
+@router.post("/organizations", response_model=SuccessResponse[dict[str, object]])
+@inject
+async def create_organization(
+    body: CreateOrganizationRequest,
+    request: Request,
+    db: DbSession,
+    admin: AdminUser,
+    admin_service: AdminService = Depends(Provide[Container.admin_service]),
+) -> SuccessResponse[dict[str, object]]:
+    org = await admin_service.create_organization(db, body, admin.id)
+    return success(org.model_dump(), request_id=request.state.request_id)
+
+
+@router.patch("/organizations/{org_id}", response_model=SuccessResponse[dict[str, object]])
+@inject
+async def update_organization(
+    org_id: UUID,
+    body: UpdateOrganizationRequest,
+    request: Request,
+    db: DbSession,
+    admin: AdminUser,
+    admin_service: AdminService = Depends(Provide[Container.admin_service]),
+) -> SuccessResponse[dict[str, object]]:
+    org = await admin_service.update_organization(db, org_id, body, admin.id)
+    return success(org.model_dump(), request_id=request.state.request_id)
+
+
+@router.get("/trading-accounts", response_model=SuccessResponse[dict[str, object]])
+@inject
+async def list_trading_accounts(
+    request: Request,
+    db: DbSession,
+    _admin: AdminUser,
+    q: str | None = None,
+    page: int = Query(default=1, ge=1),
+    page_size: int = Query(default=20, ge=1, le=100),
+    admin_service: AdminService = Depends(Provide[Container.admin_service]),
+) -> SuccessResponse[dict[str, object]]:
+    items, total = await admin_service.list_trading_accounts(
+        db,
+        q=q,
+        page=page,
+        page_size=page_size,
+    )
+    return success(
+        {
+            "items": [i.model_dump() for i in items],
+            "meta": {"page": page, "pageSize": page_size, "total": total},
+        },
+        request_id=request.state.request_id,
+    )
+
+
+@router.get("/notifications/deliveries", response_model=SuccessResponse[dict[str, object]])
+@inject
+async def list_notification_deliveries(
+    request: Request,
+    db: DbSession,
+    _admin: AdminUser,
+    status: str | None = None,
+    page: int = Query(default=1, ge=1),
+    page_size: int = Query(default=50, ge=1, le=100),
+    admin_service: AdminService = Depends(Provide[Container.admin_service]),
+) -> SuccessResponse[dict[str, object]]:
+    items, total = await admin_service.list_notification_deliveries(
+        db,
+        status=status,
+        page=page,
+        page_size=page_size,
+    )
+    return success(
+        {
+            "items": [i.model_dump() for i in items],
+            "meta": {"page": page, "pageSize": page_size, "total": total},
+        },
+        request_id=request.state.request_id,
+    )
 
 
 @router.get("/permissions", response_model=SuccessResponse[dict[str, object]])
@@ -323,6 +445,22 @@ async def broker_status(
     return success([i.model_dump() for i in items], request_id=request.state.request_id)
 
 
+@router.post(
+    "/brokers/{connection_id}/disconnect",
+    response_model=SuccessResponse[dict[str, object]],
+)
+@inject
+async def admin_disconnect_broker(
+    connection_id: UUID,
+    request: Request,
+    db: DbSession,
+    admin: AdminUser,
+    admin_service: AdminService = Depends(Provide[Container.admin_service]),
+) -> SuccessResponse[dict[str, object]]:
+    item = await admin_service.admin_disconnect_broker(db, connection_id, admin.id)
+    return success(item.model_dump(), request_id=request.state.request_id)
+
+
 @router.get("/feature-flags", response_model=SuccessResponse[list[dict[str, object]]])
 @inject
 async def list_feature_flags(
@@ -443,6 +581,55 @@ async def admin_analytics(
 ) -> SuccessResponse[dict[str, object]]:
     data = await admin_service.get_analytics(db)
     return success(data.model_dump(), request_id=request.state.request_id)
+
+
+@router.get("/metrics", response_model=SuccessResponse[dict[str, object]])
+@inject
+async def admin_metrics(
+    request: Request,
+    db: DbSession,
+    _admin: AdminUser,
+    observability: AdminObservabilityService = Depends(
+        Provide[Container.admin_observability_service],
+    ),
+) -> SuccessResponse[dict[str, object]]:
+    data = await observability.get_platform_metrics(db)
+    return success(data, request_id=request.state.request_id)
+
+
+@router.get("/security/events", response_model=SuccessResponse[dict[str, object]])
+@inject
+async def list_security_events(
+    request: Request,
+    db: DbSession,
+    _admin: AdminUser,
+    page: int = Query(default=1, ge=1),
+    page_size: int = Query(default=50, ge=1, le=100),
+    observability: AdminObservabilityService = Depends(
+        Provide[Container.admin_observability_service],
+    ),
+) -> SuccessResponse[dict[str, object]]:
+    items, total = await observability.list_security_events(db, page=page, page_size=page_size)
+    return success(
+        {
+            "items": items,
+            "meta": {"page": page, "pageSize": page_size, "total": total},
+        },
+        request_id=request.state.request_id,
+    )
+
+
+@router.get("/security/failed-logins", response_model=SuccessResponse[list[dict[str, object]]])
+@inject
+async def list_failed_logins(
+    request: Request,
+    _admin: AdminUser,
+    observability: AdminObservabilityService = Depends(
+        Provide[Container.admin_observability_service],
+    ),
+) -> SuccessResponse[list[dict[str, object]]]:
+    items = await observability.list_failed_logins()
+    return success(items, request_id=request.state.request_id)
 
 
 @router.get("/health", response_model=SuccessResponse[dict[str, object]])

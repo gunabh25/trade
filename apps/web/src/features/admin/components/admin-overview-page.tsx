@@ -3,21 +3,37 @@
 import { AlertCircle } from 'lucide-react';
 import { useCallback, useEffect, useState } from 'react';
 
-import { Button, Skeleton } from '@tradeflow/ui';
+import { Button, Card, CardContent, CardHeader, CardTitle, Skeleton } from '@tradeflow/ui';
 
-import { getAdminOverview } from '@/features/admin/api/admin-api';
+import { formatMrr, getAdminAnalytics, getAdminOverview } from '@/features/admin/api/admin-api';
+import {
+  AdminBarChart,
+  AdminLineChart,
+  AdminPieChart,
+} from '@/features/admin/components/admin-charts';
+import { AdminObservabilityDashboard } from '@/features/admin/components/admin-enterprise-pages';
 import { AdminPageHeader, StatCard } from '@/features/admin/components/admin-ui';
 import { EmptyState, FadeInStagger } from '@/features/dashboard/components/motion-primitives';
 
 export function AdminOverviewPage() {
-  const [data, setData] = useState<Awaited<ReturnType<typeof getAdminOverview>> | null>(null);
+  const [overview, setOverview] = useState<Awaited<ReturnType<typeof getAdminOverview>> | null>(
+    null,
+  );
+  const [analytics, setAnalytics] = useState<Awaited<ReturnType<typeof getAdminAnalytics>> | null>(
+    null,
+  );
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      setData(await getAdminOverview());
+      const [overviewData, analyticsData] = await Promise.all([
+        getAdminOverview(),
+        getAdminAnalytics(),
+      ]);
+      setOverview(overviewData);
+      setAnalytics(analyticsData);
       setError(null);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load overview');
@@ -43,7 +59,7 @@ export function AdminOverviewPage() {
     );
   }
 
-  if (error || !data) {
+  if (error || !overview) {
     return (
       <div className="p-6">
         <EmptyState
@@ -60,29 +76,103 @@ export function AdminOverviewPage() {
     );
   }
 
+  const userGrowth =
+    analytics?.users_by_month.map((row) => ({
+      month: String(row.month),
+      count: Number(row.count),
+    })) ?? [];
+
+  const subsByPlan =
+    analytics?.subscriptions_by_plan.map((p) => ({
+      name: p.name,
+      value: p.count,
+    })) ?? [];
+
   return (
     <div>
-      <AdminPageHeader title="Overview" description="Platform metrics and operational snapshot." />
+      <AdminPageHeader
+        title="Dashboard"
+        description="Platform metrics, growth charts, and live system status."
+      />
       <FadeInStagger className="grid gap-4 p-4 sm:grid-cols-2 sm:p-6 xl:grid-cols-4">
         <StatCard
           label="Total users"
-          value={data.total_users}
-          hint={`${data.active_users} active`}
+          value={overview.total_users}
+          hint={`${overview.active_users} active`}
         />
         <StatCard
           label="Subscriptions"
-          value={data.active_subscriptions}
-          hint={`${data.total_subscriptions} total`}
+          value={overview.active_subscriptions}
+          hint={`${overview.total_subscriptions} total`}
         />
-        <StatCard label="Open tickets" value={data.open_tickets} />
+        <StatCard label="Organizations" value={overview.total_organizations ?? 0} />
+        <StatCard label="Trading accounts" value={overview.total_trading_accounts ?? 0} />
+        <StatCard label="Open tickets" value={overview.open_tickets} />
         <StatCard
           label="Broker connections"
-          value={data.broker_connections}
-          hint={`${data.broker_errors} errors`}
+          value={overview.broker_connections}
+          hint={`${overview.broker_errors} errors`}
         />
-        <StatCard label="Feature flags" value={data.enabled_feature_flags} hint="enabled" />
-        <StatCard label="Announcements" value={data.published_announcements} hint="published" />
+        <StatCard label="MRR" value={formatMrr(analytics?.mrr_cents ?? 0)} />
+        <StatCard label="Feature flags" value={overview.enabled_feature_flags} hint="enabled" />
       </FadeInStagger>
+
+      <div className="grid gap-4 p-4 sm:p-6 lg:grid-cols-2">
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base">User growth</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <AdminLineChart data={userGrowth} xKey="month" yKey="count" />
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base">Subscriptions by plan</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <AdminPieChart data={subsByPlan} nameKey="name" valueKey="value" />
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base">Tickets by status</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <AdminBarChart
+              data={
+                analytics?.tickets_by_status.map((t) => ({
+                  status: t.status,
+                  count: t.count,
+                })) ?? []
+              }
+              xKey="status"
+              yKey="count"
+            />
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base">Connections by broker</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <AdminBarChart
+              data={
+                analytics?.connections_by_broker.map((c) => ({
+                  broker: c.broker,
+                  count: c.count,
+                })) ?? []
+              }
+              xKey="broker"
+              yKey="count"
+            />
+          </CardContent>
+        </Card>
+      </div>
+
+      <div className="p-4 sm:p-6">
+        <AdminObservabilityDashboard />
+      </div>
     </div>
   );
 }

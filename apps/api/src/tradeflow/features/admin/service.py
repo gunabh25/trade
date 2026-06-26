@@ -25,30 +25,40 @@ from tradeflow.db.models.admin_ops import Announcement, FeatureFlag, SupportTick
 from tradeflow.db.models.audit import AuditLog
 from tradeflow.db.models.billing import Plan, Subscription
 from tradeflow.db.models.broker import BrokerConnection
+from tradeflow.db.models.notification_platform import NotificationDelivery
+from tradeflow.db.models.organization import Organization, OrganizationMember
+from tradeflow.db.models.trading import TradingAccount
 from tradeflow.db.models.user import Role, User, UserRole
 from tradeflow.features.admin.schemas import (
     AdminAnalyticsResponse,
     AdminAuditLogResponse,
     AdminBrokerStatusResponse,
     AdminHealthResponse,
+    AdminNotificationDeliveryResponse,
+    AdminOrganizationResponse,
     AdminOverviewResponse,
     AdminPermissionsResponse,
     AdminSearchResponse,
     AdminSearchResult,
     AdminSubscriptionSummary,
     AdminSupportTicketResponse,
+    AdminTradingAccountResponse,
     AdminUserResponse,
     AnnouncementResponse,
+    BulkUserActionResponse,
     CreateAnnouncementRequest,
     CreateFeatureFlagRequest,
+    CreateOrganizationRequest,
     CreateSupportTicketRequest,
     FeatureFlagResponse,
     SystemLogResponse,
     UpdateAnnouncementRequest,
     UpdateFeatureFlagRequest,
+    UpdateOrganizationRequest,
     UpdateSupportTicketRequest,
 )
 from tradeflow.features.billing.service import BillingService
+from tradeflow.features.broker.service import BrokerConnectionService
 from tradeflow.features.health.service import HealthService
 from tradeflow.integrations.brokers.monitor import ConnectionMonitor
 
@@ -71,6 +81,12 @@ ROLE_PERMISSIONS: dict[str, list[str]] = {
         "logs:read",
         "permissions:write",
         "search:read",
+        "organizations:read",
+        "organizations:write",
+        "trading_accounts:read",
+        "notifications:read",
+        "security:read",
+        "metrics:read",
     ],
     RoleName.SUPPORT.value: [
         "users:read",
@@ -93,11 +109,13 @@ class AdminService:
         health_service: HealthService,
         billing_service: BillingService,
         connection_monitor: ConnectionMonitor,
+        broker_service: BrokerConnectionService | None = None,
     ) -> None:
         self._settings = settings
         self._health = health_service
         self._billing = billing_service
         self._monitor = connection_monitor
+        self._broker = broker_service
 
     async def get_overview(self, db: AsyncSession) -> AdminOverviewResponse:
         total_users = int(
@@ -193,6 +211,22 @@ class AdminService:
             )
             or 0,
         )
+        org_total = int(
+            await db.scalar(
+                select(func.count())
+                .select_from(Organization)
+                .where(Organization.deleted_at.is_(None)),
+            )
+            or 0,
+        )
+        trading_accounts = int(
+            await db.scalar(
+                select(func.count())
+                .select_from(TradingAccount)
+                .where(TradingAccount.deleted_at.is_(None)),
+            )
+            or 0,
+        )
         return AdminOverviewResponse(
             total_users=total_users,
             active_users=active_users,
@@ -203,6 +237,8 @@ class AdminService:
             broker_errors=broker_errors,
             published_announcements=announcements,
             enabled_feature_flags=flags,
+            total_organizations=org_total,
+            total_trading_accounts=trading_accounts,
         )
 
     async def list_users(
@@ -661,8 +697,21 @@ class AdminService:
                 Plan.price_cents > 0,
             ),
         )
+        users_by_month_rows = await db.execute(
+            select(
+                func.to_char(func.date_trunc("month", User.created_at), "YYYY-MM").label("month"),
+                func.count(User.id).label("count"),
+            )
+            .where(User.deleted_at.is_(None))
+            .group_by(func.date_trunc("month", User.created_at))
+            .order_by(func.date_trunc("month", User.created_at).desc())
+            .limit(12),
+        )
+        users_by_month = [
+            {"month": month, "count": count} for month, count in reversed(users_by_month_rows.all())
+        ]
         return AdminAnalyticsResponse(
-            users_by_month=[],
+            users_by_month=users_by_month,
             subscriptions_by_plan=[
                 {"code": code, "name": name, "count": count}
                 for code, name, count in subs_by_plan.all()
@@ -684,6 +733,19 @@ class AdminService:
         readiness = await self._health.get_readiness()
         live = self._monitor.get_all_health()
         connected = sum(1 for h in live.values() if h.connected)
+        celery_check = readiness.checks["celery_broker"]
+        celery_payload: dict[str, object] = celery_check.model_dump()
+        try:
+            from tradeflow.workers.celery_app import celery_app
+
+            inspect = celery_app.control.inspect(timeout=2.0)
+            if inspect is not None:
+                stats = inspect.stats() or {}
+                active = inspect.active() or {}
+                celery_payload["workers"] = len(stats)
+                celery_payload["active_tasks"] = sum(len(tasks) for tasks in active.values())
+        except Exception as exc:
+            celery_payload["inspect_error"] = str(exc)
         return AdminHealthResponse(
             status=readiness.status.value,
             environment=self._settings.app_env,
@@ -695,7 +757,7 @@ class AdminService:
                 "connected": connected,
                 "disconnected": len(live) - connected,
             },
-            celery={"status": "unknown", "note": "Configure Celery ping for live status"},
+            celery=celery_payload,
         )
 
     async def list_system_logs(
@@ -771,6 +833,304 @@ class AdminService:
             )
 
         return AdminSearchResponse(query=query, results=results)
+
+    async def bulk_user_action(
+        self,
+        db: AsyncSession,
+        user_ids: list[UUID],
+        action: str,
+        admin_id: UUID,
+    ) -> BulkUserActionResponse:
+        is_active = action == "activate"
+        updated = 0
+        for user_id in user_ids:
+            user = await db.scalar(
+                select(User).where(User.id == user_id, User.deleted_at.is_(None)),
+            )
+            if user is None:
+                continue
+            user.is_active = is_active
+            updated += 1
+        await db.flush()
+        await record_audit(
+            db,
+            action=AuditAction.ADMIN,
+            resource_type="user_bulk",
+            resource_id=admin_id,
+            user_id=admin_id,
+            new_values={"action": action, "count": updated},
+        )
+        return BulkUserActionResponse(updated=updated, user_ids=user_ids)
+
+    async def list_organizations(
+        self,
+        db: AsyncSession,
+        *,
+        q: str | None = None,
+        page: int = 1,
+        page_size: int = 20,
+    ) -> tuple[list[AdminOrganizationResponse], int]:
+        query = (
+            select(Organization)
+            .options(selectinload(Organization.owner))
+            .where(Organization.deleted_at.is_(None))
+        )
+        if q:
+            pattern = f"%{q}%"
+            query = query.where(
+                or_(Organization.name.ilike(pattern), Organization.slug.ilike(pattern)),
+            )
+        total = int(await db.scalar(select(func.count()).select_from(query.subquery())) or 0)
+        rows = await db.scalars(
+            query.order_by(Organization.created_at.desc())
+            .offset((page - 1) * page_size)
+            .limit(page_size),
+        )
+        orgs = rows.all()
+        member_counts: dict[UUID, int] = {}
+        if orgs:
+            counts = await db.execute(
+                select(OrganizationMember.organization_id, func.count(OrganizationMember.id))
+                .where(OrganizationMember.organization_id.in_([o.id for o in orgs]))
+                .group_by(OrganizationMember.organization_id),
+            )
+            member_counts = dict(counts.all())
+        return [
+            AdminOrganizationResponse(
+                id=org.id,
+                name=org.name,
+                slug=org.slug,
+                plan_code=org.plan_code,
+                is_active=org.is_active,
+                owner_user_id=org.owner_user_id,
+                owner_email=org.owner.email if org.owner else None,
+                member_count=member_counts.get(org.id, 0),
+                created_at=org.created_at,
+            )
+            for org in orgs
+        ], total
+
+    async def create_organization(
+        self,
+        db: AsyncSession,
+        request: CreateOrganizationRequest,
+        admin_id: UUID,
+    ) -> AdminOrganizationResponse:
+        existing = await db.scalar(
+            select(Organization).where(Organization.slug == request.slug),
+        )
+        if existing is not None:
+            raise ConflictError("Organization slug already exists")
+        if request.owner_user_id is not None:
+            await self._get_user(db, request.owner_user_id)
+        org = Organization(
+            name=request.name,
+            slug=request.slug,
+            plan_code=request.plan_code,
+            owner_user_id=request.owner_user_id,
+        )
+        db.add(org)
+        await db.flush()
+        if request.owner_user_id is not None:
+            db.add(
+                OrganizationMember(
+                    organization_id=org.id,
+                    user_id=request.owner_user_id,
+                    role="owner",
+                ),
+            )
+            await db.flush()
+        await record_audit(
+            db,
+            action=AuditAction.CREATE,
+            resource_type="organization",
+            resource_id=org.id,
+            user_id=admin_id,
+        )
+        await db.refresh(org, attribute_names=["owner"])
+        return AdminOrganizationResponse(
+            id=org.id,
+            name=org.name,
+            slug=org.slug,
+            plan_code=org.plan_code,
+            is_active=org.is_active,
+            owner_user_id=org.owner_user_id,
+            owner_email=org.owner.email if org.owner else None,
+            member_count=1 if request.owner_user_id else 0,
+            created_at=org.created_at,
+        )
+
+    async def update_organization(
+        self,
+        db: AsyncSession,
+        org_id: UUID,
+        request: UpdateOrganizationRequest,
+        admin_id: UUID,
+    ) -> AdminOrganizationResponse:
+        org = await db.scalar(
+            select(Organization)
+            .options(selectinload(Organization.owner))
+            .where(Organization.id == org_id, Organization.deleted_at.is_(None)),
+        )
+        if org is None:
+            raise NotFoundError("Organization not found")
+        if request.name is not None:
+            org.name = request.name
+        if request.plan_code is not None:
+            org.plan_code = request.plan_code
+        if request.is_active is not None:
+            org.is_active = request.is_active
+        if request.owner_user_id is not None:
+            await self._get_user(db, request.owner_user_id)
+            org.owner_user_id = request.owner_user_id
+        await db.flush()
+        await record_audit(
+            db,
+            action=AuditAction.UPDATE,
+            resource_type="organization",
+            resource_id=org.id,
+            user_id=admin_id,
+        )
+        member_count = int(
+            await db.scalar(
+                select(func.count())
+                .select_from(OrganizationMember)
+                .where(OrganizationMember.organization_id == org.id),
+            )
+            or 0,
+        )
+        return AdminOrganizationResponse(
+            id=org.id,
+            name=org.name,
+            slug=org.slug,
+            plan_code=org.plan_code,
+            is_active=org.is_active,
+            owner_user_id=org.owner_user_id,
+            owner_email=org.owner.email if org.owner else None,
+            member_count=member_count,
+            created_at=org.created_at,
+        )
+
+    async def list_trading_accounts(
+        self,
+        db: AsyncSession,
+        *,
+        q: str | None = None,
+        page: int = 1,
+        page_size: int = 20,
+    ) -> tuple[list[AdminTradingAccountResponse], int]:
+        query = (
+            select(TradingAccount)
+            .options(selectinload(TradingAccount.user))
+            .where(TradingAccount.deleted_at.is_(None))
+        )
+        if q:
+            pattern = f"%{q}%"
+            query = query.where(
+                or_(
+                    TradingAccount.name.ilike(pattern),
+                    TradingAccount.external_account_id.ilike(pattern),
+                ),
+            )
+        total = int(await db.scalar(select(func.count()).select_from(query.subquery())) or 0)
+        rows = await db.scalars(
+            query.order_by(TradingAccount.created_at.desc())
+            .offset((page - 1) * page_size)
+            .limit(page_size),
+        )
+        return [
+            AdminTradingAccountResponse(
+                id=row.id,
+                user_id=row.user_id,
+                user_email=row.user.email,
+                broker_connection_id=row.broker_connection_id,
+                name=row.name,
+                external_account_id=row.external_account_id,
+                account_type=row.account_type.value,
+                account_role=row.account_role.value,
+                status=row.status.value,
+                currency=row.currency,
+                balance=float(row.balance) if row.balance is not None else None,
+                created_at=row.created_at,
+            )
+            for row in rows.all()
+        ], total
+
+    async def list_notification_deliveries(
+        self,
+        db: AsyncSession,
+        *,
+        status: str | None = None,
+        page: int = 1,
+        page_size: int = 50,
+    ) -> tuple[list[AdminNotificationDeliveryResponse], int]:
+        query = select(NotificationDelivery).options(
+            selectinload(NotificationDelivery.user),
+        )
+        if status:
+            query = query.where(NotificationDelivery.status == status)
+        total = int(await db.scalar(select(func.count()).select_from(query.subquery())) or 0)
+        rows = await db.scalars(
+            query.order_by(NotificationDelivery.created_at.desc())
+            .offset((page - 1) * page_size)
+            .limit(page_size),
+        )
+        return [
+            AdminNotificationDeliveryResponse(
+                id=row.id,
+                user_id=row.user_id,
+                user_email=row.user.email if row.user else None,
+                event_type=row.event_type,
+                channel=row.channel,
+                status=row.status,
+                attempts=row.attempts,
+                last_error=row.last_error,
+                created_at=row.created_at,
+            )
+            for row in rows.all()
+        ], total
+
+    async def admin_disconnect_broker(
+        self,
+        db: AsyncSession,
+        connection_id: UUID,
+        admin_id: UUID,
+    ) -> AdminBrokerStatusResponse:
+        conn = await db.scalar(
+            select(BrokerConnection)
+            .options(selectinload(BrokerConnection.user))
+            .where(
+                BrokerConnection.id == connection_id,
+                BrokerConnection.deleted_at.is_(None),
+            ),
+        )
+        if conn is None:
+            raise NotFoundError("Broker connection not found")
+        if self._broker is not None:
+            await self._broker.disconnect(db, conn.user_id, connection_id)
+        else:
+            conn.status = ConnectionStatus.DISCONNECTED
+            await db.flush()
+        await record_audit(
+            db,
+            action=AuditAction.ADMIN,
+            resource_type="broker_connection",
+            resource_id=connection_id,
+            user_id=admin_id,
+        )
+        live_health = self._monitor.get_all_health().get(str(conn.id))
+        return AdminBrokerStatusResponse(
+            id=conn.id,
+            user_id=conn.user_id,
+            user_email=conn.user.email,
+            broker=conn.broker.value,
+            name=conn.name,
+            status=conn.status,
+            last_connected_at=conn.last_connected_at,
+            last_error=conn.last_error,
+            live_connected=live_health.connected if live_health else None,
+            live_latency_ms=live_health.latency_ms if live_health else None,
+        )
 
     async def _get_user(self, db: AsyncSession, user_id: UUID) -> User:
         user = await db.scalar(

@@ -21,6 +21,7 @@ from tradeflow.db.session import create_session_factory
 from tradeflow.engine.mapping import TradeMappingStore
 from tradeflow.engine.orchestrator import CopyOrchestrator
 from tradeflow.engine.retry_queue import RetryQueue
+from tradeflow.features.admin.observability import AdminObservabilityService
 from tradeflow.features.admin.service import AdminService
 from tradeflow.features.analytics.service import AnalyticsService
 from tradeflow.features.auth.email_service import EmailService
@@ -268,6 +269,14 @@ class Container(containers.DeclarativeContainer):
         health_service=health_service,
         billing_service=billing_service,
         connection_monitor=connection_monitor,
+        broker_service=broker_service,
+    )
+
+    admin_observability_service: providers.Factory[AdminObservabilityService] = providers.Factory(
+        AdminObservabilityService,
+        settings=config,
+        redis=redis_client,
+        health_service=health_service,
     )
 
     copy_trading_service: providers.Factory[CopyTradingService] = providers.Factory(

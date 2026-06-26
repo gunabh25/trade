@@ -8,6 +8,8 @@ export interface AdminOverview {
   broker_errors: number;
   published_announcements: number;
   enabled_feature_flags: number;
+  total_organizations?: number;
+  total_trading_accounts?: number;
 }
 
 export interface AdminUser {
@@ -136,4 +138,72 @@ export interface PaginatedMeta {
   page: number;
   pageSize: number;
   total: number;
+}
+
+export interface AdminOrganization {
+  id: string;
+  name: string;
+  slug: string;
+  plan_code: string;
+  is_active: boolean;
+  owner_user_id: string | null;
+  owner_email: string | null;
+  member_count: number;
+  created_at: string;
+}
+
+export interface AdminTradingAccount {
+  id: string;
+  user_id: string;
+  user_email: string;
+  broker_connection_id: string;
+  name: string;
+  external_account_id: string;
+  account_type: string;
+  account_role: string;
+  status: string;
+  currency: string;
+  balance: number | null;
+  created_at: string;
+}
+
+export interface AdminNotificationDelivery {
+  id: string;
+  user_id: string;
+  user_email: string | null;
+  event_type: string;
+  channel: string;
+  status: string;
+  attempts: number;
+  last_error: string | null;
+  created_at: string;
+}
+
+export interface AdminSecurityEvent {
+  id: string;
+  action: string;
+  user_id: string | null;
+  resource_type: string;
+  ip_address: string | null;
+  created_at: string;
+  metadata: Record<string, unknown> | null;
+}
+
+export interface AdminFailedLogin {
+  email: string;
+  locked: boolean;
+  retry_after_seconds: number | null;
+  recent_attempts: number;
+}
+
+export interface AdminPlatformMetrics {
+  health: Record<string, unknown>;
+  redis: Record<string, unknown>;
+  celery: Record<string, unknown>;
+  queues: Record<string, unknown>;
+  security: Record<string, unknown>;
+  api_usage: Record<string, unknown>;
+  rate_limits: Record<string, unknown>;
+  notifications: Record<string, unknown>;
+  websockets: Record<string, unknown>;
 }

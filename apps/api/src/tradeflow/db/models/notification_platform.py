@@ -59,6 +59,8 @@ class NotificationDelivery(Base, TimestampMixin):
     last_error: Mapped[str | None] = mapped_column(Text, nullable=True)
     payload: Mapped[dict[str, object] | None] = mapped_column(JSONB, nullable=True)
 
+    user: Mapped[User] = relationship()
+
 
 class NotificationDigestItem(Base, TimestampMixin):
     """Queued notification for batched digest delivery."""

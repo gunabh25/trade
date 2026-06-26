@@ -32,6 +32,7 @@ from tradeflow.db.models.notification_settings import (
     NotificationPreference,
 )
 from tradeflow.db.models.oauth import OAuthAccount
+from tradeflow.db.models.organization import Organization, OrganizationMember
 from tradeflow.db.models.risk import RiskBreach, RiskMonitorSnapshot, RiskRule
 from tradeflow.db.models.session import Session
 from tradeflow.db.models.trading import Order, Position, Trade, TradingAccount
@@ -61,6 +62,8 @@ __all__ = [
     "OAuthAccount",
     "Order",
     "OrderMapping",
+    "Organization",
+    "OrganizationMember",
     "Plan",
     "Position",
     "RefreshToken",
