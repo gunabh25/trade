@@ -1,5 +1,6 @@
 from fastapi import APIRouter
 
+from tradeflow.features.admin.router import router as admin_router
 from tradeflow.features.analytics.router import router as analytics_router
 from tradeflow.features.auth.router import router as auth_router
 from tradeflow.features.billing.router import router as billing_router
@@ -20,3 +21,4 @@ v1_router.include_router(journal_router)
 v1_router.include_router(analytics_router)
 v1_router.include_router(notifications_router)
 v1_router.include_router(billing_router)
+v1_router.include_router(admin_router)

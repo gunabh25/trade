@@ -9,6 +9,7 @@ import {
   LayoutDashboard,
   LineChart,
   Menu,
+  Server,
   Settings,
   Shield,
   Users,
@@ -28,6 +29,8 @@ import {
   cn,
 } from '@tradeflow/ui';
 
+import { useAuth } from '@/features/auth/components/auth-provider';
+
 const navItems = [
   { href: '/dashboard', label: 'Overview', icon: LayoutDashboard },
   { href: '/dashboard/accounts', label: 'Accounts', icon: Wallet },
@@ -42,12 +45,17 @@ const navItems = [
   { href: '/dashboard/settings', label: 'Settings', icon: Settings },
 ];
 
+const adminNavItem = { href: '/admin', label: 'Admin Portal', icon: Server };
+
 function NavLinks({ onNavigate }: { onNavigate?: () => void }) {
   const pathname = usePathname();
+  const { user } = useAuth();
+  const isAdmin = user?.roles.includes('admin') ?? false;
+  const items = isAdmin ? [...navItems, adminNavItem] : navItems;
 
   return (
     <nav className="flex flex-col gap-1 px-3">
-      {navItems.map((item) => {
+      {items.map((item) => {
         const isActive = pathname === item.href;
         const Icon = item.icon;
         return (

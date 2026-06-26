@@ -310,3 +310,32 @@ class AuditAction(StrEnum):
     COPY = "copy"
     BREACH = "breach"
     EXPORT = "export"
+    ADMIN = "admin"
+
+
+class SupportTicketStatus(StrEnum):
+    OPEN = "open"
+    IN_PROGRESS = "in_progress"
+    WAITING = "waiting"
+    RESOLVED = "resolved"
+    CLOSED = "closed"
+
+
+class SupportTicketPriority(StrEnum):
+    LOW = "low"
+    MEDIUM = "medium"
+    HIGH = "high"
+    URGENT = "urgent"
+
+
+class AnnouncementStatus(StrEnum):
+    DRAFT = "draft"
+    PUBLISHED = "published"
+    ARCHIVED = "archived"
+
+
+class SystemLogLevel(StrEnum):
+    DEBUG = "debug"
+    INFO = "info"
+    WARNING = "warning"
+    ERROR = "error"

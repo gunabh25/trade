@@ -1,5 +1,6 @@
 """SQLAlchemy ORM models — import all models so Alembic discovers metadata."""
 
+from tradeflow.db.models.admin_ops import Announcement, FeatureFlag, SupportTicket, SystemLogEntry
 from tradeflow.db.models.api_key import ApiKey
 from tradeflow.db.models.audit import AuditLog
 from tradeflow.db.models.auth import RefreshToken, VerificationToken
@@ -32,6 +33,7 @@ from tradeflow.db.models.trading import Order, Position, Trade, TradingAccount
 from tradeflow.db.models.user import Role, User, UserRole
 
 __all__ = [
+    "Announcement",
     "ApiKey",
     "AuditLog",
     "BillingEvent",
@@ -41,6 +43,7 @@ __all__ = [
     "CopyGroupFollower",
     "Coupon",
     "ExecutionLog",
+    "FeatureFlag",
     "Invoice",
     "JournalScreenshot",
     "Note",
@@ -60,6 +63,8 @@ __all__ = [
     "Session",
     "Strategy",
     "Subscription",
+    "SupportTicket",
+    "SystemLogEntry",
     "Trade",
     "TradeJournal",
     "TradingAccount",

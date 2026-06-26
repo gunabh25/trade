@@ -21,6 +21,7 @@ from tradeflow.db.session import create_session_factory
 from tradeflow.engine.mapping import TradeMappingStore
 from tradeflow.engine.orchestrator import CopyOrchestrator
 from tradeflow.engine.retry_queue import RetryQueue
+from tradeflow.features.admin.service import AdminService
 from tradeflow.features.analytics.service import AnalyticsService
 from tradeflow.features.auth.email_service import EmailService
 from tradeflow.features.auth.oauth_service import OAuthService
@@ -61,6 +62,7 @@ class Container(containers.DeclarativeContainer):
             "tradeflow.features.analytics.router",
             "tradeflow.features.notifications.router",
             "tradeflow.features.billing.router",
+            "tradeflow.features.admin.router",
             "tradeflow.core.dependencies.auth",
         ],
     )
@@ -248,6 +250,14 @@ class Container(containers.DeclarativeContainer):
         stripe_client=stripe_client,
         entitlements=entitlement_service,
         notification_dispatcher=notification_dispatcher,
+    )
+
+    admin_service: providers.Factory[AdminService] = providers.Factory(
+        AdminService,
+        settings=config,
+        health_service=health_service,
+        billing_service=billing_service,
+        connection_monitor=connection_monitor,
     )
 
     copy_trading_service: providers.Factory[CopyTradingService] = providers.Factory(
