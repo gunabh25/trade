@@ -85,16 +85,27 @@ export const mockAnalyticsData: AnalyticsOverview = {
     loss_count: 318,
     breakeven_count: 17,
     win_rate: 60.4,
+    loss_rate: 39.6,
+    avg_win: 364.1,
+    avg_loss: 268.4,
     profit_factor: 2.18,
     expectancy: 46.93,
     average_r: 1.42,
     sharpe_ratio: 2.34,
     sortino_ratio: 3.12,
     max_drawdown_pct: -8.42,
+    max_drawdown_dollars: 23_950,
+    recovery_factor: 1.66,
+    max_consecutive_wins: 8,
+    max_consecutive_losses: 5,
     starting_equity: 245_000,
     ending_equity: 284_750.42,
   },
   equity_curve,
+  profit_curve: equity_curve.map((p, i) => ({
+    trade_index: i + 1,
+    cumulative_pnl: p.equity - 245_000,
+  })),
   drawdown,
   daily_returns: [
     { label: 'Mon', value: 842 },
@@ -128,6 +139,13 @@ export const mockAnalyticsData: AnalyticsOverview = {
   ],
   calendar_heatmap,
   hour_heatmap: buildHourHeatmap(),
+  trade_distribution: [
+    { label: '$-500-$-200', count: 42 },
+    { label: '$-200-$0', count: 78 },
+    { label: '$0-$200', count: 95 },
+    { label: '$200-$500', count: 68 },
+    { label: '$500-$800', count: 34 },
+  ],
   win_loss_pie: [
     { name: 'Wins', value: 186_420, color: '#22c55e' },
     { name: 'Losses', value: 85_340, color: '#ef4444' },
@@ -268,6 +286,33 @@ export const mockAnalyticsData: AnalyticsOverview = {
           ...p,
           equity: 245_000 + i * 90 + Math.sin(i * 0.7) * 600,
         })),
+    },
+  ],
+  symbol_performance: [
+    { symbol: 'ES', trade_count: 312, total_pnl: 18_420, win_rate: 64.2, avg_pnl: 59.04 },
+    { symbol: 'NQ', trade_count: 248, total_pnl: 12_850, win_rate: 58.1, avg_pnl: 51.81 },
+    { symbol: 'CL', trade_count: 156, total_pnl: 5_920, win_rate: 55.8, avg_pnl: 37.95 },
+  ],
+  session_performance: [
+    { session: 'Asia', trade_count: 120, total_pnl: 4_200, win_rate: 52.5 },
+    { session: 'London', trade_count: 280, total_pnl: 12_800, win_rate: 58.2 },
+    { session: 'New York', trade_count: 380, total_pnl: 18_400, win_rate: 62.1 },
+    { session: 'After Hours', trade_count: 67, total_pnl: 4_350, win_rate: 49.3 },
+  ],
+  strategy_comparison: [
+    {
+      id: 's1',
+      name: 'Opening Range Breakout',
+      color: '#22c55e',
+      points: equity_curve.filter((_, i) => i % 8 === 0),
+    },
+    {
+      id: 's2',
+      name: 'Mean Reversion',
+      color: '#3b82f6',
+      points: equity_curve
+        .filter((_, i) => i % 8 === 0)
+        .map((p, i) => ({ ...p, equity: 245_000 + i * 140 })),
     },
   ],
 };

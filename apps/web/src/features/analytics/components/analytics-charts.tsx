@@ -21,11 +21,15 @@ import {
 import type {
   AnalyticsCalendarDay,
   AnalyticsComparisonSeries,
+  AnalyticsDistributionBucket,
   AnalyticsDrawdownPoint,
   AnalyticsEquityPoint,
   AnalyticsHourCell,
   AnalyticsPieSlice,
+  AnalyticsProfitCurvePoint,
   AnalyticsReturnPoint,
+  AnalyticsSessionPerformance,
+  AnalyticsSymbolPerformance,
 } from '@tradeflow/types/api';
 
 import {
@@ -46,7 +50,7 @@ import {
   formatCompactDate,
   formatCurrency,
   formatPercent,
-} from '@/features/analytics/data/mock-analytics-data';
+} from '@/features/analytics/utils/format';
 
 const chartTooltipStyle = {
   backgroundColor: 'hsl(240 5% 7%)',
@@ -779,6 +783,403 @@ export function AverageRChart({ averageR, winRate }: { averageR: number | null; 
             <YAxis hide domain={[0, 1.2]} />
             <Bar dataKey="value" radius={[4, 4, 0, 0]} />
           </BarChart>
+        </ResponsiveContainer>
+      </CardContent>
+    </Card>
+  );
+}
+
+export function ProfitCurveChart({ data }: { data: AnalyticsProfitCurvePoint[] }) {
+  const sampled = data.filter((_, i) => i % Math.max(1, Math.floor(data.length / 80)) === 0);
+  const chartData = sampled.map((p) => ({
+    ...p,
+    label: `#${String(p.trade_index)}`,
+  }));
+
+  return (
+    <Card className="border-border/60 bg-card/80 shadow-none">
+      <CardHeader className="pb-2">
+        <CardTitle className="text-base font-medium">Profit Curve</CardTitle>
+        <CardDescription>Cumulative P&L by trade number</CardDescription>
+      </CardHeader>
+      <CardContent>
+        <ResponsiveContainer width="100%" height={300}>
+          <LineChart data={chartData} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
+            <CartesianGrid stroke="hsl(240 4% 14%)" strokeDasharray="3 3" vertical={false} />
+            <XAxis
+              dataKey="label"
+              axisLine={false}
+              tickLine={false}
+              tick={{ fill: 'hsl(240 5% 64%)', fontSize: 10 }}
+              interval="preserveStartEnd"
+            />
+            <YAxis
+              axisLine={false}
+              tickLine={false}
+              tick={{ fill: 'hsl(240 5% 64%)', fontSize: 11 }}
+              tickFormatter={(v: number) => `$${(v / 1000).toFixed(0)}k`}
+              width={52}
+            />
+            <Tooltip
+              contentStyle={chartTooltipStyle}
+              formatter={(value) => [formatCurrency(Number(value)), 'Cumulative P&L']}
+            />
+            <Line
+              type="monotone"
+              dataKey="cumulative_pnl"
+              stroke="hsl(217 91% 60%)"
+              strokeWidth={2}
+              dot={false}
+            />
+          </LineChart>
+        </ResponsiveContainer>
+      </CardContent>
+    </Card>
+  );
+}
+
+export function TradeDistributionChart({ data }: { data: AnalyticsDistributionBucket[] }) {
+  const chartData = data.map((bucket) => ({
+    ...bucket,
+    fill: 'hsl(217 91% 60%)',
+  }));
+
+  return (
+    <Card className="border-border/60 bg-card/80 shadow-none">
+      <CardHeader className="pb-2">
+        <CardTitle className="text-base font-medium">Trade Distribution</CardTitle>
+        <CardDescription>Per-trade P&L histogram</CardDescription>
+      </CardHeader>
+      <CardContent>
+        <ResponsiveContainer width="100%" height={260}>
+          <BarChart data={chartData} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
+            <CartesianGrid stroke="hsl(240 4% 14%)" strokeDasharray="3 3" vertical={false} />
+            <XAxis
+              dataKey="label"
+              axisLine={false}
+              tickLine={false}
+              tick={{ fill: 'hsl(240 5% 64%)', fontSize: 9 }}
+              interval={0}
+              angle={-25}
+              textAnchor="end"
+              height={56}
+            />
+            <YAxis
+              axisLine={false}
+              tickLine={false}
+              tick={{ fill: 'hsl(240 5% 64%)', fontSize: 11 }}
+              allowDecimals={false}
+              width={32}
+            />
+            <Tooltip contentStyle={chartTooltipStyle} formatter={(v) => [String(v), 'Trades']} />
+            <Bar dataKey="count" radius={[4, 4, 0, 0]} />
+          </BarChart>
+        </ResponsiveContainer>
+      </CardContent>
+    </Card>
+  );
+}
+
+export function LossRateChart({
+  lossRate,
+  lossCount,
+  winCount,
+}: {
+  lossRate: number;
+  lossCount: number;
+  winCount: number;
+}) {
+  return (
+    <Card className="border-border/60 bg-card/80 shadow-none">
+      <CardHeader className="pb-2">
+        <CardTitle className="text-base font-medium">Loss Rate</CardTitle>
+        <CardDescription>Percentage of losing trades</CardDescription>
+      </CardHeader>
+      <CardContent>
+        <p className="text-loss text-4xl font-semibold tabular-nums tracking-tight">
+          {lossRate.toFixed(1)}%
+        </p>
+        <p className="text-muted-foreground mt-1 text-sm">
+          {lossCount} losses · {winCount} wins
+        </p>
+      </CardContent>
+    </Card>
+  );
+}
+
+export function AvgWinLossChart({ avgWin, avgLoss }: { avgWin: number; avgLoss: number }) {
+  const chartData = [
+    { label: 'Avg Win', value: avgWin, fill: 'hsl(142 71% 45%)' },
+    { label: 'Avg Loss', value: avgLoss, fill: 'hsl(0 84% 60%)' },
+  ];
+
+  return (
+    <Card className="border-border/60 bg-card/80 shadow-none">
+      <CardHeader className="pb-2">
+        <CardTitle className="text-base font-medium">Average Win / Loss</CardTitle>
+        <CardDescription>Mean P&L on winning vs losing trades</CardDescription>
+      </CardHeader>
+      <CardContent>
+        <ResponsiveContainer width="100%" height={200}>
+          <BarChart data={chartData} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
+            <CartesianGrid stroke="hsl(240 4% 14%)" strokeDasharray="3 3" vertical={false} />
+            <XAxis
+              dataKey="label"
+              axisLine={false}
+              tickLine={false}
+              tick={{ fill: 'hsl(240 5% 64%)', fontSize: 11 }}
+            />
+            <YAxis
+              axisLine={false}
+              tickLine={false}
+              tick={{ fill: 'hsl(240 5% 64%)', fontSize: 11 }}
+              tickFormatter={(v: number) => `$${v}`}
+              width={44}
+            />
+            <Tooltip
+              contentStyle={chartTooltipStyle}
+              formatter={(value) => [formatCurrency(Number(value)), 'Amount']}
+            />
+            <Bar dataKey="value" radius={[4, 4, 0, 0]} />
+          </BarChart>
+        </ResponsiveContainer>
+      </CardContent>
+    </Card>
+  );
+}
+
+export function RecoveryFactorChart({
+  recoveryFactor,
+  maxDrawdownDollars,
+}: {
+  recoveryFactor: number | null;
+  maxDrawdownDollars: number;
+}) {
+  return (
+    <Card className="border-border/60 bg-card/80 shadow-none">
+      <CardHeader className="pb-2">
+        <CardTitle className="text-base font-medium">Recovery Factor</CardTitle>
+        <CardDescription>Net profit relative to max drawdown</CardDescription>
+      </CardHeader>
+      <CardContent>
+        <p className="text-4xl font-semibold tabular-nums tracking-tight">
+          {recoveryFactor?.toFixed(2) ?? '—'}
+        </p>
+        <p className="text-muted-foreground mt-1 text-sm">
+          Max DD {formatCurrency(Math.abs(maxDrawdownDollars))}
+        </p>
+      </CardContent>
+    </Card>
+  );
+}
+
+export function StreakMetricsChart({ maxWins, maxLosses }: { maxWins: number; maxLosses: number }) {
+  const chartData = [
+    { label: 'Max Win Streak', value: maxWins, fill: 'hsl(142 71% 45%)' },
+    { label: 'Max Loss Streak', value: maxLosses, fill: 'hsl(0 84% 60%)' },
+  ];
+
+  return (
+    <Card className="border-border/60 bg-card/80 shadow-none">
+      <CardHeader className="pb-2">
+        <CardTitle className="text-base font-medium">Consecutive Streaks</CardTitle>
+        <CardDescription>Maximum consecutive wins and losses</CardDescription>
+      </CardHeader>
+      <CardContent>
+        <ResponsiveContainer width="100%" height={200}>
+          <BarChart data={chartData} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
+            <CartesianGrid stroke="hsl(240 4% 14%)" strokeDasharray="3 3" vertical={false} />
+            <XAxis
+              dataKey="label"
+              axisLine={false}
+              tickLine={false}
+              tick={{ fill: 'hsl(240 5% 64%)', fontSize: 10 }}
+            />
+            <YAxis
+              axisLine={false}
+              tickLine={false}
+              tick={{ fill: 'hsl(240 5% 64%)', fontSize: 11 }}
+              allowDecimals={false}
+              width={28}
+            />
+            <Tooltip contentStyle={chartTooltipStyle} formatter={(v) => [String(v), 'Trades']} />
+            <Bar dataKey="value" radius={[4, 4, 0, 0]} />
+          </BarChart>
+        </ResponsiveContainer>
+      </CardContent>
+    </Card>
+  );
+}
+
+export function SymbolPerformanceChart({ data }: { data: AnalyticsSymbolPerformance[] }) {
+  const chartData = data.slice(0, 10).map((s) => ({
+    symbol: s.symbol,
+    pnl: s.total_pnl,
+    winRate: s.win_rate,
+    fill: s.total_pnl >= 0 ? 'hsl(142 71% 45%)' : 'hsl(0 84% 60%)',
+  }));
+
+  return (
+    <Card className="border-border/60 bg-card/80 shadow-none">
+      <CardHeader className="pb-2">
+        <CardTitle className="text-base font-medium">Symbol Performance</CardTitle>
+        <CardDescription>P&L and win rate by instrument</CardDescription>
+      </CardHeader>
+      <CardContent>
+        <ResponsiveContainer width="100%" height={280}>
+          <BarChart
+            data={chartData}
+            layout="vertical"
+            margin={{ top: 4, right: 8, left: 0, bottom: 0 }}
+          >
+            <CartesianGrid stroke="hsl(240 4% 14%)" strokeDasharray="3 3" horizontal={false} />
+            <XAxis
+              type="number"
+              axisLine={false}
+              tickLine={false}
+              tick={{ fill: 'hsl(240 5% 64%)', fontSize: 11 }}
+              tickFormatter={(v: number) => `$${v}`}
+            />
+            <YAxis
+              type="category"
+              dataKey="symbol"
+              axisLine={false}
+              tickLine={false}
+              tick={{ fill: 'hsl(240 5% 64%)', fontSize: 11 }}
+              width={48}
+            />
+            <Tooltip
+              contentStyle={chartTooltipStyle}
+              formatter={(value, _n, props) => {
+                const payload = props.payload as { winRate: number };
+                return [
+                  `${formatCurrency(Number(value))} · ${payload.winRate.toFixed(0)}% WR`,
+                  'P&L',
+                ];
+              }}
+            />
+            <Bar dataKey="pnl" radius={[0, 4, 4, 0]} />
+          </BarChart>
+        </ResponsiveContainer>
+      </CardContent>
+    </Card>
+  );
+}
+
+export function SessionPerformanceChart({ data }: { data: AnalyticsSessionPerformance[] }) {
+  const chartData = data.map((s) => ({
+    session: s.session,
+    pnl: s.total_pnl,
+    winRate: s.win_rate,
+    fill: s.total_pnl >= 0 ? 'hsl(142 71% 45%)' : 'hsl(0 84% 60%)',
+  }));
+
+  return (
+    <Card className="border-border/60 bg-card/80 shadow-none">
+      <CardHeader className="pb-2">
+        <CardTitle className="text-base font-medium">Session Performance</CardTitle>
+        <CardDescription>P&L by trading session (UTC)</CardDescription>
+      </CardHeader>
+      <CardContent>
+        <ResponsiveContainer width="100%" height={260}>
+          <BarChart data={chartData} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
+            <CartesianGrid stroke="hsl(240 4% 14%)" strokeDasharray="3 3" vertical={false} />
+            <XAxis
+              dataKey="session"
+              axisLine={false}
+              tickLine={false}
+              tick={{ fill: 'hsl(240 5% 64%)', fontSize: 11 }}
+            />
+            <YAxis
+              axisLine={false}
+              tickLine={false}
+              tick={{ fill: 'hsl(240 5% 64%)', fontSize: 11 }}
+              tickFormatter={(v: number) => `$${v}`}
+              width={52}
+            />
+            <Tooltip
+              contentStyle={chartTooltipStyle}
+              formatter={(value, _n, props) => {
+                const payload = props.payload as { winRate: number };
+                return [
+                  `${formatCurrency(Number(value))} · ${payload.winRate.toFixed(0)}% WR`,
+                  'P&L',
+                ];
+              }}
+            />
+            <Bar dataKey="pnl" radius={[4, 4, 0, 0]} />
+          </BarChart>
+        </ResponsiveContainer>
+      </CardContent>
+    </Card>
+  );
+}
+
+export function StrategyComparisonChart({ series }: { series: AnalyticsComparisonSeries[] }) {
+  if (series.length === 0) {
+    return (
+      <Card className="border-border/60 bg-card/80 shadow-none">
+        <CardHeader className="pb-2">
+          <CardTitle className="text-base font-medium">Strategy Comparison</CardTitle>
+          <CardDescription>Equity curves overlaid by strategy</CardDescription>
+        </CardHeader>
+        <CardContent className="text-muted-foreground flex h-[300px] items-center justify-center text-sm">
+          No strategy data to compare
+        </CardContent>
+      </Card>
+    );
+  }
+
+  const dateMap = new Map<string, Record<string, number | string>>();
+  for (const s of series) {
+    for (const point of s.points) {
+      const row = dateMap.get(point.date) ?? { date: point.date };
+      row[s.id] = point.equity;
+      dateMap.set(point.date, row);
+    }
+  }
+  const chartData = [...dateMap.values()].sort((a, b) =>
+    String(a.date).localeCompare(String(b.date)),
+  );
+
+  return (
+    <Card className="border-border/60 bg-card/80 shadow-none">
+      <CardHeader className="pb-2">
+        <CardTitle className="text-base font-medium">Strategy Comparison</CardTitle>
+        <CardDescription>Equity curves overlaid by strategy</CardDescription>
+      </CardHeader>
+      <CardContent>
+        <ResponsiveContainer width="100%" height={300}>
+          <LineChart data={chartData} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
+            <CartesianGrid stroke="hsl(240 4% 14%)" strokeDasharray="3 3" vertical={false} />
+            <XAxis
+              dataKey="date"
+              axisLine={false}
+              tickLine={false}
+              tick={{ fill: 'hsl(240 5% 64%)', fontSize: 10 }}
+              tickFormatter={(v: string) => formatCompactDate(v)}
+            />
+            <YAxis
+              axisLine={false}
+              tickLine={false}
+              tick={{ fill: 'hsl(240 5% 64%)', fontSize: 11 }}
+              tickFormatter={(v: number) => `$${(v / 1000).toFixed(0)}k`}
+              width={52}
+            />
+            <Tooltip contentStyle={chartTooltipStyle} />
+            <Legend />
+            {series.map((s) => (
+              <Line
+                key={s.id}
+                type="monotone"
+                dataKey={s.id}
+                name={s.name}
+                stroke={s.color}
+                strokeWidth={2}
+                dot={false}
+              />
+            ))}
+          </LineChart>
         </ResponsiveContainer>
       </CardContent>
     </Card>

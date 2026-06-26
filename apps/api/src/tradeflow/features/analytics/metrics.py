@@ -20,6 +20,101 @@ def win_rate(wins: int, total: int) -> float:
     return wins / total * 100
 
 
+def loss_rate(losses: int, total: int) -> float:
+    if total == 0:
+        return 0.0
+    return losses / total * 100
+
+
+def average_win(pnls: list[Decimal]) -> float:
+    wins = [_to_float(p) for p in pnls if p > 0]
+    if not wins:
+        return 0.0
+    return sum(wins) / len(wins)
+
+
+def average_loss(pnls: list[Decimal]) -> float:
+    losses = [abs(_to_float(p)) for p in pnls if p < 0]
+    if not losses:
+        return 0.0
+    return sum(losses) / len(losses)
+
+
+def recovery_factor(net_profit: float, max_drawdown_dollars: float) -> float | None:
+    if max_drawdown_dollars == 0:
+        return None
+    return net_profit / abs(max_drawdown_dollars)
+
+
+def max_consecutive_streaks(pnls: list[Decimal]) -> tuple[int, int]:
+    max_wins = max_losses = current_wins = current_losses = 0
+    for pnl in pnls:
+        if pnl > 0:
+            current_wins += 1
+            current_losses = 0
+            max_wins = max(max_wins, current_wins)
+        elif pnl < 0:
+            current_losses += 1
+            current_wins = 0
+            max_losses = max(max_losses, current_losses)
+        else:
+            current_wins = 0
+            current_losses = 0
+    return max_wins, max_losses
+
+
+def max_drawdown_dollars(equity_points: list[tuple[date, float]]) -> float:
+    peak = 0.0
+    max_dd = 0.0
+    for _, equity in equity_points:
+        peak = max(peak, equity)
+        max_dd = min(max_dd, equity - peak)
+    return max_dd
+
+
+def profit_curve_from_trades(
+    trade_pnls: list[tuple[date, Decimal]],
+) -> list[tuple[int, float]]:
+    """Cumulative P&L curve indexed by trade number (1-based)."""
+    cumulative = 0.0
+    curve: list[tuple[int, float]] = []
+    for index, (_, pnl) in enumerate(sorted(trade_pnls, key=lambda x: x[0]), start=1):
+        cumulative += _to_float(pnl)
+        curve.append((index, cumulative))
+    return curve
+
+
+def trade_distribution(
+    pnls: list[Decimal],
+    *,
+    bucket_count: int = 8,
+) -> list[tuple[str, int]]:
+    """Histogram buckets for per-trade P&L distribution."""
+    if not pnls:
+        return []
+
+    values = [_to_float(p) for p in pnls]
+    min_val = min(values)
+    max_val = max(values)
+    if min_val == max_val:
+        return [(f"${min_val:,.0f}", len(values))]
+
+    span = max_val - min_val
+    step = span / bucket_count
+    buckets = [0] * bucket_count
+    for value in values:
+        idx = min(int((value - min_val) / step), bucket_count - 1) if step > 0 else 0
+        buckets[idx] += 1
+
+    labels: list[tuple[str, int]] = []
+    for i, count in enumerate(buckets):
+        low = min_val + step * i
+        high = min_val + step * (i + 1)
+        label = f"${low:,.0f}-${high:,.0f}"
+        labels.append((label, count))
+    return labels
+
+
 def profit_factor(gross_profit: Decimal, gross_loss: Decimal) -> float | None:
     loss = abs(_to_float(gross_loss))
     if loss == 0:
@@ -138,10 +233,15 @@ def compute_trade_metrics(pnls: list[Decimal]) -> dict[str, float | int | None]:
             "loss_count": 0,
             "breakeven_count": 0,
             "win_rate": 0.0,
+            "loss_rate": 0.0,
+            "avg_win": 0.0,
+            "avg_loss": 0.0,
             "profit_factor": None,
             "expectancy": 0.0,
             "average_r": None,
             "total_pnl": 0.0,
+            "max_consecutive_wins": 0,
+            "max_consecutive_losses": 0,
         }
 
     wins = [p for p in pnls if p > 0]
@@ -149,14 +249,20 @@ def compute_trade_metrics(pnls: list[Decimal]) -> dict[str, float | int | None]:
     breakeven = [p for p in pnls if p == 0]
     gross_profit = sum(wins, Decimal("0"))
     gross_loss = abs(sum(losses, Decimal("0")))
+    max_wins, max_losses = max_consecutive_streaks(pnls)
 
     return {
         "win_count": len(wins),
         "loss_count": len(losses),
         "breakeven_count": len(breakeven),
         "win_rate": win_rate(len(wins), len(pnls)),
+        "loss_rate": loss_rate(len(losses), len(pnls)),
+        "avg_win": average_win(pnls),
+        "avg_loss": average_loss(pnls),
         "profit_factor": profit_factor(gross_profit, gross_loss),
         "expectancy": expectancy(pnls),
         "average_r": average_r(pnls),
         "total_pnl": _to_float(sum(pnls, Decimal("0"))),
+        "max_consecutive_wins": max_wins,
+        "max_consecutive_losses": max_losses,
     }

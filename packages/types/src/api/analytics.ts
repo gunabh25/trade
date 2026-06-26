@@ -5,12 +5,19 @@ export interface AnalyticsMetrics {
   loss_count: number;
   breakeven_count: number;
   win_rate: number;
+  loss_rate: number;
+  avg_win: number;
+  avg_loss: number;
   profit_factor: number | null;
   expectancy: number;
   average_r: number | null;
   sharpe_ratio: number | null;
   sortino_ratio: number | null;
   max_drawdown_pct: number;
+  max_drawdown_dollars: number;
+  recovery_factor: number | null;
+  max_consecutive_wins: number;
+  max_consecutive_losses: number;
   starting_equity: number;
   ending_equity: number;
 }
@@ -18,6 +25,11 @@ export interface AnalyticsMetrics {
 export interface AnalyticsEquityPoint {
   date: string;
   equity: number;
+}
+
+export interface AnalyticsProfitCurvePoint {
+  trade_index: number;
+  cumulative_pnl: number;
 }
 
 export interface AnalyticsDrawdownPoint {
@@ -43,10 +55,30 @@ export interface AnalyticsHourCell {
   trade_count: number;
 }
 
+export interface AnalyticsDistributionBucket {
+  label: string;
+  count: number;
+}
+
 export interface AnalyticsPieSlice {
   name: string;
   value: number;
   color?: string | null;
+}
+
+export interface AnalyticsSymbolPerformance {
+  symbol: string;
+  trade_count: number;
+  total_pnl: number;
+  win_rate: number;
+  avg_pnl: number;
+}
+
+export interface AnalyticsSessionPerformance {
+  session: string;
+  trade_count: number;
+  total_pnl: number;
+  win_rate: number;
 }
 
 export interface AnalyticsLeaderboardEntry {
@@ -71,15 +103,27 @@ export interface AnalyticsComparisonSeries {
 export interface AnalyticsOverview {
   metrics: AnalyticsMetrics;
   equity_curve: AnalyticsEquityPoint[];
+  profit_curve: AnalyticsProfitCurvePoint[];
   drawdown: AnalyticsDrawdownPoint[];
   daily_returns: AnalyticsReturnPoint[];
   monthly_returns: AnalyticsReturnPoint[];
   calendar_heatmap: AnalyticsCalendarDay[];
   hour_heatmap: AnalyticsHourCell[];
+  trade_distribution: AnalyticsDistributionBucket[];
   win_loss_pie: AnalyticsPieSlice[];
   symbol_pie: AnalyticsPieSlice[];
   strategy_pie: AnalyticsPieSlice[];
+  symbol_performance: AnalyticsSymbolPerformance[];
+  session_performance: AnalyticsSessionPerformance[];
   account_leaderboard: AnalyticsLeaderboardEntry[];
   strategy_leaderboard: AnalyticsLeaderboardEntry[];
   comparison: AnalyticsComparisonSeries[];
+  strategy_comparison: AnalyticsComparisonSeries[];
+}
+
+export interface AnalyticsOverviewQuery {
+  date_from?: string;
+  date_to?: string;
+  trading_account_id?: string;
+  strategy_id?: string;
 }

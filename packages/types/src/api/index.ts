@@ -76,8 +76,13 @@ export type {
   AnalyticsLeaderboardEntry,
   AnalyticsMetrics,
   AnalyticsOverview,
+  AnalyticsOverviewQuery,
   AnalyticsPieSlice,
+  AnalyticsProfitCurvePoint,
   AnalyticsReturnPoint,
+  AnalyticsSessionPerformance,
+  AnalyticsSymbolPerformance,
+  AnalyticsDistributionBucket,
 } from './analytics';
 export type {
   BrokerAccount,

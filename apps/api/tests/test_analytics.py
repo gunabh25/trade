@@ -49,6 +49,39 @@ def test_equity_curve_and_drawdown() -> None:
     assert dd[1][1] < 0
 
 
+def test_max_consecutive_streaks() -> None:
+    pnls = [
+        Decimal("100"),
+        Decimal("50"),
+        Decimal("-30"),
+        Decimal("-20"),
+        Decimal("80"),
+    ]
+    wins, losses = metrics.max_consecutive_streaks(pnls)
+    assert wins == 2
+    assert losses == 2
+
+
+def test_recovery_factor() -> None:
+    assert metrics.recovery_factor(5000.0, 2000.0) == 2.5
+    assert metrics.recovery_factor(1000.0, 0.0) is None
+
+
+def test_trade_distribution() -> None:
+    pnls = [Decimal("-100"), Decimal("50"), Decimal("200"), Decimal("300")]
+    buckets = metrics.trade_distribution(pnls, bucket_count=4)
+    assert len(buckets) == 4
+    assert sum(count for _, count in buckets) == 4
+
+
+def test_loss_rate_and_averages() -> None:
+    pnls = [Decimal("200"), Decimal("100"), Decimal("-50")]
+    result = metrics.compute_trade_metrics(pnls)
+    assert round(result["loss_rate"], 2) == 33.33
+    assert result["avg_win"] == 150.0
+    assert result["avg_loss"] == 50.0
+
+
 def test_aggregate_daily_pnls() -> None:
     rows = [
         (date(2026, 1, 1), Decimal("100")),

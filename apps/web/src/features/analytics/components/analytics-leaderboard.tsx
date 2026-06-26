@@ -14,7 +14,7 @@ import {
   cn,
 } from '@tradeflow/ui';
 
-import { formatRatio } from '@/features/analytics/data/mock-analytics-data';
+import { formatRatio } from '@/features/analytics/utils/format';
 import { PnlText } from '@/features/dashboard/components/motion-primitives';
 
 function RankBadge({ rank }: { rank: number }) {
