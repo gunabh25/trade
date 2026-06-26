@@ -15,6 +15,7 @@ from tradeflow.db.enums import (
     CopyGroupStatus,
     OrderSide,
     TradingAccountRole,
+    UsageMetric,
 )
 from tradeflow.db.models.copy_trading import CopyEvent, CopyGroup, CopyGroupFollower, ExecutionLog
 from tradeflow.db.models.trading import TradingAccount
@@ -22,6 +23,7 @@ from tradeflow.engine.mapping import TradeMappingStore
 from tradeflow.engine.orchestrator import CopyOrchestrator
 from tradeflow.engine.retry_queue import RetryQueue
 from tradeflow.engine.types import LeaderEvent, LeaderEventType
+from tradeflow.features.billing.entitlements import EntitlementService
 from tradeflow.features.copy_trading.schemas import (
     AddFollowerRequest,
     CopyEngineHealthResponse,
@@ -44,10 +46,12 @@ class CopyTradingService:
         orchestrator: CopyOrchestrator,
         mapping_store: TradeMappingStore,
         retry_queue: RetryQueue,
+        entitlements: EntitlementService,
     ) -> None:
         self._orchestrator = orchestrator
         self._mapping = mapping_store
         self._retry = retry_queue
+        self._entitlements = entitlements
 
     async def create_group(
         self,
@@ -55,6 +59,8 @@ class CopyTradingService:
         user_id: UUID,
         payload: CreateCopyGroupRequest,
     ) -> CopyGroupResponse:
+        await self._entitlements.assert_feature(db, user_id, "copy_trading")
+        await self._entitlements.assert_within_limit(db, user_id, UsageMetric.COPY_GROUPS)
         leader = await self._get_account(db, user_id, payload.leader_account_id)
         if leader.account_role != TradingAccountRole.LEADER:
             leader.account_role = TradingAccountRole.LEADER

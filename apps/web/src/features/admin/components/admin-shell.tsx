@@ -30,6 +30,7 @@ const navItems = [
   { href: '/admin/search', label: 'Search', icon: Search },
   { href: '/admin/users', label: 'Users', icon: Users },
   { href: '/admin/subscriptions', label: 'Subscriptions', icon: CreditCard },
+  { href: '/admin/billing', label: 'Billing', icon: CreditCard },
   { href: '/admin/audit', label: 'Audit Logs', icon: ScrollText },
   { href: '/admin/support', label: 'Support Tickets', icon: Ticket },
   { href: '/admin/brokers', label: 'Broker Status', icon: Wallet },

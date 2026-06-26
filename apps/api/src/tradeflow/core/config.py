@@ -85,6 +85,7 @@ class Settings(BaseSettings):
     stripe_publishable_key: str | None = Field(default=None, alias="STRIPE_PUBLISHABLE_KEY")
     stripe_webhook_secret: str | None = Field(default=None, alias="STRIPE_WEBHOOK_SECRET")
     stripe_trial_days_default: int = Field(default=14, alias="STRIPE_TRIAL_DAYS_DEFAULT")
+    stripe_tax_enabled: bool = Field(default=True, alias="STRIPE_TAX_ENABLED")
 
     # Rate limiting / brute force
     auth_rate_limit_per_minute: int = Field(default=20, alias="AUTH_RATE_LIMIT_PER_MINUTE")

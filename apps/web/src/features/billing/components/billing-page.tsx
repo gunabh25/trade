@@ -1,6 +1,15 @@
 'use client';
 
-import { Check, CreditCard, ExternalLink, Sparkles } from 'lucide-react';
+import {
+  AlertTriangle,
+  Check,
+  CheckCircle2,
+  CreditCard,
+  ExternalLink,
+  Sparkles,
+  XCircle,
+} from 'lucide-react';
+import { useSearchParams } from 'next/navigation';
 import { useCallback, useEffect, useState } from 'react';
 
 import type { BillingOverview, Invoice, Plan } from '@tradeflow/types/api';
@@ -19,6 +28,8 @@ import {
 } from '@tradeflow/ui';
 
 import {
+  cancelSubscription,
+  changeSubscriptionPlan,
   createCheckout,
   createPortalSession,
   formatPrice,
@@ -57,11 +68,13 @@ function PlanCard({
   plan,
   currentCode,
   onUpgrade,
+  onDowngrade,
   loading,
 }: {
   plan: Plan;
   currentCode: string;
   onUpgrade: (code: string) => void;
+  onDowngrade: (code: string) => void;
   loading: boolean;
 }) {
   const isCurrent = plan.code === currentCode;
@@ -114,8 +127,15 @@ function PlanCard({
             Current plan
           </Button>
         ) : isFree ? (
-          <Button className="w-full" variant="outline" disabled>
-            Included
+          <Button
+            className="w-full"
+            variant="outline"
+            disabled={loading}
+            onClick={() => {
+              onDowngrade(plan.code);
+            }}
+          >
+            Downgrade to Free
           </Button>
         ) : (
           <Button
@@ -125,7 +145,7 @@ function PlanCard({
             }}
             disabled={loading}
           >
-            Upgrade to {plan.name}
+            {currentCode === 'free' ? `Upgrade to ${plan.name}` : `Switch to ${plan.name}`}
           </Button>
         )}
       </CardFooter>
@@ -134,6 +154,9 @@ function PlanCard({
 }
 
 export function BillingPage() {
+  const searchParams = useSearchParams();
+  const checkoutStatus = searchParams.get('checkout');
+
   const [overview, setOverview] = useState<BillingOverview | null>(null);
   const [plans, setPlans] = useState<Plan[]>([]);
   const [invoices, setInvoices] = useState<Invoice[]>([]);
@@ -167,9 +190,17 @@ export function BillingPage() {
   }, [load]);
 
   async function handleUpgrade(planCode: string) {
+    if (!overview) return;
     setActionLoading(true);
     setCouponMessage(null);
     try {
+      const currentCode = overview.subscription.plan.code;
+      if (currentCode !== 'free' && overview.stripe_enabled) {
+        await changeSubscriptionPlan(planCode);
+        await load();
+        setActionLoading(false);
+        return;
+      }
       if (couponCode.trim()) {
         const coupon = await validateCoupon(couponCode.trim(), planCode);
         setCouponMessage(`Coupon applied: ${coupon.name}`);
@@ -185,6 +216,19 @@ export function BillingPage() {
     }
   }
 
+  async function handleDowngrade(planCode: string) {
+    if (planCode !== 'free') return;
+    setActionLoading(true);
+    try {
+      await changeSubscriptionPlan('free');
+      await load();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Downgrade failed');
+    } finally {
+      setActionLoading(false);
+    }
+  }
+
   async function handleManageBilling() {
     setActionLoading(true);
     try {
@@ -192,6 +236,18 @@ export function BillingPage() {
       window.location.href = url;
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Could not open billing portal');
+      setActionLoading(false);
+    }
+  }
+
+  async function handleCancelSubscription() {
+    setActionLoading(true);
+    try {
+      await cancelSubscription(true);
+      await load();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Cancellation failed');
+    } finally {
       setActionLoading(false);
     }
   }
@@ -221,6 +277,36 @@ export function BillingPage() {
 
   return (
     <div className="space-y-8 p-4 sm:p-6">
+      {checkoutStatus === 'success' ? (
+        <div className="border-primary/30 bg-primary/5 flex items-center gap-3 rounded-lg border p-4">
+          <CheckCircle2 className="text-primary h-5 w-5" />
+          <p className="text-sm">Subscription updated successfully. Welcome aboard!</p>
+        </div>
+      ) : null}
+      {checkoutStatus === 'canceled' ? (
+        <div className="border-border bg-muted/40 flex items-center gap-3 rounded-lg border p-4">
+          <XCircle className="text-muted-foreground h-5 w-5" />
+          <p className="text-sm">Checkout was canceled. No charges were made.</p>
+        </div>
+      ) : null}
+
+      {subscription.payment_action_required ? (
+        <div className="border-destructive/40 bg-destructive/5 flex flex-col gap-3 rounded-lg border p-4 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex items-start gap-3">
+            <AlertTriangle className="text-destructive mt-0.5 h-5 w-5" />
+            <div>
+              <p className="font-medium">Payment failed</p>
+              <p className="text-muted-foreground text-sm">
+                Update your payment method to avoid service interruption.
+              </p>
+            </div>
+          </div>
+          <Button variant="destructive" size="sm" onClick={() => void handleManageBilling()}>
+            Update payment
+          </Button>
+        </div>
+      ) : null}
+
       <FadeInItem>
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div>
@@ -229,16 +315,29 @@ export function BillingPage() {
               Manage your subscription, usage, and invoices.
             </p>
           </div>
-          {subscription.plan.code !== 'free' ? (
-            <Button
-              variant="outline"
-              onClick={() => void handleManageBilling()}
-              disabled={actionLoading}
-            >
-              <ExternalLink className="mr-2 h-4 w-4" />
-              Manage subscription
-            </Button>
-          ) : null}
+          <div className="flex flex-wrap gap-2">
+            {subscription.plan.code !== 'free' ? (
+              <>
+                <Button
+                  variant="outline"
+                  onClick={() => void handleManageBilling()}
+                  disabled={actionLoading}
+                >
+                  <ExternalLink className="mr-2 h-4 w-4" />
+                  Manage subscription
+                </Button>
+                {!subscription.cancel_at_period_end ? (
+                  <Button
+                    variant="ghost"
+                    onClick={() => void handleCancelSubscription()}
+                    disabled={actionLoading}
+                  >
+                    Cancel renewal
+                  </Button>
+                ) : null}
+              </>
+            ) : null}
+          </div>
         </div>
       </FadeInItem>
 
@@ -249,12 +348,16 @@ export function BillingPage() {
             <CardDescription>
               {subscription.plan.name} plan
               {subscription.is_trialing ? ' — trial active' : ''}
+              {subscription.cancel_at_period_end ? ' — cancels at period end' : ''}
             </CardDescription>
           </CardHeader>
           <CardContent className="flex flex-wrap gap-3">
             <Badge variant={subscription.status === 'active' ? 'default' : 'secondary'}>
               {subscription.status.replace('_', ' ')}
             </Badge>
+            {subscription.coupon_code ? (
+              <Badge variant="outline">Coupon: {subscription.coupon_code}</Badge>
+            ) : null}
             {subscription.current_period_end ? (
               <span className="text-muted-foreground text-sm">
                 Renews {new Date(subscription.current_period_end).toLocaleDateString()}
@@ -299,11 +402,11 @@ export function BillingPage() {
         <div className="flex flex-col gap-2 sm:flex-row sm:items-end">
           <div className="flex-1">
             <label htmlFor="coupon" className="mb-1 block text-sm font-medium">
-              Coupon code
+              Promo code
             </label>
             <Input
               id="coupon"
-              placeholder="Enter coupon code"
+              placeholder="Enter promo code"
               value={couponCode}
               onChange={(e) => {
                 setCouponCode(e.target.value.toUpperCase());
@@ -321,6 +424,7 @@ export function BillingPage() {
               plan={plan}
               currentCode={subscription.plan.code}
               onUpgrade={(code) => void handleUpgrade(code)}
+              onDowngrade={(code) => void handleDowngrade(code)}
               loading={actionLoading}
             />
           </FadeInItem>
@@ -346,7 +450,12 @@ export function BillingPage() {
                       </p>
                     </div>
                     <div className="flex items-center gap-3">
-                      <span>{formatPrice(invoice.amount_paid_cents, invoice.currency)}</span>
+                      <span>
+                        {formatPrice(
+                          invoice.amount_paid_cents || invoice.amount_due_cents,
+                          invoice.currency,
+                        )}
+                      </span>
                       {invoice.hosted_invoice_url ? (
                         <a
                           href={invoice.hosted_invoice_url}

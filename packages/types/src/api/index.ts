@@ -37,7 +37,13 @@ export type {
   UserProfile,
 } from './auth';
 export type {
+  AdminCreateCouponRequest,
+  AdminUpdatePlanRequest,
+  BillingEvent,
+  BillingEventType,
   BillingOverview,
+  CancelSubscriptionRequest,
+  ChangePlanRequest,
   CheckoutRequest,
   CouponInfo,
   Invoice,

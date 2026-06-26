@@ -58,6 +58,7 @@ class StripeClient:
         trial_days: int = 0,
         promotion_code: str | None = None,
         metadata: dict[str, str] | None = None,
+        automatic_tax: bool = False,
     ) -> str:
         if not self._enabled or self._stripe is None:
             plan_code = (metadata or {}).get("plan_code", "pro")
@@ -73,11 +74,15 @@ class StripeClient:
             "cancel_url": cancel_url,
             "metadata": metadata or {},
             "subscription_data": {},
+            "allow_promotion_codes": promotion_code is None,
         }
         if trial_days > 0:
             params["subscription_data"]["trial_period_days"] = trial_days
         if promotion_code:
             params["discounts"] = [{"promotion_code": promotion_code}]
+        if automatic_tax:
+            params["automatic_tax"] = {"enabled": True}
+            params["customer_update"] = {"address": "auto"}
 
         session = self._stripe.checkout.Session.create(**params)
         return str(session.url)
@@ -93,6 +98,48 @@ class StripeClient:
             return_url=return_url,
         )
         return str(session.url)
+
+    def update_subscription(
+        self,
+        subscription_id: str,
+        *,
+        price_id: str,
+        proration_behavior: str = "create_prorations",
+    ) -> None:
+        if not self._enabled or self._stripe is None:
+            logger.info(
+                "stripe_dev_update_subscription",
+                subscription_id=subscription_id,
+                price_id=price_id,
+            )
+            return
+
+        subscription = self._stripe.Subscription.retrieve(subscription_id)
+        item_id = subscription["items"]["data"][0]["id"]
+        self._stripe.Subscription.modify(
+            subscription_id,
+            items=[{"id": item_id, "price": price_id}],
+            proration_behavior=proration_behavior,
+        )
+
+    def cancel_subscription(
+        self,
+        subscription_id: str,
+        *,
+        at_period_end: bool = True,
+    ) -> None:
+        if not self._enabled or self._stripe is None:
+            logger.info(
+                "stripe_dev_cancel_subscription",
+                subscription_id=subscription_id,
+                at_period_end=at_period_end,
+            )
+            return
+
+        if at_period_end:
+            self._stripe.Subscription.modify(subscription_id, cancel_at_period_end=True)
+        else:
+            self._stripe.Subscription.delete(subscription_id)
 
     def construct_event(self, payload: bytes, signature: str) -> Any:
         if not self._enabled or self._stripe is None:
@@ -111,6 +158,7 @@ class StripeClient:
         self,
         *,
         name: str,
+        promo_code: str,
         percent_off: int | None = None,
         amount_off_cents: int | None = None,
         currency: str = "USD",
@@ -120,8 +168,8 @@ class StripeClient:
     ) -> tuple[str, str]:
         """Create Stripe coupon + promotion code. Returns (coupon_id, promotion_code_id)."""
         if not self._enabled or self._stripe is None:
-            coupon_id = f"coupon_dev_{name.lower().replace(' ', '_')}"
-            promo_id = f"promo_dev_{name.lower().replace(' ', '_')}"
+            coupon_id = f"coupon_dev_{promo_code.lower()}"
+            promo_id = f"promo_dev_{promo_code.lower()}"
             logger.info("stripe_dev_create_coupon", coupon_id=coupon_id)
             return coupon_id, promo_id
 
@@ -137,5 +185,9 @@ class StripeClient:
             coupon_params["max_redemptions"] = max_redemptions
 
         coupon = self._stripe.Coupon.create(**coupon_params)
-        promotion = self._stripe.PromotionCode.create(coupon=str(coupon.id), active=True)
+        promotion = self._stripe.PromotionCode.create(
+            coupon=str(coupon.id),
+            active=True,
+            code=promo_code.upper(),
+        )
         return str(coupon.id), str(promotion.id)

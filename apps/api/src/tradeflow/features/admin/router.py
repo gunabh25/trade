@@ -183,6 +183,51 @@ async def create_coupon(
     return success(coupon.model_dump(), request_id=request.state.request_id)
 
 
+@router.get("/coupons", response_model=SuccessResponse[list[dict[str, object]]])
+@inject
+async def list_coupons(
+    request: Request,
+    db: DbSession,
+    _admin: AdminUser,
+    billing_service: BillingService = Depends(Provide[Container.billing_service]),
+) -> SuccessResponse[list[dict[str, object]]]:
+    coupons = await billing_service.admin_list_coupons(db)
+    return success(
+        [coupon.model_dump() for coupon in coupons],
+        request_id=request.state.request_id,
+    )
+
+
+@router.get("/billing-events", response_model=SuccessResponse[list[dict[str, object]]])
+@inject
+async def list_billing_events(
+    request: Request,
+    db: DbSession,
+    _admin: AdminUser,
+    billing_service: BillingService = Depends(Provide[Container.billing_service]),
+) -> SuccessResponse[list[dict[str, object]]]:
+    events = await billing_service.admin_list_billing_events(db)
+    return success(
+        [event.model_dump() for event in events],
+        request_id=request.state.request_id,
+    )
+
+
+@router.get("/invoices/failed", response_model=SuccessResponse[list[dict[str, object]]])
+@inject
+async def list_failed_invoices(
+    request: Request,
+    db: DbSession,
+    _admin: AdminUser,
+    billing_service: BillingService = Depends(Provide[Container.billing_service]),
+) -> SuccessResponse[list[dict[str, object]]]:
+    invoices = await billing_service.admin_list_failed_invoices(db)
+    return success(
+        [invoice.model_dump() for invoice in invoices],
+        request_id=request.state.request_id,
+    )
+
+
 @router.patch("/plans/{plan_code}", response_model=SuccessResponse[dict[str, object]])
 @inject
 async def update_plan(

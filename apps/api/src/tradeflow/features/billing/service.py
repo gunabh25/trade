@@ -27,6 +27,7 @@ from tradeflow.features.billing.schemas import (
     AdminSubscriptionResponse,
     AdminUpdatePlanRequest,
     AdminUpdateSubscriptionRequest,
+    BillingEventResponse,
     BillingOverviewResponse,
     CheckoutRequest,
     CheckoutResponse,
@@ -81,6 +82,10 @@ class BillingService:
             coupon = await db.get(Coupon, subscription.coupon_id)
             coupon_code = coupon.code if coupon else None
         is_trialing = subscription.status == SubscriptionStatus.TRIALING
+        payment_action_required = subscription.status == SubscriptionStatus.PAST_DUE
+        cancel_at_period_end = bool(
+            subscription.canceled_at and subscription.status != SubscriptionStatus.CANCELED,
+        )
         return BillingOverviewResponse(
             subscription=SubscriptionResponse(
                 id=subscription.id,
@@ -92,6 +97,8 @@ class BillingService:
                 canceled_at=subscription.canceled_at,
                 coupon_code=coupon_code,
                 is_trialing=is_trialing,
+                cancel_at_period_end=cancel_at_period_end,
+                payment_action_required=payment_action_required,
             ),
             usage=usage,
             stripe_enabled=self._stripe.enabled,
@@ -143,6 +150,10 @@ class BillingService:
         price_id = plan.stripe_price_id or f"price_dev_{plan.code}"
         trial_days = plan.trial_days or self._settings.stripe_trial_days_default
 
+        metadata: dict[str, str] = {"user_id": str(user.id), "plan_code": plan.code}
+        if coupon is not None:
+            metadata["coupon_code"] = coupon.code
+
         url = self._stripe.create_checkout_session(
             customer_id=customer_id,
             price_id=price_id,
@@ -150,7 +161,8 @@ class BillingService:
             cancel_url=self._settings.billing_cancel_url,
             trial_days=trial_days,
             promotion_code=promotion_code,
-            metadata={"user_id": str(user.id), "plan_code": plan.code},
+            metadata=metadata,
+            automatic_tax=self._settings.stripe_tax_enabled,
         )
         if coupon is not None:
             logger.info("checkout_with_coupon", user_id=str(user.id), coupon=coupon.code)
@@ -164,6 +176,78 @@ class BillingService:
             return_url=f"{self._settings.frontend_url.rstrip('/')}/dashboard/billing",
         )
         return PortalResponse(portal_url=url)
+
+    async def change_plan(
+        self,
+        db: AsyncSession,
+        user: User,
+        plan_code: str,
+    ) -> SubscriptionResponse:
+        target = await self._entitlements.get_plan_by_code(db, plan_code)
+        if target is None or not target.is_active:
+            raise NotFoundError(f"Plan '{plan_code}' not found")
+
+        subscription = await self.ensure_subscription(db, user)
+        if subscription.plan.code == plan_code:
+            raise ConflictError("Already on this plan")
+
+        if plan_code == "free":
+            if subscription.stripe_subscription_id:
+                self._stripe.cancel_subscription(
+                    subscription.stripe_subscription_id,
+                    at_period_end=True,
+                )
+                subscription.canceled_at = datetime.now(tz=UTC)
+            await self._downgrade_to_free(db, subscription)
+        elif subscription.stripe_subscription_id and target.stripe_price_id:
+            self._stripe.update_subscription(
+                subscription.stripe_subscription_id,
+                price_id=target.stripe_price_id,
+            )
+            subscription.plan_id = target.id
+        else:
+            raise ConflictError("Use checkout to subscribe to a paid plan")
+
+        await db.flush()
+        await db.refresh(subscription, attribute_names=["plan"])
+        overview = await self.get_billing_overview(db, user)
+        return overview.subscription
+
+    async def cancel_subscription(
+        self,
+        db: AsyncSession,
+        user: User,
+        *,
+        at_period_end: bool = True,
+    ) -> SubscriptionResponse:
+        subscription = await self.ensure_subscription(db, user)
+        if subscription.plan.code == "free":
+            raise ConflictError("Free plan cannot be canceled")
+
+        if subscription.stripe_subscription_id:
+            self._stripe.cancel_subscription(
+                subscription.stripe_subscription_id,
+                at_period_end=at_period_end,
+            )
+            if at_period_end:
+                subscription.canceled_at = datetime.now(tz=UTC)
+            else:
+                await self._downgrade_to_free(db, subscription)
+        else:
+            subscription.status = SubscriptionStatus.CANCELED
+            subscription.canceled_at = datetime.now(tz=UTC)
+            await self._downgrade_to_free(db, subscription)
+
+        await self._record_billing_event(
+            db,
+            user_id=user.id,
+            subscription_id=subscription.id,
+            event_type=BillingEventType.SUBSCRIPTION_CANCELED,
+            stripe_event_id=f"local-cancel-{subscription.id}-{datetime.now(tz=UTC).timestamp()}",
+        )
+        await db.flush()
+        overview = await self.get_billing_overview(db, user)
+        return overview.subscription
 
     async def validate_coupon(
         self,
@@ -200,12 +284,16 @@ class BillingService:
         event_type = str(event.type)
         data_object = event.data.object
 
-        if event_type == "checkout.session.completed":
-            await self._handle_checkout_completed(db, data_object, event_id)
-        elif event_type.startswith("customer.subscription."):
-            await self._handle_subscription_event(db, data_object, event_type, event_id)
-        elif event_type.startswith("invoice."):
-            await self._handle_invoice_event(db, data_object, event_type, event_id)
+        try:
+            if event_type == "checkout.session.completed":
+                await self._handle_checkout_completed(db, data_object, event_id)
+            elif event_type.startswith("customer.subscription."):
+                await self._handle_subscription_event(db, data_object, event_type, event_id)
+            elif event_type.startswith("invoice."):
+                await self._handle_invoice_event(db, data_object, event_type, event_id)
+        except Exception:
+            logger.exception("stripe_webhook_processing_failed", event_type=event_type)
+            raise
 
         return {"status": "processed"}
 
@@ -239,6 +327,37 @@ class BillingService:
             )
         return results
 
+    async def admin_list_coupons(self, db: AsyncSession) -> list[CouponResponse]:
+        rows = await db.scalars(
+            select(Coupon).where(Coupon.deleted_at.is_(None)).order_by(Coupon.created_at.desc()),
+        )
+        return [CouponResponse.model_validate(row) for row in rows.all()]
+
+    async def admin_list_billing_events(
+        self,
+        db: AsyncSession,
+        *,
+        limit: int = 100,
+    ) -> list[BillingEventResponse]:
+        rows = await db.scalars(
+            select(BillingEvent).order_by(BillingEvent.created_at.desc()).limit(limit),
+        )
+        return [BillingEventResponse.model_validate(row) for row in rows.all()]
+
+    async def admin_list_failed_invoices(
+        self,
+        db: AsyncSession,
+        *,
+        limit: int = 50,
+    ) -> list[InvoiceResponse]:
+        rows = await db.scalars(
+            select(Invoice)
+            .where(Invoice.status.in_([InvoiceStatus.OPEN, InvoiceStatus.UNCOLLECTIBLE]))
+            .order_by(Invoice.created_at.desc())
+            .limit(limit),
+        )
+        return [InvoiceResponse.model_validate(row) for row in rows.all()]
+
     async def admin_update_subscription(
         self,
         db: AsyncSession,
@@ -257,7 +376,21 @@ class BillingService:
             plan = await self._entitlements.get_plan_by_code(db, request.plan_code)
             if plan is None:
                 raise NotFoundError(f"Plan '{request.plan_code}' not found")
-            subscription.plan_id = plan.id
+            if request.plan_code == "free":
+                if subscription.stripe_subscription_id:
+                    self._stripe.cancel_subscription(
+                        subscription.stripe_subscription_id,
+                        at_period_end=False,
+                    )
+                await self._downgrade_to_free(db, subscription)
+            elif subscription.stripe_subscription_id and plan.stripe_price_id:
+                self._stripe.update_subscription(
+                    subscription.stripe_subscription_id,
+                    price_id=plan.stripe_price_id,
+                )
+                subscription.plan_id = plan.id
+            else:
+                subscription.plan_id = plan.id
 
         if request.status:
             subscription.status = request.status
@@ -266,6 +399,19 @@ class BillingService:
             base = subscription.trial_ends_at or datetime.now(tz=UTC)
             subscription.trial_ends_at = base + timedelta(days=request.extend_trial_days)
             subscription.status = SubscriptionStatus.TRIALING
+
+        if request.cancel_immediately and subscription.stripe_subscription_id:
+            self._stripe.cancel_subscription(
+                subscription.stripe_subscription_id,
+                at_period_end=False,
+            )
+            await self._downgrade_to_free(db, subscription)
+        elif request.cancel_at_period_end and subscription.stripe_subscription_id:
+            self._stripe.cancel_subscription(
+                subscription.stripe_subscription_id,
+                at_period_end=True,
+            )
+            subscription.canceled_at = datetime.now(tz=UTC)
 
         await db.flush()
         await db.refresh(subscription, attribute_names=["plan", "user"])
@@ -292,6 +438,7 @@ class BillingService:
 
         stripe_coupon_id, promo_id = self._stripe.create_coupon(
             name=request.name,
+            promo_code=request.code.upper(),
             percent_off=request.percent_off,
             amount_off_cents=request.amount_off_cents,
             duration=request.duration.value,
@@ -383,6 +530,58 @@ class BillingService:
             raise ConflictError("Coupon not valid for this plan")
         return coupon
 
+    async def _downgrade_to_free(self, db: AsyncSession, subscription: Subscription) -> None:
+        free_plan = await self._entitlements.get_plan_by_code(db, "free")
+        if free_plan is None:
+            return
+        subscription.plan_id = free_plan.id
+        subscription.status = SubscriptionStatus.ACTIVE
+        subscription.stripe_subscription_id = None
+        subscription.coupon_id = None
+        subscription.canceled_at = datetime.now(tz=UTC)
+        now = datetime.now(tz=UTC)
+        subscription.current_period_start = now
+        subscription.current_period_end = now + timedelta(days=365 * 10)
+        subscription.trial_ends_at = None
+        await db.refresh(subscription, attribute_names=["plan"])
+
+    async def _sync_plan_from_stripe_sub(
+        self,
+        db: AsyncSession,
+        subscription: Subscription,
+        sub: Any,
+    ) -> None:
+        price_id = _extract_stripe_price_id(sub)
+        if not price_id:
+            return
+        plan = await self._entitlements.get_plan_by_stripe_price(db, price_id)
+        if plan is not None:
+            subscription.plan_id = plan.id
+
+    async def _apply_coupon_redemption(
+        self,
+        db: AsyncSession,
+        *,
+        subscription: Subscription,
+        coupon_code: str | None,
+        event_id: str,
+    ) -> None:
+        if not coupon_code:
+            return
+        coupon = await db.scalar(select(Coupon).where(Coupon.code == coupon_code.upper()))
+        if coupon is None:
+            return
+        coupon.times_redeemed += 1
+        subscription.coupon_id = coupon.id
+        subscription.stripe_coupon_id = coupon.stripe_coupon_id
+        await self._record_billing_event(
+            db,
+            user_id=subscription.user_id,
+            subscription_id=subscription.id,
+            event_type=BillingEventType.COUPON_APPLIED,
+            stripe_event_id=f"{event_id}-coupon",
+        )
+
     async def _handle_checkout_completed(
         self,
         db: AsyncSession,
@@ -409,6 +608,12 @@ class BillingService:
             subscription.plan_id = plan.id
 
         subscription.stripe_subscription_id = session.get("subscription")
+        await self._apply_coupon_redemption(
+            db,
+            subscription=subscription,
+            coupon_code=metadata.get("coupon_code"),
+            event_id=event_id,
+        )
         await self._record_billing_event(
             db,
             user_id=user_id,
@@ -439,6 +644,8 @@ class BillingService:
             subscription = await self.ensure_subscription(db, user)
             subscription.stripe_subscription_id = stripe_sub_id
 
+        await self._sync_plan_from_stripe_sub(db, subscription, sub)
+
         status_map = {
             "trialing": SubscriptionStatus.TRIALING,
             "active": SubscriptionStatus.ACTIVE,
@@ -456,7 +663,7 @@ class BillingService:
         billing_type = BillingEventType.SUBSCRIPTION_UPDATED
         if event_type.endswith("deleted"):
             billing_type = BillingEventType.SUBSCRIPTION_CANCELED
-            subscription.status = SubscriptionStatus.CANCELED
+            await self._downgrade_to_free(db, subscription)
         elif subscription.status == SubscriptionStatus.TRIALING:
             billing_type = BillingEventType.TRIAL_STARTED
 
@@ -468,14 +675,29 @@ class BillingService:
             stripe_event_id=event_id,
         )
 
-        if self._notifications and subscription.status == SubscriptionStatus.PAST_DUE:
-            await self._notifications.notify_subscription_expiry(
-                db,
-                user_id=subscription.user_id,
-                plan_name=subscription.plan.name,
-                days_remaining=0,
-                subscription_id=subscription.id,
-            )
+        if self._notifications:
+            if subscription.status == SubscriptionStatus.PAST_DUE:
+                await self._notifications.notify_subscription_expiry(
+                    db,
+                    user_id=subscription.user_id,
+                    plan_name=subscription.plan.name,
+                    days_remaining=0,
+                    subscription_id=subscription.id,
+                )
+            elif (
+                subscription.trial_ends_at
+                and subscription.status == SubscriptionStatus.TRIALING
+                and event_type == "customer.subscription.updated"
+            ):
+                days = max(0, (subscription.trial_ends_at - datetime.now(tz=UTC)).days)
+                if days <= 3:
+                    await self._notifications.notify_subscription_expiry(
+                        db,
+                        user_id=subscription.user_id,
+                        plan_name=subscription.plan.name,
+                        days_remaining=days,
+                        subscription_id=subscription.id,
+                    )
 
         await db.flush()
 
@@ -492,6 +714,13 @@ class BillingService:
         if user is None:
             return
 
+        subscription: Subscription | None = None
+        stripe_sub_id = invoice.get("subscription")
+        if stripe_sub_id:
+            subscription = await db.scalar(
+                select(Subscription).where(Subscription.stripe_subscription_id == stripe_sub_id),
+            )
+
         status_map = {
             "draft": InvoiceStatus.DRAFT,
             "open": InvoiceStatus.OPEN,
@@ -506,6 +735,7 @@ class BillingService:
         if existing is None:
             existing = Invoice(
                 user_id=user.id,
+                subscription_id=subscription.id if subscription else None,
                 stripe_invoice_id=stripe_invoice_id,
                 status=inv_status,
                 amount_due_cents=int(invoice.get("amount_due") or 0),
@@ -517,6 +747,8 @@ class BillingService:
             existing.status = inv_status
             existing.amount_due_cents = int(invoice.get("amount_due") or 0)
             existing.amount_paid_cents = int(invoice.get("amount_paid") or 0)
+            if subscription:
+                existing.subscription_id = subscription.id
 
         existing.invoice_number = invoice.get("number")
         existing.hosted_invoice_url = invoice.get("hosted_invoice_url")
@@ -526,27 +758,39 @@ class BillingService:
         if inv_status == InvoiceStatus.PAID:
             existing.paid_at = _ts(invoice.get("status_transitions", {}).get("paid_at"))
 
-        billing_type = (
-            BillingEventType.INVOICE_PAID
-            if event_type == "invoice.paid"
-            else BillingEventType.INVOICE_FAILED
-        )
-        billing_status = (
-            BillingEventStatus.SUCCEEDED
-            if billing_type == BillingEventType.INVOICE_PAID
-            else BillingEventStatus.FAILED
-        )
+        if event_type == "invoice.paid":
+            billing_type = BillingEventType.INVOICE_PAID
+            billing_status = BillingEventStatus.SUCCEEDED
+        elif event_type == "invoice.payment_failed":
+            billing_type = BillingEventType.INVOICE_FAILED
+            billing_status = BillingEventStatus.FAILED
+            if subscription:
+                subscription.status = SubscriptionStatus.PAST_DUE
+        else:
+            return
+
         await self._record_billing_event(
             db,
             user_id=user.id,
             subscription_id=existing.subscription_id,
             event_type=billing_type,
             status=billing_status,
-            amount_cents=existing.amount_paid_cents,
+            amount_cents=existing.amount_paid_cents or existing.amount_due_cents,
             currency=existing.currency,
             stripe_invoice_id=stripe_invoice_id,
             stripe_event_id=event_id,
         )
+
+        if self._notifications and event_type == "invoice.payment_failed":
+            plan_name = subscription.plan.name if subscription else "Subscription"
+            await self._notifications.notify_subscription_expiry(
+                db,
+                user_id=user.id,
+                plan_name=plan_name,
+                days_remaining=0,
+                subscription_id=subscription.id if subscription else None,
+            )
+
         await db.flush()
 
     async def _record_billing_event(
@@ -574,6 +818,50 @@ class BillingService:
                 stripe_event_id=stripe_event_id,
             ),
         )
+
+    async def process_expired_trials(self, db: AsyncSession) -> int:
+        """Downgrade subscriptions whose trial ended without converting."""
+        now = datetime.now(tz=UTC)
+        rows = await db.scalars(
+            select(Subscription)
+            .options(selectinload(Subscription.plan))
+            .where(
+                Subscription.status == SubscriptionStatus.TRIALING,
+                Subscription.trial_ends_at.is_not(None),
+                Subscription.trial_ends_at <= now,
+                Subscription.deleted_at.is_(None),
+            ),
+        )
+        count = 0
+        for subscription in rows.all():
+            if subscription.stripe_subscription_id:
+                self._stripe.cancel_subscription(
+                    subscription.stripe_subscription_id,
+                    at_period_end=False,
+                )
+            await self._downgrade_to_free(db, subscription)
+            await self._record_billing_event(
+                db,
+                user_id=subscription.user_id,
+                subscription_id=subscription.id,
+                event_type=BillingEventType.TRIAL_ENDED,
+                stripe_event_id=f"trial-expired-{subscription.id}-{now.timestamp()}",
+            )
+            count += 1
+        await db.flush()
+        return count
+
+
+def _extract_stripe_price_id(sub: Any) -> str | None:
+    items = sub.get("items", {}).get("data", [])
+    if items:
+        price = items[0].get("price", {})
+        if price.get("id"):
+            return str(price["id"])
+    plan = sub.get("plan")
+    if plan and plan.get("id"):
+        return str(plan["id"])
+    return None
 
 
 def _ts(value: Any) -> datetime | None:

@@ -14,6 +14,8 @@ from tradeflow.features.billing.schemas import (
     AdminCreateCouponRequest,
     AdminUpdatePlanRequest,
     AdminUpdateSubscriptionRequest,
+    CancelSubscriptionRequest,
+    ChangePlanRequest,
     CheckoutRequest,
     ValidateCouponRequest,
 )
@@ -87,6 +89,44 @@ async def create_portal(
 ) -> SuccessResponse[dict[str, str]]:
     result = await billing_service.create_portal(db, user.user)
     return success(result.model_dump(), request_id=request.state.request_id)
+
+
+@router.post(
+    "/subscription/change",
+    response_model=SuccessResponse[dict[str, object]],
+    summary="Upgrade or downgrade subscription plan",
+)
+@inject
+async def change_subscription_plan(
+    body: ChangePlanRequest,
+    request: Request,
+    db: DbSession,
+    user: CurrentUser,
+    billing_service: BillingService = Depends(Provide[Container.billing_service]),
+) -> SuccessResponse[dict[str, object]]:
+    subscription = await billing_service.change_plan(db, user.user, body.plan_code)
+    return success(subscription.model_dump(), request_id=request.state.request_id)
+
+
+@router.post(
+    "/subscription/cancel",
+    response_model=SuccessResponse[dict[str, object]],
+    summary="Cancel subscription",
+)
+@inject
+async def cancel_user_subscription(
+    body: CancelSubscriptionRequest,
+    request: Request,
+    db: DbSession,
+    user: CurrentUser,
+    billing_service: BillingService = Depends(Provide[Container.billing_service]),
+) -> SuccessResponse[dict[str, object]]:
+    subscription = await billing_service.cancel_subscription(
+        db,
+        user.user,
+        at_period_end=body.at_period_end,
+    )
+    return success(subscription.model_dump(), request_id=request.state.request_id)
 
 
 @router.post(
@@ -176,6 +216,25 @@ async def admin_update_subscription(
     return success(row.model_dump(), request_id=request.state.request_id)
 
 
+@router.get(
+    "/admin/coupons",
+    response_model=SuccessResponse[list[dict[str, object]]],
+    summary="Admin: list coupons",
+)
+@inject
+async def admin_list_coupons(
+    request: Request,
+    db: DbSession,
+    _admin: AdminUser,
+    billing_service: BillingService = Depends(Provide[Container.billing_service]),
+) -> SuccessResponse[list[dict[str, object]]]:
+    coupons = await billing_service.admin_list_coupons(db)
+    return success(
+        [coupon.model_dump() for coupon in coupons],
+        request_id=request.state.request_id,
+    )
+
+
 @router.post(
     "/admin/coupons",
     response_model=SuccessResponse[dict[str, object]],
@@ -191,6 +250,44 @@ async def admin_create_coupon(
 ) -> SuccessResponse[dict[str, object]]:
     coupon = await billing_service.admin_create_coupon(db, body)
     return success(coupon.model_dump(), request_id=request.state.request_id)
+
+
+@router.get(
+    "/admin/billing-events",
+    response_model=SuccessResponse[list[dict[str, object]]],
+    summary="Admin: list billing events",
+)
+@inject
+async def admin_list_billing_events(
+    request: Request,
+    db: DbSession,
+    _admin: AdminUser,
+    billing_service: BillingService = Depends(Provide[Container.billing_service]),
+) -> SuccessResponse[list[dict[str, object]]]:
+    events = await billing_service.admin_list_billing_events(db)
+    return success(
+        [event.model_dump() for event in events],
+        request_id=request.state.request_id,
+    )
+
+
+@router.get(
+    "/admin/invoices/failed",
+    response_model=SuccessResponse[list[dict[str, object]]],
+    summary="Admin: list failed/open invoices",
+)
+@inject
+async def admin_list_failed_invoices(
+    request: Request,
+    db: DbSession,
+    _admin: AdminUser,
+    billing_service: BillingService = Depends(Provide[Container.billing_service]),
+) -> SuccessResponse[list[dict[str, object]]]:
+    invoices = await billing_service.admin_list_failed_invoices(db)
+    return success(
+        [invoice.model_dump() for invoice in invoices],
+        request_id=request.state.request_id,
+    )
 
 
 @router.patch(

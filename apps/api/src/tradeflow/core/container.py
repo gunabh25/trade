@@ -28,6 +28,7 @@ from tradeflow.features.auth.oauth_service import OAuthService
 from tradeflow.features.auth.service import AuthService
 from tradeflow.features.billing.entitlements import EntitlementService
 from tradeflow.features.billing.service import BillingService
+from tradeflow.features.billing.usage_meter import UsageMeter
 from tradeflow.features.broker.service import BrokerConnectionService
 from tradeflow.features.copy_trading.service import CopyTradingService
 from tradeflow.features.health.service import HealthService
@@ -124,17 +125,6 @@ class Container(containers.DeclarativeContainer):
         settings=config,
         redis=redis_client,
     )
-    auth_service: providers.Factory[AuthService] = providers.Factory(
-        AuthService,
-        settings=config,
-        jwt_service=jwt_service,
-        encryption_service=encryption_service,
-        email_service=email_service,
-        oauth_service=oauth_service,
-        rate_limiter=rate_limiter,
-        login_protection=login_protection,
-        notification_dispatcher=notification_dispatcher,
-    )
 
     broker_retry_policy: providers.Singleton[RetryPolicy] = providers.Singleton(
         RetryPolicy,
@@ -163,8 +153,14 @@ class Container(containers.DeclarativeContainer):
         settings=config,
     )
 
+    usage_meter: providers.Singleton[UsageMeter] = providers.Singleton(
+        UsageMeter,
+        redis=redis_client,
+    )
+
     entitlement_service: providers.Factory[EntitlementService] = providers.Factory(
         EntitlementService,
+        usage_meter=usage_meter,
     )
 
     broker_service: providers.Factory[BrokerConnectionService] = providers.Factory(
@@ -252,6 +248,20 @@ class Container(containers.DeclarativeContainer):
         notification_dispatcher=notification_dispatcher,
     )
 
+    auth_service: providers.Factory[AuthService] = providers.Factory(
+        AuthService,
+        settings=config,
+        jwt_service=jwt_service,
+        encryption_service=encryption_service,
+        email_service=email_service,
+        oauth_service=oauth_service,
+        rate_limiter=rate_limiter,
+        login_protection=login_protection,
+        notification_dispatcher=notification_dispatcher,
+        billing_service=billing_service,
+        entitlements=entitlement_service,
+    )
+
     admin_service: providers.Factory[AdminService] = providers.Factory(
         AdminService,
         settings=config,
@@ -265,6 +275,7 @@ class Container(containers.DeclarativeContainer):
         orchestrator=copy_orchestrator,
         mapping_store=trade_mapping_store,
         retry_queue=copy_retry_queue,
+        entitlements=entitlement_service,
     )
 
 

@@ -8,6 +8,8 @@ from uuid import UUID
 from pydantic import BaseModel, Field
 
 from tradeflow.db.enums import (
+    BillingEventStatus,
+    BillingEventType,
     CouponDiscountType,
     CouponDuration,
     InvoiceStatus,
@@ -31,6 +33,7 @@ class PlanResponse(BaseModel):
     trial_days: int
     features: dict[str, object] | None
     is_active: bool
+    stripe_price_id: str | None = None
 
     model_config = {"from_attributes": True}
 
@@ -52,6 +55,8 @@ class SubscriptionResponse(BaseModel):
     canceled_at: datetime | None
     coupon_code: str | None = None
     is_trialing: bool = False
+    cancel_at_period_end: bool = False
+    payment_action_required: bool = False
 
 
 class BillingOverviewResponse(BaseModel):
@@ -74,6 +79,14 @@ class PortalResponse(BaseModel):
     portal_url: str
 
 
+class ChangePlanRequest(BaseModel):
+    plan_code: str = Field(description="Target plan code")
+
+
+class CancelSubscriptionRequest(BaseModel):
+    at_period_end: bool = True
+
+
 class ValidateCouponRequest(BaseModel):
     code: str
     plan_code: str | None = None
@@ -89,6 +102,8 @@ class CouponResponse(BaseModel):
     currency: str | None
     duration: CouponDuration
     active: bool
+    times_redeemed: int = 0
+    max_redemptions: int | None = None
     expires_at: datetime | None
 
     model_config = {"from_attributes": True}
@@ -107,6 +122,18 @@ class InvoiceResponse(BaseModel):
     period_start: datetime | None
     period_end: datetime | None
     paid_at: datetime | None
+    created_at: datetime
+
+    model_config = {"from_attributes": True}
+
+
+class BillingEventResponse(BaseModel):
+    id: UUID
+    event_type: BillingEventType
+    status: BillingEventStatus
+    amount_cents: int | None
+    currency: str | None
+    stripe_invoice_id: str | None
     created_at: datetime
 
     model_config = {"from_attributes": True}
@@ -150,3 +177,5 @@ class AdminUpdateSubscriptionRequest(BaseModel):
     plan_code: str | None = None
     status: SubscriptionStatus | None = None
     extend_trial_days: int | None = Field(default=None, ge=1, le=90)
+    cancel_at_period_end: bool | None = None
+    cancel_immediately: bool = False

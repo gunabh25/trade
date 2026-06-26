@@ -63,6 +63,10 @@ celery_app.conf.update(
             "task": "tradeflow.workers.billing_tasks.snapshot_usage",
             "schedule": 86400.0,
         },
+        "process-expired-trials": {
+            "task": "tradeflow.workers.billing_tasks.process_expired_trials",
+            "schedule": 3600.0,
+        },
     },
 )
 

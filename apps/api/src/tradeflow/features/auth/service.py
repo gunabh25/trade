@@ -50,6 +50,8 @@ from tradeflow.features.auth.schemas import (
     UpdateProfileRequest,
     UserProfileResponse,
 )
+from tradeflow.features.billing.entitlements import EntitlementService
+from tradeflow.features.billing.service import BillingService
 from tradeflow.notifications.dispatcher import NotificationDispatcher
 
 logger = get_logger(__name__)
@@ -91,6 +93,8 @@ class AuthService:
         rate_limiter: RateLimiter,
         login_protection: LoginProtection,
         notification_dispatcher: NotificationDispatcher,
+        billing_service: BillingService,
+        entitlements: EntitlementService,
     ) -> None:
         self._settings = settings
         self._jwt = jwt_service
@@ -100,6 +104,8 @@ class AuthService:
         self._rate_limiter = rate_limiter
         self._login_protection = login_protection
         self._notifications = notification_dispatcher
+        self._billing = billing_service
+        self._entitlements = entitlements
 
     async def register(
         self,
@@ -130,6 +136,7 @@ class AuthService:
             db.add(UserRole(user_id=user.id, role_id=trader_role.id))
 
         await self._create_verification_token(db, user.id)
+        await self._billing.ensure_subscription(db, user)
         await db.commit()
         await db.refresh(user, attribute_names=["user_roles"])
 
@@ -549,6 +556,7 @@ class AuthService:
         user_id: UUID,
         payload: ApiKeyCreateRequest,
     ) -> ApiKeyCreatedResponse:
+        await self._entitlements.assert_feature(db, user_id, "api_access")
         raw_key = f"tf_{secrets.token_urlsafe(32)}"
         prefix = raw_key[:12]
         api_key = ApiKey(

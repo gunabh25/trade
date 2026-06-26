@@ -43,6 +43,8 @@ function normalizeOverview(raw: Record<string, unknown>): BillingOverview {
       canceled_at: toNullableString(subscription.canceled_at),
       coupon_code: toNullableString(subscription.coupon_code),
       is_trialing: Boolean(subscription.is_trialing),
+      cancel_at_period_end: Boolean(subscription.cancel_at_period_end),
+      payment_action_required: Boolean(subscription.payment_action_required),
     },
     usage: usageRaw.map((item) => {
       const row = item as Record<string, unknown>;
@@ -124,6 +126,20 @@ export async function validateCoupon(code: string, planCode?: string): Promise<C
 export async function listInvoices(): Promise<Invoice[]> {
   const response = await apiRequest<Record<string, unknown>[]>('/billing/invoices');
   return response.data.map((item) => normalizeInvoice(item));
+}
+
+export async function changeSubscriptionPlan(planCode: string): Promise<void> {
+  await apiRequest('/billing/subscription/change', {
+    method: 'POST',
+    body: { plan_code: planCode },
+  });
+}
+
+export async function cancelSubscription(atPeriodEnd = true): Promise<void> {
+  await apiRequest('/billing/subscription/cancel', {
+    method: 'POST',
+    body: { at_period_end: atPeriodEnd },
+  });
 }
 
 export function formatPrice(cents: number, currency = 'USD'): string {

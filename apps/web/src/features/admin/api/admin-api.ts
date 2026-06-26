@@ -2,16 +2,22 @@ import type {
   AdminAnalytics,
   AdminAuditLog,
   AdminBrokerStatus,
+  AdminCreateCouponRequest,
   AdminHealth,
   AdminOverview,
   AdminPermissions,
   AdminSearchResult,
   AdminSubscription,
   AdminSupportTicket,
+  AdminUpdatePlanRequest,
   AdminUser,
   Announcement,
+  BillingEvent,
+  CouponInfo,
   FeatureFlag,
+  Invoice,
   PaginatedMeta,
+  Plan,
   SystemLog,
 } from '@tradeflow/types/api';
 
@@ -178,13 +184,123 @@ export async function listSystemLogs(params?: {
 
 export async function updateAdminSubscription(
   subscriptionId: string,
-  body: { plan_code?: string; status?: string; extend_trial_days?: number },
+  body: {
+    plan_code?: string;
+    status?: string;
+    extend_trial_days?: number;
+    cancel_at_period_end?: boolean;
+    cancel_immediately?: boolean;
+  },
 ): Promise<AdminSubscription> {
   const response = await apiRequest<AdminSubscription>(`/admin/subscriptions/${subscriptionId}`, {
     method: 'PATCH',
     body,
   });
   return response.data;
+}
+
+export async function extendAdminSubscriptionTrial(
+  subscriptionId: string,
+  days: number,
+): Promise<AdminSubscription> {
+  return updateAdminSubscription(subscriptionId, { extend_trial_days: days });
+}
+
+export async function listAdminCoupons(): Promise<CouponInfo[]> {
+  const response = await apiRequest<Record<string, unknown>[]>('/admin/coupons');
+  return response.data.map((raw) => ({
+    id: toString(raw.id),
+    code: toString(raw.code),
+    name: toString(raw.name),
+    discount_type: toString(raw.discount_type) as CouponInfo['discount_type'],
+    percent_off: raw.percent_off != null ? Number(raw.percent_off) : null,
+    amount_off_cents: raw.amount_off_cents != null ? Number(raw.amount_off_cents) : null,
+    currency: toNullableString(raw.currency),
+    duration: toString(raw.duration) as CouponInfo['duration'],
+    active: Boolean(raw.active),
+    times_redeemed: raw.times_redeemed != null ? Number(raw.times_redeemed) : 0,
+    max_redemptions: raw.max_redemptions != null ? Number(raw.max_redemptions) : null,
+    expires_at: toNullableString(raw.expires_at),
+  }));
+}
+
+export async function createAdminCoupon(body: AdminCreateCouponRequest): Promise<CouponInfo> {
+  const response = await apiRequest<Record<string, unknown>>('/admin/coupons', {
+    method: 'POST',
+    body,
+  });
+  const raw = response.data;
+  return {
+    id: toString(raw.id),
+    code: toString(raw.code),
+    name: toString(raw.name),
+    discount_type: toString(raw.discount_type) as CouponInfo['discount_type'],
+    percent_off: raw.percent_off != null ? Number(raw.percent_off) : null,
+    amount_off_cents: raw.amount_off_cents != null ? Number(raw.amount_off_cents) : null,
+    currency: toNullableString(raw.currency),
+    duration: toString(raw.duration) as CouponInfo['duration'],
+    active: Boolean(raw.active),
+    expires_at: toNullableString(raw.expires_at),
+  };
+}
+
+export async function listAdminBillingEvents(): Promise<BillingEvent[]> {
+  const response = await apiRequest<Record<string, unknown>[]>('/admin/billing-events');
+  return response.data.map((raw) => ({
+    id: toString(raw.id),
+    event_type: toString(raw.event_type) as BillingEvent['event_type'],
+    status: toString(raw.status) as BillingEvent['status'],
+    amount_cents: raw.amount_cents != null ? Number(raw.amount_cents) : null,
+    currency: toNullableString(raw.currency),
+    stripe_invoice_id: toNullableString(raw.stripe_invoice_id),
+    created_at: toString(raw.created_at),
+  }));
+}
+
+export async function listAdminFailedInvoices(): Promise<Invoice[]> {
+  const response = await apiRequest<Record<string, unknown>[]>('/admin/invoices/failed');
+  return response.data.map((raw) => ({
+    id: toString(raw.id),
+    stripe_invoice_id: toString(raw.stripe_invoice_id),
+    invoice_number: toNullableString(raw.invoice_number),
+    status: toString(raw.status) as Invoice['status'],
+    amount_due_cents: Number(raw.amount_due_cents ?? 0),
+    amount_paid_cents: Number(raw.amount_paid_cents ?? 0),
+    currency: toString(raw.currency),
+    hosted_invoice_url: toNullableString(raw.hosted_invoice_url),
+    invoice_pdf_url: toNullableString(raw.invoice_pdf_url),
+    period_start: toNullableString(raw.period_start),
+    period_end: toNullableString(raw.period_end),
+    paid_at: toNullableString(raw.paid_at),
+    created_at: toString(raw.created_at),
+  }));
+}
+
+export async function listPlans(): Promise<Plan[]> {
+  const response = await apiRequest<Record<string, unknown>[]>('/billing/plans');
+  return response.data.map((raw) => ({
+    id: toString(raw.id),
+    code: toString(raw.code),
+    name: toString(raw.name),
+    description: toNullableString(raw.description),
+    price_cents: Number(raw.price_cents ?? 0),
+    currency: toString(raw.currency),
+    interval: toString(raw.interval) as Plan['interval'],
+    max_trading_accounts: Number(raw.max_trading_accounts ?? 0),
+    max_broker_connections: Number(raw.max_broker_connections ?? 0),
+    max_copy_groups: Number(raw.max_copy_groups ?? 0),
+    trial_days: Number(raw.trial_days ?? 0),
+    features: (raw.features as Record<string, unknown> | null) ?? null,
+    is_active: Boolean(raw.is_active),
+    stripe_price_id: toNullableString(raw.stripe_price_id),
+  }));
+}
+
+export async function updateAdminPlan(
+  planCode: string,
+  body: AdminUpdatePlanRequest,
+): Promise<void> {
+  await apiRequest(`/admin/plans/${planCode}`, { method: 'PATCH', body });
 }
 
 export async function createFeatureFlag(body: {
