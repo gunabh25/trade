@@ -42,10 +42,12 @@ class HealthService:
     async def get_readiness(self) -> ReadinessResponse:
         db_check = await self._check_database()
         redis_check = await self._check_redis()
+        celery_broker_check = await self._check_celery_broker()
 
         checks = {
             "database": db_check,
             "redis": redis_check,
+            "celery_broker": celery_broker_check,
         }
 
         statuses = [check.status for check in checks.values()]
@@ -105,3 +107,29 @@ class HealthService:
                 latency_ms=latency_ms,
                 message=str(exc),
             )
+
+    async def _check_celery_broker(self) -> ComponentHealth:
+        """Verify Celery message broker connectivity."""
+        start = time.perf_counter()
+        broker: Redis[Any] | None = None
+        try:
+            broker = Redis.from_url(
+                str(self._settings.celery_broker_url),
+                decode_responses=True,
+            )
+            pong = await broker.ping()
+            if not pong:
+                msg = "Celery broker ping returned falsy response"
+                raise RuntimeError(msg)
+            latency_ms = round((time.perf_counter() - start) * 1000, 2)
+            return ComponentHealth(status=HealthStatus.HEALTHY, latency_ms=latency_ms)
+        except Exception as exc:
+            latency_ms = round((time.perf_counter() - start) * 1000, 2)
+            return ComponentHealth(
+                status=HealthStatus.UNHEALTHY,
+                latency_ms=latency_ms,
+                message=str(exc),
+            )
+        finally:
+            if broker is not None:
+                await broker.aclose()

@@ -21,6 +21,8 @@ celery_app.conf.update(
     task_soft_time_limit=240,
     worker_prefetch_multiplier=1,
     task_always_eager=settings.celery_task_always_eager,
+    task_default_queue="default",
+    task_create_missing_queues=True,
     task_routes={
         "tradeflow.workers.tasks.*": {"queue": "default"},
         "tradeflow.workers.copy_tasks.*": {"queue": "copy"},
