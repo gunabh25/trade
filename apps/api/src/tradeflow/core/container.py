@@ -1,5 +1,8 @@
+from __future__ import annotations
+
 import uuid
 from collections.abc import AsyncGenerator
+from typing import Any
 
 from dependency_injector import containers, providers
 from redis.asyncio import Redis
@@ -41,7 +44,7 @@ class Container(containers.DeclarativeContainer):
         create_session_factory, db_engine
     )
 
-    redis_client: providers.Singleton[Redis] = providers.Singleton(
+    redis_client: providers.Singleton[Redis[Any]] = providers.Singleton(
         Redis.from_url,
         providers.Callable(str, config.provided.redis_url),
         decode_responses=True,

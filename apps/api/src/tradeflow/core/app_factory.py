@@ -1,5 +1,8 @@
+from __future__ import annotations
+
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
+from typing import Any
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
@@ -24,7 +27,7 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     configure_logging(settings)
 
     db_engine: AsyncEngine = container.db_engine()
-    redis_client: Redis = container.redis_client()
+    redis_client: Redis[Any] = container.redis_client()
 
     logger.info(
         "application_starting",
@@ -36,7 +39,7 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     try:
         yield
     finally:
-        await redis_client.aclose()
+        await redis_client.close()
         await db_engine.dispose()
         logger.info("application_shutdown_complete")
 

@@ -1,5 +1,8 @@
+from __future__ import annotations
+
 import time
 from datetime import UTC, datetime
+from typing import Any
 
 from redis.asyncio import Redis
 from sqlalchemy import text
@@ -23,7 +26,7 @@ class HealthService:
         self,
         settings: Settings,
         db_engine: AsyncEngine,
-        redis_client: Redis,
+        redis_client: Redis[Any],
     ) -> None:
         self._settings = settings
         self._db_engine = db_engine
