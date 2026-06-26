@@ -8,7 +8,7 @@ importers:
 
   .:
     devDependencies:
-      '@tradeflow/eslint-config':
+      '@tradeflow/config':
         specifier: workspace:*
         version: link:packages/config
       husky:
@@ -26,6 +26,9 @@ importers:
       turbo:
         specifier: ^2.3.3
         version: 2.10.0
+      typescript:
+        specifier: ^5.7.3
+        version: 5.9.3
 
   apps/web:
     dependencies:
@@ -48,12 +51,9 @@ importers:
       '@eslint/eslintrc':
         specifier: ^3.2.0
         version: 3.3.5
-      '@tradeflow/eslint-config':
+      '@tradeflow/config':
         specifier: workspace:*
         version: link:../../packages/config
-      '@tradeflow/typescript-config':
-        specifier: workspace:*
-        version: link:../../packages/config/typescript
       '@types/node':
         specifier: ^22.10.5
         version: 22.20.0
@@ -107,16 +107,11 @@ importers:
         specifier: ^5.7.3
         version: 5.9.3
 
-  packages/config/typescript: {}
-
   packages/types:
     devDependencies:
-      '@tradeflow/eslint-config':
+      '@tradeflow/config':
         specifier: workspace:*
         version: link:../config
-      '@tradeflow/typescript-config':
-        specifier: workspace:*
-        version: link:../config/typescript
       eslint:
         specifier: ^9.18.0
         version: 9.39.4(jiti@1.21.7)
@@ -139,12 +134,9 @@ importers:
         specifier: ^2.6.0
         version: 2.6.1
     devDependencies:
-      '@tradeflow/eslint-config':
+      '@tradeflow/config':
         specifier: workspace:*
         version: link:../config
-      '@tradeflow/typescript-config':
-        specifier: workspace:*
-        version: link:../config/typescript
       '@types/react':
         specifier: ^19.0.2
         version: 19.2.17

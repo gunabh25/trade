@@ -19,6 +19,7 @@ packages/config → ESLint + TypeScript configs
 **Decision:** Python FastAPI for the API layer.
 
 **Rationale:**
+
 - Celery is the mature standard for distributed task queues in Python — critical for future copy engine workers, reconciliation, and alerts.
 - SQLAlchemy 2 + Alembic provides battle-tested ORM and migrations for financial audit data.
 - FastAPI generates OpenAPI/Swagger automatically with Pydantic v2 validation.
@@ -29,6 +30,7 @@ packages/config → ESLint + TypeScript configs
 **Decision:** Next.js App Router with React Server Components for the dashboard.
 
 **Rationale:**
+
 - Server Components reduce client bundle size for read-heavy dashboard pages.
 - Built-in routing, metadata, and production optimizations.
 - `standalone` output enables minimal Docker images.
@@ -54,6 +56,7 @@ features/health/
 **Decision:** `dependency-injector` container in FastAPI; FastAPI `Depends()` at the route boundary.
 
 **Rationale:**
+
 - Services (`HealthService`) receive dependencies explicitly — testable without HTTP.
 - Container manages singletons (DB engine, Redis) with correct lifecycle.
 - Wiring is declarative; new features register providers without modifying global state.
@@ -63,6 +66,7 @@ features/health/
 **Decision:** URL path versioning — `/api/v1/*`.
 
 **Rationale:**
+
 - Explicit and cache-friendly.
 - OpenAPI docs scoped per version.
 - v2 can run alongside v1 during migrations.
@@ -84,6 +88,7 @@ Errors use a parallel envelope:
 **Decision:** `AppError` hierarchy + FastAPI exception handlers in `core/exception_handlers.py`.
 
 **Rationale:**
+
 - Consistent error shape across all endpoints.
 - Structured logging on every error with `request_id`.
 - Validation errors mapped to `VALIDATION_ERROR` with field-level details.
@@ -93,6 +98,7 @@ Errors use a parallel envelope:
 **Decision:** `structlog` (API) and JSON `logger` (web).
 
 **Rationale:**
+
 - Structured JSON logs aggregate in CloudWatch/Datadog/Grafana without regex parsing.
 - `request_id` bound via middleware for distributed tracing correlation.
 - Log level configurable via `API_LOG_LEVEL`.
@@ -102,6 +108,7 @@ Errors use a parallel envelope:
 **Decision:** PostgreSQL 16 + SQLAlchemy 2 async + Alembic migrations.
 
 **Rationale:**
+
 - ACID compliance for audit logs and billing state.
 - Async engine for FastAPI concurrency.
 - Sync URL separate for Alembic (Alembic doesn't run async migrations natively).
@@ -111,24 +118,25 @@ Errors use a parallel envelope:
 **Decision:** Redis for cache/pub-sub; Celery for background jobs.
 
 **Rationale:**
+
 - Celery provides retry, visibility timeout, and worker scaling out of the box.
 - Separate Redis DB indexes for broker (1) and result backend (2) avoid key collisions.
 - Foundation includes a `ping` task to verify worker connectivity.
 
 ## Shared Packages
 
-| Package | Purpose |
-|---------|---------|
-| `@tradeflow/types` | API contract types shared between web and documentation |
-| `@tradeflow/ui` | shadcn/ui components with Tailwind design tokens |
-| `@tradeflow/eslint-config` | Unified lint rules |
-| `@tradeflow/typescript-config` | Strict TS configs |
+| Package             | Purpose                                                 |
+| ------------------- | ------------------------------------------------------- |
+| `@tradeflow/types`  | API contract types shared between web and documentation |
+| `@tradeflow/ui`     | shadcn/ui components with Tailwind design tokens        |
+| `@tradeflow/config` | ESLint + TypeScript shared configs                      |
 
 ## Docker
 
 **Decision:** Multi-stage Dockerfiles; `docker compose` for local full stack.
 
 **Rationale:**
+
 - API image: slim Python 3.12, non-root user, healthcheck on liveness endpoint.
 - Web image: Next.js standalone output, non-root `nextjs` user.
 - Compose wires postgres, redis, api, celery-worker, web with health-gated dependencies.
@@ -138,6 +146,7 @@ Errors use a parallel envelope:
 **Decision:** GitHub Actions with three jobs — TypeScript, Python, Docker.
 
 **Rationale:**
+
 - Parallel feedback on PRs.
 - Python job runs against real Postgres + Redis service containers.
 - Docker build gated on lint/test pass.

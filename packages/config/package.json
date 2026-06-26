@@ -1,13 +1,22 @@
 {
-  "name": "@tradeflow/eslint-config",
+  "name": "@tradeflow/config",
   "version": "0.1.0",
   "private": true,
   "type": "module",
   "exports": {
-    "./base": "./eslint.base.mjs",
-    "./next": "./eslint.next.mjs",
-    "./react": "./eslint.react.mjs"
+    "./eslint/base": "./eslint.base.mjs",
+    "./eslint/next": "./eslint.next.mjs",
+    "./eslint/react": "./eslint.react.mjs",
+    "./tsconfig/base.json": "./tsconfig/base.json",
+    "./tsconfig/nextjs.json": "./tsconfig/nextjs.json",
+    "./tsconfig/react-library.json": "./tsconfig/react-library.json"
   },
+  "files": [
+    "eslint.base.mjs",
+    "eslint.next.mjs",
+    "eslint.react.mjs",
+    "tsconfig"
+  ],
   "dependencies": {
     "@eslint/js": "^9.18.0",
     "eslint-config-next": "^15.1.3",

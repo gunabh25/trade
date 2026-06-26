@@ -1,5 +1,5 @@
 {
-  "extends": "@tradeflow/typescript-config/react-library.json",
+  "extends": "@tradeflow/config/tsconfig/react-library.json",
   "compilerOptions": {
     "outDir": "dist",
     "rootDir": "src"

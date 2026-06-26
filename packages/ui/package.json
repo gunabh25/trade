@@ -23,8 +23,7 @@
     "tailwind-merge": "^2.6.0"
   },
   "devDependencies": {
-    "@tradeflow/eslint-config": "workspace:*",
-    "@tradeflow/typescript-config": "workspace:*",
+    "@tradeflow/config": "workspace:*",
     "@types/react": "^19.0.2",
     "@types/react-dom": "^19.0.2",
     "eslint": "^9.18.0",

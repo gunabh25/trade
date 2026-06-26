@@ -1,5 +1,5 @@
 import { FlatCompat } from '@eslint/eslintrc';
-import base from '@tradeflow/eslint-config/base';
+import base from '@tradeflow/config/eslint/base';
 import { dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
