@@ -37,6 +37,11 @@ class CurrentUserContext:
         self.user = user
         self.session_id = session_id
 
+    @property
+    def id(self) -> UUID:
+        """Convenience alias used by feature routers."""
+        return self.user.id
+
 
 @inject
 async def get_current_user_context(
