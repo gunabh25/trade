@@ -10,6 +10,10 @@ function getApiBaseUrl(): string {
     process.env.NEXT_PUBLIC_API_URL ??
     (process.env.NODE_ENV === 'development' ? 'http://localhost:8000' : undefined);
   if (!baseUrl) {
+    // Allow `next build` to prerender pages when NEXT_PUBLIC_* is not yet set (e.g. first Railway deploy).
+    if (process.env.NEXT_PHASE === 'phase-production-build') {
+      return 'http://127.0.0.1:8000';
+    }
     throw new Error('NEXT_PUBLIC_API_URL is not configured');
   }
   return baseUrl.replace(/\/$/, '');

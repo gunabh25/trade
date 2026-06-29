@@ -15,8 +15,9 @@ COPY packages/ui/package.json ./packages/ui/
 RUN pnpm install --frozen-lockfile
 
 FROM base AS builder
-ARG NEXT_PUBLIC_APP_URL
-ARG NEXT_PUBLIC_API_URL
+# Override via Railway build variables — required for correct client bundle URLs in production.
+ARG NEXT_PUBLIC_APP_URL=http://127.0.0.1:3000
+ARG NEXT_PUBLIC_API_URL=http://127.0.0.1:8000
 ARG NEXT_PUBLIC_API_VERSION=v1
 ENV NEXT_PUBLIC_APP_URL=$NEXT_PUBLIC_APP_URL \
     NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL \
