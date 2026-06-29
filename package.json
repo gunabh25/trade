@@ -15,6 +15,13 @@
     "typecheck": "turbo run typecheck",
     "format": "prettier --write \"**/*.{ts,tsx,js,jsx,json,md,css,yml,yaml}\"",
     "format:check": "prettier --check \"**/*.{ts,tsx,js,jsx,json,md,css,yml,yaml}\"",
+    "test": "turbo run test",
+    "test:coverage": "turbo run test:coverage",
+    "test:e2e": "turbo run test:e2e",
+    "test:api": "bash scripts/test-api.sh",
+    "test:api:unit": "bash scripts/test-api.sh unit",
+    "test:api:full": "bash scripts/test-api-full.sh",
+    "test:all": "pnpm test && pnpm test:coverage && pnpm test:api && pnpm test:e2e",
     "prepare": "husky"
   },
   "devDependencies": {

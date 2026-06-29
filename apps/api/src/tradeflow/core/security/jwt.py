@@ -52,7 +52,11 @@ class JwtService:
             algorithms=[self._algorithm],
             audience=self._audience if self._verify_aud else None,
             issuer=self._issuer if self._verify_aud else None,
-            options=decode_options,
+            options={
+                **decode_options,
+                "verify_aud": self._verify_aud,
+                "verify_iss": self._verify_aud,
+            },
         )
         if payload.get("type") != "access":
             msg = "Invalid token type"

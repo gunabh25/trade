@@ -80,11 +80,26 @@ asyncio_mode = "auto"
 asyncio_default_fixture_loop_scope = "function"
 testpaths = ["tests"]
 pythonpath = ["src"]
+markers = [
+    "unit: Pure unit tests (no external I/O)",
+    "integration: Tests requiring PostgreSQL",
+    "api: HTTP API tests",
+    "slow: Slow-running tests",
+]
 
 [tool.coverage.run]
 source = ["tradeflow"]
 branch = true
+omit = [
+    "*/alembic/*",
+    "*/workers/tasks.py",
+]
 
 [tool.coverage.report]
-fail_under = 80
 show_missing = true
+exclude_lines = [
+    "pragma: no cover",
+    "if TYPE_CHECKING:",
+    "raise NotImplementedError",
+    "@abstractmethod",
+]

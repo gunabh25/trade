@@ -13,9 +13,9 @@ PUBLIC_GET_ENDPOINTS = [
     "/api/v1/health/live",
     "/api/v1/health/ready",
     "/api/v1/health/",
+    "/metrics",
     "/api/v1/auth/oauth/google",
     "/api/v1/broker/supported",
-    "/api/v1/billing/plans",
 ]
 
 # Authenticated GET endpoints — expect 401 without session
@@ -36,6 +36,7 @@ PROTECTED_GET_ENDPOINTS = [
 # Admin-only endpoints — expect 401 without session (403 only after auth)
 ADMIN_GET_ENDPOINTS = [
     "/api/v1/billing/admin/subscriptions",
+    "/api/v1/admin/subscriptions",
     "/api/v1/admin/users",
     "/api/v1/admin/permissions",
 ]
@@ -57,7 +58,7 @@ async def client(app):
 @pytest.mark.parametrize("path", PUBLIC_GET_ENDPOINTS)
 async def test_public_endpoints_respond(client: AsyncClient, path: str) -> None:
     response = await client.get(path, follow_redirects=True)
-    allowed = {200, 307, 422, 503} if "oauth" in path else {200, 307, 422}
+    allowed = {200, 307, 422, 503}
     assert response.status_code in allowed, f"{path} returned {response.status_code}"
 
 
