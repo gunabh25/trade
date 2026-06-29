@@ -39,8 +39,8 @@ RUN apk add --no-cache wget \
     && adduser --system --uid 1001 nextjs
 ENV NODE_ENV=production \
     NEXT_TELEMETRY_DISABLED=1 \
-    HOSTNAME=0.0.0.0 \
-    PORT=3000
+    HOSTNAME=0.0.0.0
+# Railway injects PORT at runtime — do not hardcode it here.
 COPY --from=builder /app/apps/web/public ./apps/web/public
 COPY --from=builder --chown=nextjs:nodejs /app/apps/web/.next/standalone ./
 COPY --from=builder --chown=nextjs:nodejs /app/apps/web/.next/static ./apps/web/.next/static
