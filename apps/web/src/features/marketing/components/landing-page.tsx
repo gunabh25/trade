@@ -2,9 +2,10 @@
 
 import { Button, cn } from '@tradeflow/ui';
 import { motion } from 'framer-motion';
-import { Activity, ArrowRight, Cloud, Layers, Play, Shield, Sparkles } from 'lucide-react';
+import { ArrowRight, Cloud, Layers, Shield, Sparkles } from 'lucide-react';
 import Link from 'next/link';
 
+import { DashboardPreview } from '@/features/marketing/components/dashboard-preview';
 import { Hero3DGraphic } from '@/features/marketing/components/hero-3d-graphic';
 
 const stats = [
@@ -83,102 +84,6 @@ function LandingHeader() {
 
 function HeroGraphic() {
   return <Hero3DGraphic />;
-}
-
-function DashboardPreview() {
-  return (
-    <div className="relative overflow-hidden rounded-2xl border border-white/[0.08] bg-[#0a0d14] shadow-2xl shadow-cyan-500/5">
-      <div className="flex items-center gap-2 border-b border-white/[0.06] px-4 py-3">
-        <div className="h-2.5 w-2.5 rounded-full bg-red-500/70" />
-        <div className="h-2.5 w-2.5 rounded-full bg-amber-500/70" />
-        <div className="h-2.5 w-2.5 rounded-full bg-emerald-500/70" />
-        <span className="ml-2 text-[11px] text-zinc-600">TradeFlow — Unified Terminal</span>
-      </div>
-
-      <div className="grid gap-3 p-4 md:grid-cols-[140px_1fr]">
-        <div className="hidden space-y-2 md:block">
-          {['Overview', 'Copier', 'Risk', 'Journal', 'Analytics'].map((item, i) => (
-            <div
-              key={item}
-              className={cn(
-                'rounded-md px-3 py-2 text-[11px]',
-                i === 0 ? 'bg-indigo-500/15 text-indigo-300' : 'text-zinc-600',
-              )}
-            >
-              {item}
-            </div>
-          ))}
-        </div>
-
-        <div className="space-y-3">
-          <div className="grid grid-cols-3 gap-2">
-            {[
-              { label: 'Open P&L', value: '+$4,280', tone: 'text-emerald-400' },
-              { label: 'Accounts', value: '12', tone: 'text-cyan-400' },
-              { label: 'Fill Rate', value: '99.8%', tone: 'text-indigo-300' },
-            ].map((stat) => (
-              <div
-                key={stat.label}
-                className="rounded-lg border border-white/[0.06] bg-white/[0.02] px-3 py-2"
-              >
-                <p className="text-[10px] uppercase tracking-wider text-zinc-600">{stat.label}</p>
-                <p className={cn('mt-0.5 text-sm font-semibold tabular-nums', stat.tone)}>
-                  {stat.value}
-                </p>
-              </div>
-            ))}
-          </div>
-
-          <div className="rounded-lg border border-white/[0.06] bg-white/[0.02] p-3">
-            <div className="mb-2 flex items-center justify-between">
-              <span className="text-[11px] text-zinc-500">Equity Curve</span>
-              <Activity className="h-3 w-3 text-cyan-500/70" />
-            </div>
-            <div className="flex h-20 items-end gap-1">
-              {[35, 42, 38, 55, 48, 62, 58, 72, 68, 80, 75, 88].map((h, i) => (
-                <div
-                  key={i}
-                  className="flex-1 rounded-sm bg-gradient-to-t from-cyan-600/40 to-cyan-400/80"
-                  style={{ height: `${String(h)}%` }}
-                />
-              ))}
-            </div>
-          </div>
-
-          <div className="grid grid-cols-2 gap-2">
-            <div className="rounded-lg border border-white/[0.06] bg-white/[0.02] p-2">
-              <p className="text-[10px] text-zinc-600">Active Copies</p>
-              <div className="mt-1 space-y-1">
-                {['ES → 4 accounts', 'NQ → 3 accounts'].map((row) => (
-                  <p key={row} className="text-[10px] text-zinc-400">
-                    {row}
-                  </p>
-                ))}
-              </div>
-            </div>
-            <div className="rounded-lg border border-white/[0.06] bg-white/[0.02] p-2">
-              <p className="text-[10px] text-zinc-600">Risk Status</p>
-              <p className="mt-1 text-[10px] text-emerald-400">All limits OK</p>
-              <p className="text-[10px] text-zinc-500">Max DD: 2.1%</p>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <div className="absolute inset-0 flex items-center justify-center bg-[#05070a]/50 backdrop-blur-[2px]">
-        <div className="text-center">
-          <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full border border-white/20 bg-white/5">
-            <Play className="ml-0.5 h-5 w-5 text-white" fill="white" />
-          </div>
-          <p className="text-lg font-semibold text-white">Unified Terminal Preview</p>
-          <p className="mt-2 max-w-xs text-sm text-zinc-400">
-            Monitor positions, risk, and copy performance from a single institutional-grade
-            dashboard.
-          </p>
-        </div>
-      </div>
-    </div>
-  );
 }
 
 function LandingFooter() {
@@ -382,9 +287,7 @@ export function LandingPage() {
 
         {/* Product preview */}
         <section id="product" className="scroll-mt-20 pb-20 lg:pb-28">
-          <div className="mx-auto max-w-5xl px-6 lg:px-8">
-            <DashboardPreview />
-          </div>
+          <DashboardPreview />
         </section>
 
         {/* CTA */}
