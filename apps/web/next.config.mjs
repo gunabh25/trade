@@ -42,6 +42,7 @@ loadEnvFile(path.join(monorepoRoot, '.env.local'));
 const nextConfig = {
   reactStrictMode: true,
   output: 'standalone',
+  compress: true,
   transpilePackages: ['@tradeflow/ui', '@tradeflow/types'],
   poweredByHeader: false,
   logging: {

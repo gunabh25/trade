@@ -31,6 +31,16 @@
 | [Coding Standards](./phase-0b/CODING_STANDARDS.md)               | Engineering conventions                    |
 | [Security Plan](./phase-0b/SECURITY_PLAN.md)                     | Security architecture and controls         |
 
+## Production Readiness
+
+| Document                                                   | Description                                 |
+| ---------------------------------------------------------- | ------------------------------------------- |
+| [Architecture Review](./production/ARCHITECTURE_REVIEW.md) | Production topology, middleware, deployment |
+| [Security Report](./production/SECURITY_REPORT.md)         | OWASP, JWT, OAuth, rate limits, secrets     |
+| [Performance Report](./production/PERFORMANCE_REPORT.md)   | DB, Redis, caching, Prometheus metrics      |
+| [Optimization Report](./production/OPTIMIZATION_REPORT.md) | Summary of changes and deploy commands      |
+| [.env.production.example](../.env.production.example)      | Production environment template             |
+
 ## Architecture Summary
 
 ```

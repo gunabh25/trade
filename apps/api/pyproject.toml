@@ -30,6 +30,8 @@ dependencies = [
     "stripe>=11.5.0",
     "reportlab>=4.2.5",
     "websockets>=14.1",
+    "prometheus-client>=0.21.1",
+    "sentry-sdk[fastapi]>=2.19.2",
 ]
 
 [project.optional-dependencies]
@@ -70,7 +72,7 @@ mypy_path = "src"
 packages = ["tradeflow"]
 
 [[tool.mypy.overrides]]
-module = ["dependency_injector.*", "celery.*", "authlib.*", "jwt.*", "stripe.*"]
+module = ["dependency_injector.*", "celery.*", "authlib.*", "jwt.*", "stripe.*", "prometheus_client.*", "sentry_sdk.*"]
 ignore_missing_imports = true
 
 [tool.pytest.ini_options]

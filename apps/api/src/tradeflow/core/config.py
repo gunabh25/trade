@@ -1,4 +1,6 @@
-from pydantic import Field, PostgresDsn, RedisDsn, field_validator
+from typing import Self
+
+from pydantic import Field, PostgresDsn, RedisDsn, field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -23,6 +25,23 @@ class Settings(BaseSettings):
     )
     api_log_level: str = Field(default="INFO", alias="API_LOG_LEVEL")
     api_log_format: str = Field(default="json", alias="API_LOG_FORMAT")
+    api_workers: int = Field(default=1, alias="API_WORKERS")
+    api_graceful_shutdown_seconds: int = Field(default=30, alias="API_GRACEFUL_SHUTDOWN_SECONDS")
+    api_trusted_hosts: str = Field(default="", alias="API_TRUSTED_HOSTS")
+    api_rate_limit_per_minute: int = Field(default=300, alias="API_RATE_LIMIT_PER_MINUTE")
+    api_enable_gzip: bool = Field(default=True, alias="API_ENABLE_GZIP")
+    app_version: str = Field(default="0.1.0", alias="APP_VERSION")
+
+    # Observability
+    prometheus_enabled: bool = Field(default=True, alias="PROMETHEUS_ENABLED")
+    sentry_dsn: str | None = Field(default=None, alias="SENTRY_DSN")
+    sentry_environment: str | None = Field(default=None, alias="SENTRY_ENVIRONMENT")
+    sentry_traces_sample_rate: float = Field(default=0.1, alias="SENTRY_TRACES_SAMPLE_RATE")
+    sentry_profiles_sample_rate: float = Field(default=0.1, alias="SENTRY_PROFILES_SAMPLE_RATE")
+
+    # JWT issuer/audience (production hardening)
+    jwt_issuer: str = Field(default="tradeflow-api", alias="JWT_ISSUER")
+    jwt_audience: str = Field(default="tradeflow-web", alias="JWT_AUDIENCE")
 
     database_url: PostgresDsn = Field(alias="DATABASE_URL")
     database_url_sync: PostgresDsn = Field(alias="DATABASE_URL_SYNC")
@@ -31,6 +50,7 @@ class Settings(BaseSettings):
     database_pool_timeout: int = Field(default=30, alias="DATABASE_POOL_TIMEOUT")
 
     redis_url: RedisDsn = Field(alias="REDIS_URL")
+    redis_max_connections: int = Field(default=50, alias="REDIS_MAX_CONNECTIONS")
 
     celery_broker_url: RedisDsn = Field(alias="CELERY_BROKER_URL")
     celery_result_backend: RedisDsn = Field(alias="CELERY_RESULT_BACKEND")
@@ -144,6 +164,21 @@ class Settings(BaseSettings):
     @property
     def billing_cancel_url(self) -> str:
         return f"{self.frontend_url.rstrip('/')}/dashboard/billing?checkout=canceled"
+
+    @property
+    def trusted_hosts(self) -> list[str]:
+        if not self.api_trusted_hosts.strip():
+            return []
+        return [host.strip() for host in self.api_trusted_hosts.split(",") if host.strip()]
+
+    @model_validator(mode="after")
+    def enforce_production_defaults(self) -> Self:
+        if self.is_production:
+            if not self.auth_cookie_secure:
+                object.__setattr__(self, "auth_cookie_secure", True)
+            if self.api_log_format.lower() != "json":
+                object.__setattr__(self, "api_log_format", "json")
+        return self
 
     @field_validator("api_secret_key")
     @classmethod

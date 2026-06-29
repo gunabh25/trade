@@ -29,8 +29,10 @@ COPY --from=builder /usr/local/bin /usr/local/bin
 COPY apps/api/src ./src
 COPY apps/api/alembic ./alembic
 COPY apps/api/alembic.ini ./alembic.ini
+COPY apps/api/scripts/start.sh ./scripts/start.sh
+RUN chmod +x ./scripts/start.sh
 USER tradeflow
 EXPOSE 8000
-HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
-    CMD curl -f http://localhost:8000/api/v1/health/live || exit 1
-CMD ["uvicorn", "tradeflow.main:app", "--host", "0.0.0.0", "--port", "8000", "--app-dir", "src"]
+HEALTHCHECK --interval=30s --timeout=5s --start-period=15s --retries=3 \
+    CMD curl -f http://localhost:8000/api/v1/health/ready || exit 1
+CMD ["./scripts/start.sh"]

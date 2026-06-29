@@ -1,0 +1,46 @@
+# Git
+.git
+.gitignore
+
+# Dependencies
+node_modules
+**/node_modules
+.pnpm-store
+
+# Build outputs
+**/.next
+**/dist
+**/__pycache__
+**/*.pyc
+**/.pytest_cache
+**/.mypy_cache
+**/.ruff_cache
+**/*.tsbuildinfo
+
+# Environment & secrets
+.env
+.env.*
+!.env.example
+!.env.production.example
+
+# IDE & OS
+.idea
+.vscode
+.DS_Store
+*.swp
+
+# Uploads & local data
+uploads/
+**/uploads/
+
+# Docs & tests (not needed in runtime images)
+docs/
+**/*.md
+!apps/api/README.md
+apps/api/tests/
+apps/web/**/*.test.*
+coverage/
+
+# Agent / cursor
+.cursor/
+agent-transcripts/

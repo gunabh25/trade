@@ -65,6 +65,11 @@ class BrokerSessionManager:
         self._monitor.unregister(connection_id)
         logger.info("broker_session_disconnected", connection_id=str(connection_id))
 
+    async def disconnect_all(self) -> None:
+        """Gracefully tear down all live broker sessions on shutdown."""
+        for connection_id in list(self._sessions.keys()):
+            await self.disconnect(connection_id)
+
     def get_adapter(self, connection_id: UUID) -> BrokerAdapter | None:
         return self._sessions.get(connection_id)
 

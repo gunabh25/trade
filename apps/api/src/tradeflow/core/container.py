@@ -89,6 +89,11 @@ class Container(containers.DeclarativeContainer):
         Redis.from_url,
         providers.Callable(str, config.provided.redis_url),
         decode_responses=True,
+        max_connections=config.provided.redis_max_connections,
+        socket_connect_timeout=5,
+        socket_timeout=5,
+        health_check_interval=30,
+        retry_on_timeout=True,
     )
 
     health_service: providers.Factory[HealthService] = providers.Factory(

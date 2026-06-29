@@ -16,6 +16,9 @@ class JwtService:
         self._secret = settings.api_secret_key
         self._algorithm = settings.jwt_algorithm
         self._access_ttl = timedelta(minutes=settings.jwt_access_token_expire_minutes)
+        self._issuer = settings.jwt_issuer
+        self._audience = settings.jwt_audience
+        self._verify_aud = settings.is_production
 
     def create_access_token(
         self,
@@ -30,6 +33,8 @@ class JwtService:
             "iat": now,
             "exp": now + self._access_ttl,
             "type": "access",
+            "iss": self._issuer,
+            "aud": self._audience,
         }
         if session_id:
             payload["sid"] = str(session_id)
@@ -38,11 +43,16 @@ class JwtService:
         return jwt.encode(payload, self._secret, algorithm=self._algorithm)
 
     def decode_access_token(self, token: str) -> dict[str, Any]:
+        decode_options: dict[str, bool | list[str]] = {"require": ["sub", "exp", "type"]}
+        if self._verify_aud:
+            decode_options["require"] = ["sub", "exp", "type", "iss", "aud"]
         payload = jwt.decode(
             token,
             self._secret,
             algorithms=[self._algorithm],
-            options={"require": ["sub", "exp", "type"]},
+            audience=self._audience if self._verify_aud else None,
+            issuer=self._issuer if self._verify_aud else None,
+            options=decode_options,
         )
         if payload.get("type") != "access":
             msg = "Invalid token type"
