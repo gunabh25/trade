@@ -1,5 +1,5 @@
 const eslintFor = (configPath) => [
-  `eslint --fix --max-warnings 0 --config ${configPath}`,
+  `eslint --fix --max-warnings 0 --no-warn-ignored --config ${configPath}`,
   'prettier --write',
 ];
 

@@ -10,7 +10,18 @@ const compat = new FlatCompat({
 /** @type {import('eslint').Linter.Config[]} */
 export default [
   {
-    ignores: ['.next/**', 'next-env.d.ts', 'eslint.config.mjs', 'postcss.config.mjs'],
+    ignores: [
+      '.next/**',
+      'next-env.d.ts',
+      'eslint.config.mjs',
+      'postcss.config.mjs',
+      '**/playwright.config.ts',
+      '**/vitest.config.ts',
+      '**/vitest.setup.ts',
+      'e2e/**',
+      '**/*.test.ts',
+      '**/*.test.tsx',
+    ],
   },
   {
     settings: {
@@ -21,4 +32,12 @@ export default [
   },
   ...base,
   ...compat.extends('next/core-web-vitals', 'next/typescript'),
+  {
+    languageOptions: {
+      parserOptions: {
+        projectService: true,
+        tsconfigRootDir: dirname(fileURLToPath(import.meta.url)),
+      },
+    },
+  },
 ];
