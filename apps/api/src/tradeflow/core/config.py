@@ -1,4 +1,4 @@
-from typing import Self
+from typing import Any, Self
 
 from pydantic import Field, PostgresDsn, RedisDsn, field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -13,6 +13,37 @@ class Settings(BaseSettings):
         case_sensitive=False,
         extra="ignore",
     )
+
+    @staticmethod
+    def _ensure_postgres_driver(url: str, driver: str) -> str:
+        """Normalize Railway/Heroku postgres:// URLs to SQLAlchemy async/sync drivers."""
+        for prefix in ("postgresql://", "postgres://"):
+            if url.startswith(prefix):
+                return url.replace(prefix, f"postgresql+{driver}://", 1)
+        return url
+
+    @model_validator(mode="before")
+    @classmethod
+    def normalize_railway_urls(cls, data: Any) -> Any:
+        """Accept Railway plugin DATABASE_URL format and map PORT → API_PORT."""
+        if not isinstance(data, dict):
+            return data
+        import os
+
+        if "API_PORT" not in data and os.environ.get("PORT"):
+            data["API_PORT"] = os.environ["PORT"]
+
+        db_url = data.get("DATABASE_URL") or os.environ.get("DATABASE_URL")
+        if db_url and isinstance(db_url, str):
+            data["DATABASE_URL"] = cls._ensure_postgres_driver(db_url, "asyncpg")
+
+        db_sync = data.get("DATABASE_URL_SYNC") or os.environ.get("DATABASE_URL_SYNC")
+        if db_sync and isinstance(db_sync, str):
+            data["DATABASE_URL_SYNC"] = cls._ensure_postgres_driver(db_sync, "psycopg")
+        elif db_url and isinstance(db_url, str) and "DATABASE_URL_SYNC" not in data:
+            data["DATABASE_URL_SYNC"] = cls._ensure_postgres_driver(db_url, "psycopg")
+
+        return data
 
     app_name: str = Field(default="TradeFlow AI", alias="APP_NAME")
     app_env: str = Field(default="development", alias="APP_ENV")

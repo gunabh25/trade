@@ -1,0 +1,24 @@
+# TradeFlow AI — Railway project configuration (API service)
+# Docs: docs/deployment/RAILWAY_SETUP.md
+#
+# In Railway dashboard:
+#   Service name: tradeflow-api
+#   Root directory: / (repo root)
+#   Dockerfile path: apps/api/Dockerfile
+#   Config file: railway.toml (this file)
+
+[build]
+builder = "DOCKERFILE"
+dockerfilePath = "apps/api/Dockerfile"
+watchPatterns = ["apps/api/**", "packages/**"]
+
+[deploy]
+startCommand = "./scripts/start.sh"
+preDeployCommand = "./scripts/migrate.sh"
+healthcheckPath = "/api/v1/health/ready"
+healthcheckTimeout = 120
+restartPolicyType = "ON_FAILURE"
+restartPolicyMaxRetries = 5
+numReplicas = 1
+overlapSeconds = 30
+drainingSeconds = 30

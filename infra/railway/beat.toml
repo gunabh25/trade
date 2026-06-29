@@ -1,0 +1,17 @@
+# TradeFlow AI — Railway Celery Beat (single instance only)
+# Railway dashboard:
+#   Service name: tradeflow-beat
+#   Dockerfile: apps/api/Dockerfile
+#   Config file: infra/railway/beat.toml
+#   Replicas: MUST be 1
+
+[build]
+builder = "DOCKERFILE"
+dockerfilePath = "apps/api/Dockerfile"
+watchPatterns = ["apps/api/**"]
+
+[deploy]
+startCommand = "./scripts/start-beat.sh"
+restartPolicyType = "ON_FAILURE"
+restartPolicyMaxRetries = 5
+numReplicas = 1
