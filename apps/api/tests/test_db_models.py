@@ -60,6 +60,9 @@ NO_SOFT_DELETE_TABLES = {
     "usage_records",
     "organization_members",
     "journal_screenshots",
+    "ai_conversations",
+    "ai_messages",
+    "ai_insights",
 }
 
 

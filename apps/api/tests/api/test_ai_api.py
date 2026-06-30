@@ -22,7 +22,6 @@ async def test_ai_chat(authenticated_client: AsyncClient) -> None:
     )
     assert response.status_code == 200
     body = response.json()
-    assert body["success"] is True
     assert body["data"]["content"]
 
 

@@ -13,6 +13,7 @@ export default [
     ignores: [
       '.next/**',
       'next-env.d.ts',
+      'next.config.mjs',
       'eslint.config.mjs',
       'postcss.config.mjs',
       '**/playwright.config.ts',
