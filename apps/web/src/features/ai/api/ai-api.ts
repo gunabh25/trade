@@ -8,21 +8,7 @@ import type {
   AIStreamEvent,
 } from '@tradeflow/types/api';
 
-import { apiRequest } from '@/lib/api/client';
-
-function getApiBaseUrl(): string {
-  const baseUrl =
-    process.env.NEXT_PUBLIC_API_URL ??
-    (process.env.NODE_ENV === 'development' ? 'http://localhost:8000' : undefined);
-  if (!baseUrl) {
-    throw new Error('NEXT_PUBLIC_API_URL is not configured');
-  }
-  return baseUrl.replace(/\/$/, '');
-}
-
-function getApiVersion(): string {
-  return process.env.NEXT_PUBLIC_API_VERSION ?? 'v1';
-}
+import { apiRequest, buildApiUrl } from '@/lib/api/client';
 
 function normalizeCompletion(raw: Record<string, unknown>): AICompletion {
   return {
@@ -70,7 +56,7 @@ export async function streamAiChat(
   onEvent: (event: AIStreamEvent) => void,
   signal?: AbortSignal,
 ): Promise<void> {
-  const url = `${getApiBaseUrl()}/api/${getApiVersion()}/ai/chat/stream`;
+  const url = buildApiUrl('/ai/chat/stream');
   const csrfMatch = /(?:^|; )tf_csrf=([^;]*)/.exec(document.cookie);
   const csrf = csrfMatch?.[1] ? decodeURIComponent(csrfMatch[1]) : undefined;
 

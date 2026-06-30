@@ -4,23 +4,56 @@ import { ApiClientError, isApiErrorResponse } from '@/lib/errors';
 import { logger } from '@/lib/logging';
 
 const DEFAULT_TIMEOUT_MS = 10_000;
+const BUILD_PLACEHOLDER_API_URL = 'http://127.0.0.1:8000';
 
-function getApiBaseUrl(): string {
-  const baseUrl =
-    process.env.NEXT_PUBLIC_API_URL ??
-    (process.env.NODE_ENV === 'development' ? 'http://localhost:8000' : undefined);
-  if (!baseUrl) {
-    // Allow `next build` to prerender pages when NEXT_PUBLIC_* is not yet set (e.g. first Railway deploy).
-    if (process.env.NEXT_PHASE === 'phase-production-build') {
-      return 'http://127.0.0.1:8000';
+function resolveServerApiBaseUrl(): string | undefined {
+  const candidates = [
+    process.env.API_PROXY_URL,
+    process.env.NEXT_PUBLIC_API_URL,
+    process.env.NODE_ENV === 'development' ? 'http://localhost:8000' : undefined,
+  ];
+
+  for (const candidate of candidates) {
+    if (!candidate) {
+      continue;
     }
-    throw new Error('NEXT_PUBLIC_API_URL is not configured');
+    const normalized = candidate.replace(/\/$/, '');
+    if (
+      normalized === BUILD_PLACEHOLDER_API_URL ||
+      normalized.includes('${{') ||
+      normalized.includes('RAILWAY_PUBLIC_DOMAIN')
+    ) {
+      continue;
+    }
+    return normalized;
   }
-  return baseUrl.replace(/\/$/, '');
+
+  if (process.env.NEXT_PHASE === 'phase-production-build') {
+    return BUILD_PLACEHOLDER_API_URL;
+  }
+
+  return undefined;
 }
 
-function getApiVersion(): string {
+/** Base URL for API requests (no trailing slash). Browser production uses same-origin proxy. */
+export function getApiBaseUrl(): string {
+  if (typeof window !== 'undefined' && process.env.NODE_ENV === 'production') {
+    return '';
+  }
+
+  const baseUrl = resolveServerApiBaseUrl();
+  if (!baseUrl) {
+    throw new Error('NEXT_PUBLIC_API_URL or API_PROXY_URL is not configured');
+  }
+  return baseUrl;
+}
+
+export function getApiVersion(): string {
   return process.env.NEXT_PUBLIC_API_VERSION ?? 'v1';
+}
+
+export function buildApiUrl(path: string): string {
+  return `${getApiBaseUrl()}/api/${getApiVersion()}${path}`;
 }
 
 export interface RequestOptions extends Omit<RequestInit, 'body'> {
@@ -44,7 +77,7 @@ export async function apiRequest<T>(
   options: RequestOptions = {},
 ): Promise<ApiResponse<T>> {
   const { body, timeoutMs = DEFAULT_TIMEOUT_MS, headers, csrfToken, silent, ...rest } = options;
-  const url = `${getApiBaseUrl()}/api/${getApiVersion()}${path}`;
+  const url = buildApiUrl(path);
 
   const controller = new AbortController();
   const timeout = setTimeout(() => {
@@ -115,10 +148,22 @@ export async function apiRequest<T>(
   }
 }
 
+/** Direct API host for assets/docs when the browser uses the same-origin proxy. */
+export function getApiAssetBaseUrl(): string {
+  if (typeof window !== 'undefined' && process.env.NODE_ENV === 'production') {
+    const upstream = process.env.NEXT_PUBLIC_API_URL?.replace(/\/$/, '');
+    if (upstream && upstream !== BUILD_PLACEHOLDER_API_URL && !upstream.includes('${{')) {
+      return upstream;
+    }
+    return window.location.origin;
+  }
+  return getApiBaseUrl();
+}
+
 export function getPublicApiDocsUrl(): string {
-  return `${getApiBaseUrl()}/api/docs`;
+  return `${getApiAssetBaseUrl()}/api/docs`;
 }
 
 export function getOAuthUrl(provider: 'google' | 'github'): string {
-  return `${getApiBaseUrl()}/api/${getApiVersion()}/auth/oauth/${provider}`;
+  return buildApiUrl(`/auth/oauth/${provider}`);
 }

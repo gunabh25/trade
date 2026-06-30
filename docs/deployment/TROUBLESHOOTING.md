@@ -46,6 +46,28 @@ curl -s https://<api>/api/v1/health/ready | jq '.data.checks'
 
 ## Web Shows Blank / API Errors
 
+### Client calls wrong host / `ERR_NAME_NOT_RESOLVED`
+
+The browser bundle had an invalid `NEXT_PUBLIC_API_URL` (missing, unresolved Railway
+template, or API service without a public domain).
+
+**Fix (recommended — runtime, no rebuild):**
+
+1. Generate a public domain on **tradeflow-api** (Settings → Networking)
+2. On **tradeflow-web**, set:
+   ```bash
+   API_PROXY_URL=https://<your-api-domain>.up.railway.app
+   ```
+3. Redeploy/restart the web service
+
+The web app proxies `/api/v1/*` to the API and rewrites auth cookies for the web domain.
+
+**Alternative (build-time):**
+
+1. Set `NEXT_PUBLIC_API_URL=https://<api-domain>` on the web service
+2. Enable the **Build** variable toggle
+3. Trigger a full rebuild
+
 ### Client calls `localhost:8000`
 
 `NEXT_PUBLIC_API_URL` was not set at **build time**.

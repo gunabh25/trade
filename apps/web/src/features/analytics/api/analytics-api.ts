@@ -7,22 +7,8 @@ import type {
   AnalyticsSymbolPerformance,
 } from '@tradeflow/types/api';
 
-import { apiRequest } from '@/lib/api/client';
+import { apiRequest, buildApiUrl } from '@/lib/api/client';
 import { toNullableString, toNumber, toString } from '@/lib/api/normalize';
-
-function getApiBaseUrl(): string {
-  const baseUrl =
-    process.env.NEXT_PUBLIC_API_URL ??
-    (process.env.NODE_ENV === 'development' ? 'http://localhost:8000' : undefined);
-  if (!baseUrl) {
-    throw new Error('NEXT_PUBLIC_API_URL is not configured');
-  }
-  return baseUrl.replace(/\/$/, '');
-}
-
-function getApiVersion(): string {
-  return process.env.NEXT_PUBLIC_API_VERSION ?? 'v1';
-}
 
 function buildQueryString(query: AnalyticsOverviewQuery): string {
   const params = new URLSearchParams();
@@ -199,7 +185,7 @@ export async function downloadAnalyticsExport(
   format: 'csv' | 'pdf',
   query: AnalyticsOverviewQuery = {},
 ): Promise<void> {
-  const url = `${getApiBaseUrl()}/api/${getApiVersion()}/analytics/export/${format}${buildQueryString(query)}`;
+  const url = buildApiUrl(`/analytics/export/${format}${buildQueryString(query)}`);
   const response = await fetch(url, { credentials: 'include' });
   if (!response.ok) throw new Error(`Export failed (${String(response.status)})`);
 

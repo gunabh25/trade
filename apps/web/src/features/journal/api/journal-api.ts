@@ -12,7 +12,7 @@ import type {
   WeekdayPerformance,
 } from '@tradeflow/types/api';
 
-import { apiRequest } from '@/lib/api/client';
+import { apiRequest, buildApiUrl, getApiAssetBaseUrl } from '@/lib/api/client';
 import {
   toNullableNumber,
   toNullableString,
@@ -20,20 +20,6 @@ import {
   toString,
   toStringArray,
 } from '@/lib/api/normalize';
-
-function getApiBaseUrl(): string {
-  const baseUrl =
-    process.env.NEXT_PUBLIC_API_URL ??
-    (process.env.NODE_ENV === 'development' ? 'http://localhost:8000' : undefined);
-  if (!baseUrl) {
-    throw new Error('NEXT_PUBLIC_API_URL is not configured');
-  }
-  return baseUrl.replace(/\/$/, '');
-}
-
-function getApiVersion(): string {
-  return process.env.NEXT_PUBLIC_API_VERSION ?? 'v1';
-}
 
 function getCsrfToken(): string | undefined {
   if (typeof document === 'undefined') return undefined;
@@ -297,15 +283,12 @@ export async function uploadJournalScreenshot(
   const headers = new Headers();
   if (csrf) headers.set('X-CSRF-Token', csrf);
 
-  const response = await fetch(
-    `${getApiBaseUrl()}/api/${getApiVersion()}/journal/entries/${entryId}/screenshots/upload`,
-    {
-      method: 'POST',
-      body: formData,
-      credentials: 'include',
-      headers,
-    },
-  );
+  const response = await fetch(buildApiUrl(`/journal/entries/${entryId}/screenshots/upload`), {
+    method: 'POST',
+    body: formData,
+    credentials: 'include',
+    headers,
+  });
 
   if (!response.ok) {
     throw new Error('Failed to upload screenshot');
@@ -322,7 +305,7 @@ export async function downloadJournalExport(
   format: 'csv' | 'pdf',
   query: JournalEntriesQuery = {},
 ): Promise<void> {
-  const url = `${getApiBaseUrl()}/api/${getApiVersion()}/journal/export/${format}${buildQueryString(query)}`;
+  const url = buildApiUrl(`/journal/export/${format}${buildQueryString(query)}`);
   const response = await fetch(url, { credentials: 'include' });
   if (!response.ok) throw new Error(`Export failed (${String(response.status)})`);
 
@@ -337,5 +320,5 @@ export async function downloadJournalExport(
 
 export function getScreenshotUrl(fileUrl: string): string {
   if (fileUrl.startsWith('http')) return fileUrl;
-  return `${getApiBaseUrl()}${fileUrl}`;
+  return `${getApiAssetBaseUrl()}${fileUrl}`;
 }

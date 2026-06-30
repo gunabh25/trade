@@ -3,8 +3,9 @@
 #   Service name: tradeflow-web
 #   Config file: apps/web/railway.toml
 #
-# CRITICAL: Set build-time variables in Railway → web service → Variables:
-#   NEXT_PUBLIC_APP_URL, NEXT_PUBLIC_API_URL, NEXT_PUBLIC_API_VERSION
+# CRITICAL: Set on Railway → web service → Variables:
+#   API_PROXY_URL (runtime) — proxies browser API calls to tradeflow-api
+#   NEXT_PUBLIC_APP_URL, NEXT_PUBLIC_API_URL (build-time, optional with proxy)
 
 [build]
 builder = "DOCKERFILE"
