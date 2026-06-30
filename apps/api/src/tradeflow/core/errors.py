@@ -8,6 +8,7 @@ class ErrorCode(StrEnum):
     UNAUTHORIZED = "UNAUTHORIZED"
     FORBIDDEN = "FORBIDDEN"
     CONFLICT = "CONFLICT"
+    RATE_LIMIT_EXCEEDED = "RATE_LIMIT_EXCEEDED"
     INTERNAL_ERROR = "INTERNAL_ERROR"
     SERVICE_UNAVAILABLE = "SERVICE_UNAVAILABLE"
 
@@ -53,6 +54,21 @@ class ConflictError(AppError):
 class ValidationError(AppError):
     def __init__(self, message: str = "Invalid request") -> None:
         super().__init__(ErrorCode.VALIDATION_ERROR, message, status_code=400)
+
+
+class RateLimitError(AppError):
+    def __init__(
+        self,
+        message: str = "Too many AI requests. Please slow down.",
+        *,
+        retry_after: int = 60,
+    ) -> None:
+        super().__init__(
+            ErrorCode.RATE_LIMIT_EXCEEDED,
+            message,
+            status_code=429,
+            details=[{"retryAfterSeconds": retry_after}],
+        )
 
 
 class ServiceUnavailableError(AppError):

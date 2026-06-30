@@ -21,7 +21,7 @@ from tradeflow.ai.types import (
     AIMessageRole,
 )
 from tradeflow.core.config import Settings
-from tradeflow.core.errors import ValidationError
+from tradeflow.core.errors import NotFoundError, ValidationError
 from tradeflow.core.logging import get_logger
 
 logger = get_logger(__name__)
@@ -72,6 +72,19 @@ class AIOrchestrator:
             return await self._context.build_strategy_context(db, user_id)
         return await self._context.build_trade_context(db, user_id)
 
+    async def _require_conversation(
+        self,
+        db: AsyncSession,
+        *,
+        user_id: UUID,
+        conversation_id: UUID,
+    ) -> None:
+        conversation = await self._memory.get_conversation(
+            db, user_id=user_id, conversation_id=conversation_id
+        )
+        if conversation is None:
+            raise NotFoundError("Conversation not found")
+
     async def run_prompt(
         self,
         db: AsyncSession,
@@ -94,7 +107,10 @@ class AIOrchestrator:
 
         history: list[AIMessage] = []
         if conversation_id:
-            history = await self._memory.get_history(db, conversation_id=conversation_id)
+            await self._require_conversation(db, user_id=user_id, conversation_id=conversation_id)
+            history = await self._memory.get_history(
+                db, user_id=user_id, conversation_id=conversation_id
+            )
 
         messages = self._prompts.render_messages(
             template_id,
@@ -146,12 +162,14 @@ class AIOrchestrator:
             conv_id = conversation.id
         await self._memory.append_message(
             db,
+            user_id=user_id,
             conversation_id=conv_id,
             role=AIMessageRole.USER,
             content=variables.get("question") or template.description,
         )
         await self._memory.append_message(
             db,
+            user_id=user_id,
             conversation_id=conv_id,
             role=AIMessageRole.ASSISTANT,
             content=response.content,
@@ -178,7 +196,10 @@ class AIOrchestrator:
         context = await self._resolve_context(db, user_id, template.feature)
         history: list[AIMessage] = []
         if conversation_id:
-            history = await self._memory.get_history(db, conversation_id=conversation_id)
+            await self._require_conversation(db, user_id=user_id, conversation_id=conversation_id)
+            history = await self._memory.get_history(
+                db, user_id=user_id, conversation_id=conversation_id
+            )
 
         messages = self._prompts.render_messages(
             template_id,
@@ -209,6 +230,7 @@ class AIOrchestrator:
 
         await self._memory.append_message(
             db,
+            user_id=user_id,
             conversation_id=conv_id,
             role=AIMessageRole.USER,
             content=question,
@@ -229,6 +251,7 @@ class AIOrchestrator:
         if collected:
             await self._memory.append_message(
                 db,
+                user_id=user_id,
                 conversation_id=conv_id,
                 role=AIMessageRole.ASSISTANT,
                 content="".join(collected),

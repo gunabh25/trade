@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 
 import type { AICompletion, AIFeatureType, AIStreamEvent } from '@tradeflow/types/api';
 
@@ -11,9 +11,20 @@ export function useAiChat(initialFeature: AIFeatureType = 'trade_assistant') {
   const [loading, setLoading] = useState(false);
   const [streaming, setStreaming] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const abortRef = useRef<AbortController | null>(null);
+
+  useEffect(() => {
+    return () => {
+      abortRef.current?.abort();
+    };
+  }, []);
 
   const send = useCallback(
     async (message: string, options?: { stream?: boolean; feature?: AIFeatureType }) => {
+      abortRef.current?.abort();
+      const controller = new AbortController();
+      abortRef.current = controller;
+
       setError(null);
       setLoading(true);
       setMessages((prev) => [...prev, { role: 'user', content: message }]);
@@ -38,6 +49,7 @@ export function useAiChat(initialFeature: AIFeatureType = 'trade_assistant') {
                 setError(event.error ?? 'Stream failed');
               }
             },
+            controller.signal,
           );
         } else {
           const result: AICompletion = await aiApi.sendAiChat({

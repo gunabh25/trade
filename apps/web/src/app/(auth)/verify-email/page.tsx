@@ -6,10 +6,12 @@ import { Suspense, useEffect, useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@tradeflow/ui';
 
 import * as authApi from '@/features/auth/api/auth-api';
+import { useAuth } from '@/features/auth/components/auth-provider';
 
 function VerifyEmailContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
+  const { refresh } = useAuth();
   const token = searchParams.get('token') ?? '';
   const [message, setMessage] = useState('Verifying email…');
 
@@ -18,18 +20,34 @@ function VerifyEmailContent() {
       setMessage('Missing verification token.');
       return;
     }
+    let cancelled = false;
+    let timeoutId: ReturnType<typeof setTimeout> | undefined;
+
     authApi
       .verifyEmail(token)
-      .then(() => {
+      .then(async () => {
+        if (cancelled) {
+          return;
+        }
+        await refresh();
         setMessage('Email verified. Redirecting to dashboard…');
-        setTimeout(() => {
+        timeoutId = setTimeout(() => {
           router.push('/dashboard');
         }, 1500);
       })
       .catch(() => {
-        setMessage('Verification failed or link expired.');
+        if (!cancelled) {
+          setMessage('Verification failed or link expired.');
+        }
       });
-  }, [token, router]);
+
+    return () => {
+      cancelled = true;
+      if (timeoutId) {
+        clearTimeout(timeoutId);
+      }
+    };
+  }, [token, router, refresh]);
 
   return (
     <main className="flex min-h-screen items-center justify-center p-6">

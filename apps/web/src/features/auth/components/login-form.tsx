@@ -3,10 +3,11 @@
 import { cn } from '@tradeflow/ui';
 import { Check, Eye, EyeOff, Lock, Mail } from 'lucide-react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { useMemo, useState } from 'react';
 
 import * as authApi from '@/features/auth/api/auth-api';
+import { useAuth } from '@/features/auth/components/auth-provider';
 import { ApiClientError } from '@/lib/errors';
 import { getOAuthUrl } from '@/lib/api/client';
 
@@ -57,6 +58,9 @@ function getPasswordStrength(password: string): { score: number; label: string }
 
 export function LoginForm() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const { refresh } = useAuth();
+  const nextPath = searchParams.get('next') ?? '/dashboard';
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -75,7 +79,8 @@ export function LoginForm() {
     try {
       if (challengeToken) {
         await authApi.verifyTwoFactorLogin(challengeToken, twoFactorCode);
-        router.push('/dashboard');
+        await refresh();
+        router.push(nextPath.startsWith('/') ? nextPath : '/dashboard');
         return;
       }
       const result = await authApi.login({ email, password });
@@ -86,7 +91,8 @@ export function LoginForm() {
       if (rememberDevice) {
         localStorage.setItem('tf_remember_device', '1');
       }
-      router.push('/dashboard');
+      await refresh();
+      router.push(nextPath.startsWith('/') ? nextPath : '/dashboard');
     } catch (err) {
       setError(
         err instanceof ApiClientError

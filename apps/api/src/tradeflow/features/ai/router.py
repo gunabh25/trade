@@ -12,6 +12,7 @@ from tradeflow.ai.service import AIOrchestrator
 from tradeflow.ai.types import AIFeatureType
 from tradeflow.core.config import Settings
 from tradeflow.core.container import Container
+from tradeflow.core.dependencies.ai_rate_limit import enforce_ai_rate_limit
 from tradeflow.core.dependencies.auth import CurrentUser, DbSession
 from tradeflow.core.responses import SuccessResponse, success
 from tradeflow.features.ai.schemas import (
@@ -24,7 +25,11 @@ from tradeflow.features.ai.schemas import (
     AIStatusResponse,
 )
 
-router = APIRouter(prefix="/ai", tags=["AI"])
+router = APIRouter(
+    prefix="/ai",
+    tags=["AI"],
+    dependencies=[Depends(enforce_ai_rate_limit)],
+)
 
 
 def _to_completion(data) -> AICompletionResponseSchema:

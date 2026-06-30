@@ -10,6 +10,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from tradeflow.ai.types import AIFeatureType, AIMessage, AIMessageRole
+from tradeflow.core.errors import NotFoundError
 from tradeflow.db.models.ai import AIConversation, AIMessageRecord
 
 
@@ -77,12 +78,18 @@ class ConversationMemoryStore:
         self,
         db: AsyncSession,
         *,
+        user_id: UUID,
         conversation_id: UUID,
         role: AIMessageRole,
         content: str,
         token_count: int | None = None,
         metadata: dict | None = None,
     ) -> AIMessageRecord:
+        conversation = await self.get_conversation(
+            db, user_id=user_id, conversation_id=conversation_id
+        )
+        if conversation is None:
+            raise NotFoundError("Conversation not found")
         record = AIMessageRecord(
             id=uuid.uuid4(),
             conversation_id=conversation_id,
@@ -99,9 +106,15 @@ class ConversationMemoryStore:
         self,
         db: AsyncSession,
         *,
+        user_id: UUID,
         conversation_id: UUID,
         limit: int = 20,
     ) -> list[AIMessage]:
+        conversation = await self.get_conversation(
+            db, user_id=user_id, conversation_id=conversation_id
+        )
+        if conversation is None:
+            return []
         result = await db.execute(
             select(AIMessageRecord)
             .where(AIMessageRecord.conversation_id == conversation_id)

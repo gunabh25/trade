@@ -17,6 +17,7 @@ from tradeflow import __version__
 from tradeflow.api.v1.router import v1_router
 from tradeflow.core.config import Settings
 from tradeflow.core.container import Container
+from tradeflow.core.csrf_middleware import CsrfMiddleware
 from tradeflow.core.exception_handlers import register_exception_handlers
 from tradeflow.core.logging import configure_logging, get_logger
 from tradeflow.core.middleware import RequestContextMiddleware
@@ -104,6 +105,7 @@ def create_app(container: Container | None = None) -> FastAPI:
             "tradeflow.features.admin.router",
             "tradeflow.features.ai.router",
             "tradeflow.core.dependencies.auth",
+            "tradeflow.core.dependencies.ai_rate_limit",
         ],
     )
 
@@ -120,6 +122,7 @@ def create_app(container: Container | None = None) -> FastAPI:
 
     rate_limiter = RateLimiter(di_container.redis_client())
     app.add_middleware(GlobalRateLimitMiddleware, settings=settings, rate_limiter=rate_limiter)
+    app.add_middleware(CsrfMiddleware, settings=settings)
 
     app.add_middleware(
         CORSMiddleware,

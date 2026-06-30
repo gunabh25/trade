@@ -179,6 +179,7 @@ class Settings(BaseSettings):
     ai_max_tokens: int = Field(default=4096, alias="AI_MAX_TOKENS")
     ai_temperature: float = Field(default=0.3, alias="AI_TEMPERATURE")
     ai_fallback_to_mock: bool = Field(default=True, alias="AI_FALLBACK_TO_MOCK")
+    ai_rate_limit_per_minute: int = Field(default=20, alias="AI_RATE_LIMIT_PER_MINUTE")
     ai_openai_model: str = Field(default="gpt-4o-mini", alias="AI_OPENAI_MODEL")
     ai_anthropic_model: str = Field(
         default="claude-3-5-sonnet-20241022",
