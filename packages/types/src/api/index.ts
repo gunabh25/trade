@@ -134,6 +134,16 @@ export type {
   UpdatePreferenceRequest,
 } from './notifications';
 export type {
+  AIChatRequest,
+  AICompletion,
+  AIConversation,
+  AIFeatureType,
+  AIMessage,
+  AIPromptRequest,
+  AIStatus,
+  AIStreamEvent,
+} from './ai';
+export type {
   CreateRiskRuleRequest,
   PreTradeCheckRequest,
   RiskBreach,

@@ -172,6 +172,35 @@ class Settings(BaseSettings):
         alias="RISK_MONITOR_INTERVAL_SECONDS",
     )
 
+    # AI platform
+    ai_enabled: bool = Field(default=True, alias="AI_ENABLED")
+    ai_default_provider: str = Field(default="mock", alias="AI_DEFAULT_PROVIDER")
+    ai_default_model: str | None = Field(default=None, alias="AI_DEFAULT_MODEL")
+    ai_max_tokens: int = Field(default=4096, alias="AI_MAX_TOKENS")
+    ai_temperature: float = Field(default=0.3, alias="AI_TEMPERATURE")
+    ai_fallback_to_mock: bool = Field(default=True, alias="AI_FALLBACK_TO_MOCK")
+    ai_openai_model: str = Field(default="gpt-4o-mini", alias="AI_OPENAI_MODEL")
+    ai_anthropic_model: str = Field(
+        default="claude-3-5-sonnet-20241022",
+        alias="AI_ANTHROPIC_MODEL",
+    )
+    ai_gemini_model: str = Field(default="gemini-1.5-flash", alias="AI_GEMINI_MODEL")
+    openai_api_key: str | None = Field(default=None, alias="OPENAI_API_KEY")
+    openai_base_url: str = Field(default="https://api.openai.com/v1", alias="OPENAI_BASE_URL")
+    anthropic_api_key: str | None = Field(default=None, alias="ANTHROPIC_API_KEY")
+    google_ai_api_key: str | None = Field(default=None, alias="GOOGLE_AI_API_KEY")
+    ollama_base_url: str = Field(default="http://localhost:11434", alias="OLLAMA_BASE_URL")
+    ollama_default_model: str = Field(default="llama3.2", alias="OLLAMA_DEFAULT_MODEL")
+
+    @property
+    def ai_configured(self) -> bool:
+        return bool(
+            self.openai_api_key
+            or self.anthropic_api_key
+            or self.google_ai_api_key
+            or self.ai_fallback_to_mock
+        )
+
     @property
     def cors_origins(self) -> list[str]:
         return [origin.strip() for origin in self.api_cors_origins.split(",") if origin.strip()]

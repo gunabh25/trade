@@ -11,6 +11,7 @@ from tradeflow.db.enums import RoleName
 from tradeflow.db.mixins import SoftDeleteMixin, TimestampMixin
 
 if TYPE_CHECKING:
+    from tradeflow.db.models.ai import AIConversation, AIInsight
     from tradeflow.db.models.api_key import ApiKey
     from tradeflow.db.models.audit import AuditLog
     from tradeflow.db.models.auth import RefreshToken, VerificationToken
@@ -125,6 +126,14 @@ class User(Base, TimestampMixin, SoftDeleteMixin):
     orders: Mapped[list["Order"]] = relationship(back_populates="user")
     trades: Mapped[list["Trade"]] = relationship(back_populates="user")
     copy_groups: Mapped[list["CopyGroup"]] = relationship(back_populates="user")
+    ai_conversations: Mapped[list["AIConversation"]] = relationship(
+        back_populates="user",
+        cascade="all, delete-orphan",
+    )
+    ai_insights: Mapped[list["AIInsight"]] = relationship(
+        back_populates="user",
+        cascade="all, delete-orphan",
+    )
     refresh_tokens: Mapped[list["RefreshToken"]] = relationship(
         back_populates="user",
         cascade="all, delete-orphan",

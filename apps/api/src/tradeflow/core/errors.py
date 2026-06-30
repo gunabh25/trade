@@ -50,6 +50,11 @@ class ConflictError(AppError):
         super().__init__(ErrorCode.CONFLICT, message, status_code=409)
 
 
+class ValidationError(AppError):
+    def __init__(self, message: str = "Invalid request") -> None:
+        super().__init__(ErrorCode.VALIDATION_ERROR, message, status_code=400)
+
+
 class ServiceUnavailableError(AppError):
     def __init__(self, message: str = "Service temporarily unavailable") -> None:
         super().__init__(ErrorCode.SERVICE_UNAVAILABLE, message, status_code=503)

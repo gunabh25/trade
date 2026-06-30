@@ -13,6 +13,7 @@ from sqlalchemy.ext.asyncio import (
     create_async_engine,
 )
 
+from tradeflow.ai.service import AIOrchestrator
 from tradeflow.core.config import Settings, get_settings
 from tradeflow.core.security.encryption import EncryptionService
 from tradeflow.core.security.jwt import JwtService
@@ -65,6 +66,7 @@ class Container(containers.DeclarativeContainer):
             "tradeflow.features.notifications.router",
             "tradeflow.features.billing.router",
             "tradeflow.features.admin.router",
+            "tradeflow.features.ai.router",
             "tradeflow.core.dependencies.auth",
         ],
     )
@@ -290,6 +292,14 @@ class Container(containers.DeclarativeContainer):
         mapping_store=trade_mapping_store,
         retry_queue=copy_retry_queue,
         entitlements=entitlement_service,
+    )
+
+    ai_orchestrator: providers.Factory[AIOrchestrator] = providers.Factory(
+        AIOrchestrator,
+        settings=config,
+        analytics_service=analytics_service,
+        journal_service=journal_service,
+        risk_service=risk_service,
     )
 
 
