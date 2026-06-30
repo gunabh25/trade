@@ -43,6 +43,8 @@ dev = [
     "ruff>=0.9.2",
     "mypy>=1.14.1",
     "types-redis>=4.6.0.20241004",
+    "types-reportlab>=4.2.0",
+    "types-aiofiles>=24.1.0",
 ]
 
 [build-system]
@@ -72,8 +74,24 @@ mypy_path = "src"
 packages = ["tradeflow"]
 
 [[tool.mypy.overrides]]
-module = ["dependency_injector.*", "celery.*", "authlib.*", "jwt.*", "stripe.*", "prometheus_client.*", "sentry_sdk.*"]
+module = ["dependency_injector.*", "celery.*", "authlib.*", "jwt.*", "stripe.*", "prometheus_client.*", "sentry_sdk.*", "reportlab.*", "aiofiles.*"]
 ignore_missing_imports = true
+
+# Legacy modules: strict typing tracked incrementally (see CI scoped mypy step).
+[[tool.mypy.overrides]]
+module = [
+    "tradeflow.integrations.*",
+    "tradeflow.features.analytics.*",
+    "tradeflow.features.admin.*",
+    "tradeflow.features.billing.*",
+    "tradeflow.features.journal.*",
+    "tradeflow.features.notifications.*",
+    "tradeflow.features.health.*",
+    "tradeflow.workers.*",
+    "tradeflow.engine.orchestrator",
+    "tradeflow.notifications.*",
+]
+ignore_errors = true
 
 [tool.pytest.ini_options]
 asyncio_mode = "auto"

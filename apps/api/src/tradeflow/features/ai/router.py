@@ -9,7 +9,7 @@ from fastapi import APIRouter, Depends, Request
 from fastapi.responses import StreamingResponse
 
 from tradeflow.ai.service import AIOrchestrator
-from tradeflow.ai.types import AIFeatureType
+from tradeflow.ai.types import AICompletionResponse, AIFeatureType
 from tradeflow.core.config import Settings
 from tradeflow.core.container import Container
 from tradeflow.core.dependencies.ai_rate_limit import enforce_ai_rate_limit
@@ -32,7 +32,7 @@ router = APIRouter(
 )
 
 
-def _to_completion(data) -> AICompletionResponseSchema:
+def _to_completion(data: AICompletionResponse) -> AICompletionResponseSchema:
     return AICompletionResponseSchema(
         content=data.content,
         model=data.model,

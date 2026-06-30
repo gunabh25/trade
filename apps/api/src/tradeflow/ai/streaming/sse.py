@@ -4,13 +4,14 @@ from __future__ import annotations
 
 import json
 from collections.abc import AsyncIterator
+from typing import Any
 
 from tradeflow.ai.types import AIStreamChunk, AIStreamEvent
 
 
 def format_sse_event(event: AIStreamEvent) -> str:
     """Format a single SSE event frame."""
-    payload = {"type": event.type, "content": event.content}
+    payload: dict[str, Any] = {"type": event.type, "content": event.content}
     if event.error:
         payload["error"] = event.error
     if event.metadata:

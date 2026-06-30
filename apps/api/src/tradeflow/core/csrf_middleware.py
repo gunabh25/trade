@@ -6,6 +6,7 @@ from collections.abc import Awaitable, Callable
 
 from fastapi import Request, Response
 from starlette.middleware.base import BaseHTTPMiddleware
+from starlette.types import ASGIApp
 
 from tradeflow.core.config import Settings
 from tradeflow.core.security.cookies import validate_csrf
@@ -25,7 +26,7 @@ _SAFE_METHODS = frozenset({"GET", "HEAD", "OPTIONS"})
 class CsrfMiddleware(BaseHTTPMiddleware):
     """Validate CSRF token on mutating requests when using cookie auth."""
 
-    def __init__(self, app: object, settings: Settings) -> None:
+    def __init__(self, app: ASGIApp, settings: Settings) -> None:
         super().__init__(app)
         self._settings = settings
 

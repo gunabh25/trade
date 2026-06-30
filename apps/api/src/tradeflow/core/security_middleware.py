@@ -6,6 +6,7 @@ from collections.abc import Awaitable, Callable
 
 from fastapi import Request, Response
 from starlette.middleware.base import BaseHTTPMiddleware
+from starlette.types import ASGIApp
 
 from tradeflow.core.config import Settings
 
@@ -13,7 +14,7 @@ from tradeflow.core.config import Settings
 class SecurityHeadersMiddleware(BaseHTTPMiddleware):
     """Apply OWASP-recommended security headers to every response."""
 
-    def __init__(self, app: object, settings: Settings) -> None:
+    def __init__(self, app: ASGIApp, settings: Settings) -> None:
         super().__init__(app)
         self._production = settings.is_production
 

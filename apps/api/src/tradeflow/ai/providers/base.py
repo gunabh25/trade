@@ -23,7 +23,7 @@ class AIProvider(ABC):
         """Non-streaming completion."""
 
     @abstractmethod
-    async def stream(self, request: AICompletionRequest) -> AsyncIterator[AIStreamChunk]:
+    def stream(self, request: AICompletionRequest) -> AsyncIterator[AIStreamChunk]:
         """Token streaming completion."""
 
     @abstractmethod

@@ -83,7 +83,7 @@ class ConversationMemoryStore:
         role: AIMessageRole,
         content: str,
         token_count: int | None = None,
-        metadata: dict | None = None,
+        metadata: dict[str, object] | None = None,
     ) -> AIMessageRecord:
         conversation = await self.get_conversation(
             db, user_id=user_id, conversation_id=conversation_id

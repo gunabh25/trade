@@ -1,6 +1,6 @@
 import { defineConfig, devices } from '@playwright/test';
 
-const PORT = 3000;
+const PORT = Number(process.env.PORT) || 3000;
 const baseURL = `http://127.0.0.1:${PORT}`;
 
 export default defineConfig({
@@ -21,7 +21,14 @@ export default defineConfig({
     },
   ],
   webServer: {
-    command: process.env.CI ? 'pnpm build && pnpm start' : 'pnpm dev',
+    command: process.env.CI
+      ? [
+          'pnpm exec next build',
+          'cp -r .next/static .next/standalone/apps/web/.next/static',
+          'cp -r public .next/standalone/apps/web/public',
+          `PORT=${PORT} HOSTNAME=127.0.0.1 node .next/standalone/apps/web/server.js`,
+        ].join(' && ')
+      : 'pnpm dev',
     url: `${baseURL}/api/health`,
     reuseExistingServer: !process.env.CI,
     timeout: 180_000,

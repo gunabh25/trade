@@ -23,6 +23,10 @@ from tradeflow.ai.types import (
 from tradeflow.core.config import Settings
 from tradeflow.core.errors import NotFoundError, ValidationError
 from tradeflow.core.logging import get_logger
+from tradeflow.db.models.ai import AIConversation
+from tradeflow.features.analytics.service import AnalyticsService
+from tradeflow.features.journal.service import JournalService
+from tradeflow.features.risk.service import RiskService
 
 logger = get_logger(__name__)
 
@@ -34,9 +38,9 @@ class AIOrchestrator:
         self,
         *,
         settings: Settings,
-        analytics_service,
-        journal_service,
-        risk_service,
+        analytics_service: AnalyticsService,
+        journal_service: JournalService,
+        risk_service: RiskService,
     ) -> None:
         self._settings = settings
         self._providers = AIProviderRegistry(settings)
@@ -287,7 +291,7 @@ class AIOrchestrator:
         *,
         user_id: UUID,
         feature: AIFeatureType | None = None,
-    ):
+    ) -> list[AIConversation]:
         return await self._memory.list_conversations(db, user_id=user_id, feature_type=feature)
 
     async def get_conversation(
@@ -296,7 +300,7 @@ class AIOrchestrator:
         *,
         user_id: UUID,
         conversation_id: UUID,
-    ):
+    ) -> AIConversation | None:
         return await self._memory.get_conversation(
             db, user_id=user_id, conversation_id=conversation_id
         )

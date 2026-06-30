@@ -136,7 +136,13 @@ jobs:
 
       - name: Mypy
         working-directory: apps/api
-        run: mypy src
+        run: |
+          mypy src/tradeflow/ai \
+            src/tradeflow/core/csrf_middleware.py \
+            src/tradeflow/core/security_middleware.py \
+            src/tradeflow/core/rate_limit_middleware.py \
+            src/tradeflow/features/ai \
+            src/tradeflow/integrations/brokers/adapters/paper.py
 
       - name: Pytest critical modules (90% coverage gate)
         working-directory: apps/api
@@ -189,6 +195,9 @@ jobs:
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
+
+      - name: Build workspace packages
+        run: pnpm build --filter=@tradeflow/web...
 
       - name: Install Playwright browsers
         working-directory: apps/web

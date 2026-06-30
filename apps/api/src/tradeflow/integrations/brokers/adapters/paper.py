@@ -86,13 +86,6 @@ class PaperBrokerAdapter(BaseBrokerAdapter):
             ),
         )
 
-    async def _stream_orders_impl(
-        self,
-        account_id: str,
-        handler: StreamHandler,
-    ) -> StreamSubscription:
-        return await self.websocket.subscribe(f"orders:{account_id}", handler)
-
     async def _connect_impl(self, credentials: BrokerCredentials) -> None:
         account_name = str(credentials.data.get("account_name", "Paper Account"))
         account_id = str(credentials.data.get("account_id", "paper-default"))

@@ -7,6 +7,7 @@ from collections.abc import Awaitable, Callable
 from fastapi import Request, Response
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.responses import JSONResponse
+from starlette.types import ASGIApp
 
 from tradeflow.core.config import Settings
 from tradeflow.core.security.rate_limit import RateLimiter
@@ -26,7 +27,7 @@ class GlobalRateLimitMiddleware(BaseHTTPMiddleware):
 
     def __init__(
         self,
-        app: object,
+        app: ASGIApp,
         settings: Settings,
         rate_limiter: RateLimiter,
     ) -> None:
