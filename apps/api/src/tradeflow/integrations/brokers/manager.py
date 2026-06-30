@@ -19,6 +19,7 @@ from tradeflow.integrations.brokers.types import (
     ConnectionHealth,
     ModifyOrderRequest,
     PlaceOrderRequest,
+    StreamHandler,
 )
 
 logger = get_logger(__name__)
@@ -105,6 +106,50 @@ class BrokerSessionManager:
     async def cancel_order(self, connection_id: UUID, order_id: str) -> BrokerOrder:
         adapter = self._require_adapter(connection_id)
         return await adapter.cancel_order(order_id)
+
+    async def flatten_position(
+        self,
+        connection_id: UUID,
+        account_id: str,
+        symbol: str,
+    ) -> BrokerOrder:
+        adapter = self._require_adapter(connection_id)
+        return await adapter.flatten_position(account_id, symbol)
+
+    async def refresh_token(self, connection_id: UUID) -> None:
+        adapter = self._require_adapter(connection_id)
+        await adapter.refresh_token()
+
+    async def validate_connection(self, connection_id: UUID) -> bool:
+        adapter = self._require_adapter(connection_id)
+        return await adapter.validate_connection()
+
+    async def stream_orders(
+        self,
+        connection_id: UUID,
+        account_id: str,
+        handler: StreamHandler,
+    ):
+        adapter = self._require_adapter(connection_id)
+        return await adapter.stream_orders(account_id, handler)
+
+    async def stream_positions(
+        self,
+        connection_id: UUID,
+        account_id: str,
+        handler: StreamHandler,
+    ):
+        adapter = self._require_adapter(connection_id)
+        return await adapter.stream_positions(account_id, handler)
+
+    async def stream_market_data(
+        self,
+        connection_id: UUID,
+        symbols: list[str],
+        handler: StreamHandler,
+    ):
+        adapter = self._require_adapter(connection_id)
+        return await adapter.stream_market_data(symbols, handler)
 
     def get_health(self, connection_id: UUID) -> ConnectionHealth | None:
         adapter = self._sessions.get(connection_id)

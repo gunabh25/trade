@@ -79,5 +79,30 @@ class PlaceOrderRequest(BaseModel):
     price: Decimal | None = None
 
 
+class ModifyOrderRequest(BaseModel):
+    quantity: Decimal | None = Field(default=None, gt=0)
+    price: Decimal | None = None
+
+
+class FlattenPositionRequest(BaseModel):
+    account_id: str
+    symbol: str
+
+
+class BrokerCapabilitiesResponse(BaseModel):
+    broker: str
+    supports_rest: bool
+    supports_websocket: bool
+    supports_stream_market_data: bool
+    supports_stream_orders: bool
+    supports_stream_positions: bool
+    supports_token_refresh: bool
+    supports_webhook_inbound: bool
+    max_orders_per_second: float
+    supported_asset_classes: list[str]
+    notes: str | None = None
+
+
 class SupportedBrokersResponse(BaseModel):
     brokers: list[str]
+    capabilities: list[BrokerCapabilitiesResponse] = Field(default_factory=list)

@@ -2,10 +2,11 @@
 
 from __future__ import annotations
 
+import json
 from uuid import UUID
 
 from dependency_injector.wiring import Provide, inject
-from fastapi import APIRouter, Depends, Request
+from fastapi import APIRouter, Depends, Header, Request
 
 from tradeflow.core.container import Container
 from tradeflow.core.dependencies.auth import CurrentUser, DbSession
@@ -17,6 +18,8 @@ from tradeflow.features.broker.schemas import (
     BrokerOrderResponse,
     BrokerPositionResponse,
     CreateBrokerConnectionRequest,
+    FlattenPositionRequest,
+    ModifyOrderRequest,
     PlaceOrderRequest,
     SupportedBrokersResponse,
 )
@@ -191,4 +194,121 @@ async def place_order(
     broker_service: BrokerConnectionService = Depends(Provide[Container.broker_service]),
 ) -> SuccessResponse[BrokerOrderResponse]:
     order = await broker_service.place_order(db, user.id, connection_id, payload)
+    return success(order, request_id=getattr(request.state, "request_id", None))
+
+
+@router.patch(
+    "/connections/{connection_id}/orders/{order_id}",
+    response_model=SuccessResponse[BrokerOrderResponse],
+    summary="Modify an open order",
+)
+@inject
+async def modify_order(
+    request: Request,
+    connection_id: UUID,
+    order_id: str,
+    payload: ModifyOrderRequest,
+    db: DbSession,
+    user: CurrentUser,
+    broker_service: BrokerConnectionService = Depends(Provide[Container.broker_service]),
+) -> SuccessResponse[BrokerOrderResponse]:
+    order = await broker_service.modify_order(db, user.id, connection_id, order_id, payload)
+    return success(order, request_id=getattr(request.state, "request_id", None))
+
+
+@router.delete(
+    "/connections/{connection_id}/orders/{order_id}",
+    response_model=SuccessResponse[BrokerOrderResponse],
+    summary="Cancel an open order",
+)
+@inject
+async def cancel_order(
+    request: Request,
+    connection_id: UUID,
+    order_id: str,
+    db: DbSession,
+    user: CurrentUser,
+    broker_service: BrokerConnectionService = Depends(Provide[Container.broker_service]),
+) -> SuccessResponse[BrokerOrderResponse]:
+    order = await broker_service.cancel_order(db, user.id, connection_id, order_id)
+    return success(order, request_id=getattr(request.state, "request_id", None))
+
+
+@router.post(
+    "/connections/{connection_id}/flatten",
+    response_model=SuccessResponse[BrokerOrderResponse],
+    summary="Flatten an open position",
+)
+@inject
+async def flatten_position(
+    request: Request,
+    connection_id: UUID,
+    payload: FlattenPositionRequest,
+    db: DbSession,
+    user: CurrentUser,
+    broker_service: BrokerConnectionService = Depends(Provide[Container.broker_service]),
+) -> SuccessResponse[BrokerOrderResponse]:
+    order = await broker_service.flatten_position(db, user.id, connection_id, payload)
+    return success(order, request_id=getattr(request.state, "request_id", None))
+
+
+@router.post(
+    "/connections/{connection_id}/refresh-token",
+    response_model=SuccessResponse[BrokerConnectionResponse],
+    summary="Refresh OAuth/API token",
+)
+@inject
+async def refresh_broker_token(
+    request: Request,
+    connection_id: UUID,
+    db: DbSession,
+    user: CurrentUser,
+    broker_service: BrokerConnectionService = Depends(Provide[Container.broker_service]),
+) -> SuccessResponse[BrokerConnectionResponse]:
+    connection = await broker_service.refresh_token(db, user.id, connection_id)
+    return success(connection, request_id=getattr(request.state, "request_id", None))
+
+
+@router.post(
+    "/connections/{connection_id}/validate",
+    response_model=SuccessResponse[BrokerHealthResponse],
+    summary="Validate broker connection",
+)
+@inject
+async def validate_broker_connection(
+    request: Request,
+    connection_id: UUID,
+    db: DbSession,
+    user: CurrentUser,
+    broker_service: BrokerConnectionService = Depends(Provide[Container.broker_service]),
+) -> SuccessResponse[BrokerHealthResponse]:
+    health = await broker_service.validate_connection(db, user.id, connection_id)
+    return success(health, request_id=getattr(request.state, "request_id", None))
+
+
+@router.post(
+    "/webhooks/tradingview/{connection_id}",
+    response_model=SuccessResponse[BrokerOrderResponse],
+    summary="TradingView alert webhook ingress",
+    include_in_schema=True,
+)
+@inject
+async def tradingview_webhook(
+    request: Request,
+    connection_id: UUID,
+    db: DbSession,
+    broker_service: BrokerConnectionService = Depends(Provide[Container.broker_service]),
+    x_tradingview_signature: str | None = Header(default=None, alias="X-TradingView-Signature"),
+) -> SuccessResponse[BrokerOrderResponse]:
+    body = await request.body()
+    payload = json.loads(body.decode() or "{}")
+    if not isinstance(payload, dict):
+        payload = {}
+    order = await broker_service.ingest_tradingview_webhook(
+        db,
+        connection_id,
+        body=body,
+        signature=x_tradingview_signature,
+        payload=payload,
+    )
     return success(order, request_id=getattr(request.state, "request_id", None))

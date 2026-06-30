@@ -1,10 +1,14 @@
-"""Rithmic adapter — interface design pending production credentials."""
+"""Rithmic adapter — R | Protocol architecture via sdk/rithmic_protocol.py."""
 
 from __future__ import annotations
 
 from tradeflow.integrations.brokers.base import BaseBrokerAdapter
 from tradeflow.integrations.brokers.capabilities import BrokerCapabilities
-from tradeflow.integrations.brokers.exceptions import BrokerConnectionError, BrokerNotSupportedError
+from tradeflow.integrations.brokers.exceptions import BrokerNotSupportedError
+from tradeflow.integrations.brokers.sdk.rithmic_protocol import (
+    RithmicCredentials,
+    RithmicProtocolClient,
+)
 from tradeflow.integrations.brokers.types import (
     BrokerAccount,
     BrokerCredentials,
@@ -17,13 +21,17 @@ from tradeflow.integrations.brokers.types import (
 )
 
 _RITHMIC_MSG = (
-    "Rithmic R | Protocol API integration requires production credentials "
-    "(user, password, system_name, gateway). Contact Rithmic for SDK access."
+    "Rithmic R | Protocol integration requires production SDK credentials. "
+    "Connection architecture is wired; contact Rithmic for SDK access."
 )
 
 
 class RithmicBrokerAdapter(BaseBrokerAdapter):
-    """Rithmic R Protocol API — interface stub until credentials are provisioned."""
+    """Rithmic R Protocol API — protocol client architecture ready for SDK."""
+
+    def __init__(self, **kwargs: object) -> None:
+        super().__init__(**kwargs)  # type: ignore[arg-type]
+        self._protocol: RithmicProtocolClient | None = None
 
     @property
     def broker_name(self) -> str:
@@ -44,18 +52,15 @@ class RithmicBrokerAdapter(BaseBrokerAdapter):
         )
 
     async def _connect_impl(self, credentials: BrokerCredentials) -> None:
-        required = ("username", "password", "system_name", "gateway")
-        missing = [k for k in required if not credentials.data.get(k)]
-        if missing:
-            msg = (
-                f"Rithmic requires credentials: {', '.join(required)}. "
-                f"Missing: {', '.join(missing)}"
-            )
-            raise BrokerConnectionError(msg)
-        raise BrokerNotSupportedError(_RITHMIC_MSG)
+        creds = RithmicCredentials.from_dict(credentials.data)
+        self._protocol = RithmicProtocolClient(credentials=creds)
+        await self._protocol.connect()
 
     async def _validate_connection_impl(self) -> None:
-        raise BrokerNotSupportedError(_RITHMIC_MSG)
+        if self._protocol is None:
+            raise BrokerNotSupportedError(_RITHMIC_MSG)
+        if not await self._protocol.validate_connection():
+            raise BrokerNotSupportedError(_RITHMIC_MSG)
 
     async def fetch_accounts(self) -> list[BrokerAccount]:
         raise BrokerNotSupportedError(_RITHMIC_MSG)

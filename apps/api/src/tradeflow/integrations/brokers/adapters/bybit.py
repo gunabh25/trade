@@ -13,6 +13,7 @@ from tradeflow.integrations.brokers.capabilities import BrokerCapabilities
 from tradeflow.integrations.brokers.http_client import BrokerHttpClient
 from tradeflow.integrations.brokers.pool import BrokerHttpPool
 from tradeflow.integrations.brokers.rate_limit import TokenBucketRateLimiter
+from tradeflow.integrations.brokers.sdk.bybit_stream import BybitStreamClient
 from tradeflow.integrations.brokers.types import (
     BrokerAccount,
     BrokerCredentials,
@@ -24,6 +25,8 @@ from tradeflow.integrations.brokers.types import (
     BrokerPositionSide,
     ModifyOrderRequest,
     PlaceOrderRequest,
+    StreamHandler,
+    StreamSubscription,
 )
 
 _STATUS_MAP = {
@@ -41,6 +44,10 @@ class BybitBrokerAdapter(RestBrokerAdapter):
     required_credential_keys = ("api_key", "api_secret")
     default_base_url = "https://api.bybit.com"
     websocket_url = "wss://stream.bybit.com/v5/public/linear"
+
+    def __init__(self, **kwargs: object) -> None:
+        super().__init__(**kwargs)
+        self._stream_client: BybitStreamClient | None = None
 
     @property
     def broker_name(self) -> str:
@@ -216,6 +223,80 @@ class BybitBrokerAdapter(RestBrokerAdapter):
             status=BrokerOrderStatus.CANCELED,
             metadata=data,
         )
+
+    def _get_stream_client(self) -> BybitStreamClient:
+        if self._stream_client is None:
+            self._stream_client = BybitStreamClient(
+                api_key=self._api_key,  # type: ignore[attr-defined]
+                api_secret=self._api_secret,  # type: ignore[attr-defined]
+                testnet=bool(self._credentials and self._credentials.data.get("testnet")),
+            )
+        return self._stream_client
+
+    async def _subscribe_private_stream(
+        self,
+        topics: list[str],
+        handler: StreamHandler,
+        *,
+        on_order: StreamHandler | None = None,
+        on_position: StreamHandler | None = None,
+    ) -> StreamSubscription:
+        client = self._get_stream_client()
+        url = client.private_url
+
+        async def _dispatch(raw: str | bytes) -> None:
+            await client.dispatch_message(
+                raw,
+                on_order=on_order or handler,
+                on_position=on_position or handler,
+            )
+
+        self.websocket.set_message_dispatcher(_dispatch)
+        await self.websocket.connect(url)
+        await self.websocket.send(client.auth_payload())
+        await self.websocket.send(client.subscribe_payload(topics))
+        return await self.websocket.subscribe(topics[0], handler)
+
+    async def _stream_orders_impl(
+        self,
+        account_id: str,
+        handler: StreamHandler,
+    ) -> StreamSubscription:
+        client = self._get_stream_client()
+        return await self._subscribe_private_stream(
+            client.order_topics(),
+            handler,
+            on_order=handler,
+        )
+
+    async def _stream_positions_impl(
+        self,
+        account_id: str,
+        handler: StreamHandler,
+    ) -> StreamSubscription:
+        client = self._get_stream_client()
+        return await self._subscribe_private_stream(
+            client.position_topics(),
+            handler,
+            on_position=handler,
+        )
+
+    async def _stream_market_data_impl(
+        self,
+        symbols: list[str],
+        handler: StreamHandler,
+    ) -> StreamSubscription:
+        client = self._get_stream_client()
+        url = client.public_linear_url
+
+        async def _dispatch(raw: str | bytes) -> None:
+            await client.dispatch_message(raw, on_market=handler)
+
+        self.websocket.set_message_dispatcher(_dispatch)
+        await self.websocket.connect(url)
+        await self.websocket.send(client.subscribe_payload(client.ticker_topics(symbols)))
+        channel = f"market:{','.join(symbols)}"
+        return await self.websocket.subscribe(channel, handler)
 
     def _map_order(self, row: dict[str, Any], account_id: str) -> BrokerOrder:
         status = _STATUS_MAP.get(str(row.get("orderStatus", "New")), BrokerOrderStatus.OPEN)

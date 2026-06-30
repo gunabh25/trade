@@ -5,6 +5,7 @@ from __future__ import annotations
 import asyncio
 import contextlib
 import json
+from collections.abc import Awaitable, Callable
 from typing import Any
 
 from tradeflow.core.logging import get_logger
@@ -20,11 +21,13 @@ class BrokerWebSocketManager:
         self._broker_name = broker_name
         self._connected = False
         self._handlers: list[StreamHandler] = []
+        self._channel_handlers: dict[str, list[StreamHandler]] = {}
         self._listen_task: asyncio.Task[None] | None = None
         self._ws: Any = None
         self._url: str | None = None
         self._headers: dict[str, str] = {}
         self._should_run = False
+        self._message_dispatcher: Any = None
 
     @property
     def is_connected(self) -> bool:
@@ -32,6 +35,13 @@ class BrokerWebSocketManager:
 
     def on_message(self, handler: StreamHandler) -> None:
         self._handlers.append(handler)
+
+    def set_message_dispatcher(
+        self,
+        dispatcher: Callable[[str | bytes], Awaitable[None]],
+    ) -> None:
+        """Broker-specific message router (e.g. BinanceStreamClient.dispatch_message)."""
+        self._message_dispatcher = dispatcher
 
     async def connect(self, url: str, *, headers: dict[str, str] | None = None) -> None:
         """Establish WebSocket connection using websockets library when available."""
@@ -78,9 +88,17 @@ class BrokerWebSocketManager:
         if self._ws is not None:
             await self._ws.send(json.dumps(payload))
 
-    async def publish(self, message: dict[str, Any]) -> None:
-        """Dispatch a message to registered handlers (simulation / inbound webhooks)."""
-        for handler in self._handlers:
+    async def publish(
+        self,
+        message: dict[str, Any],
+        *,
+        channel: str | None = None,
+    ) -> None:
+        """Dispatch a message to global and channel-specific handlers."""
+        handlers: list[StreamHandler] = list(self._handlers)
+        if channel and channel in self._channel_handlers:
+            handlers.extend(self._channel_handlers[channel])
+        for handler in handlers:
             await handler(message)
 
     async def subscribe(
@@ -88,11 +106,14 @@ class BrokerWebSocketManager:
         channel: str,
         handler: StreamHandler,
     ) -> StreamSubscription:
-        self.on_message(handler)
+        if channel not in self._channel_handlers:
+            self._channel_handlers[channel] = []
+        self._channel_handlers[channel].append(handler)
 
         async def _unsubscribe() -> None:
-            if handler in self._handlers:
-                self._handlers.remove(handler)
+            channel_handlers = self._channel_handlers.get(channel, [])
+            if handler in channel_handlers:
+                channel_handlers.remove(handler)
 
         return StreamSubscription(channel=channel, unsubscribe=_unsubscribe)
 
@@ -100,9 +121,13 @@ class BrokerWebSocketManager:
         while self._should_run and self._ws is not None:
             try:
                 raw = await self._ws.recv()
+                if self._message_dispatcher is not None:
+                    await self._message_dispatcher(raw)
+                    continue
                 data = json.loads(raw) if isinstance(raw, str) else raw
                 if isinstance(data, dict):
-                    await self.publish(data)
+                    channel = data.get("channel")
+                    await self.publish(data, channel=str(channel) if channel else None)
             except asyncio.CancelledError:
                 break
             except Exception as exc:

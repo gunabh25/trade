@@ -12,6 +12,7 @@ from tradeflow.integrations.brokers.capabilities import BrokerCapabilities
 from tradeflow.integrations.brokers.http_client import BrokerHttpClient
 from tradeflow.integrations.brokers.pool import BrokerHttpPool
 from tradeflow.integrations.brokers.rate_limit import TokenBucketRateLimiter
+from tradeflow.integrations.brokers.sdk.binance_stream import BinanceStreamClient
 from tradeflow.integrations.brokers.types import (
     BrokerAccount,
     BrokerCredentials,
@@ -23,6 +24,8 @@ from tradeflow.integrations.brokers.types import (
     BrokerPositionSide,
     ModifyOrderRequest,
     PlaceOrderRequest,
+    StreamHandler,
+    StreamSubscription,
 )
 
 _SIDE_MAP = {BrokerOrderSide.BUY: "BUY", BrokerOrderSide.SELL: "SELL"}
@@ -48,6 +51,10 @@ class BinanceBrokerAdapter(RestBrokerAdapter):
     required_credential_keys = ("api_key", "api_secret")
     default_base_url = "https://api.binance.com"
     websocket_url = "wss://stream.binance.com:9443/ws"
+
+    def __init__(self, **kwargs: object) -> None:
+        super().__init__(**kwargs)
+        self._stream_client: BinanceStreamClient | None = None
 
     @property
     def broker_name(self) -> str:
@@ -197,6 +204,48 @@ class BinanceBrokerAdapter(RestBrokerAdapter):
             {"symbol": symbol, "orderId": order_id},
         )
         return self._map_order(data, symbol)
+
+    def _get_stream_client(self) -> BinanceStreamClient:
+        if self._stream_client is None:
+            self._stream_client = BinanceStreamClient(
+                api_key=self._api_key,  # type: ignore[attr-defined]
+                signed_post=lambda path, params: self._signed_request("POST", path, params),
+                testnet=bool(self._credentials and self._credentials.data.get("testnet")),
+            )
+        return self._stream_client
+
+    async def _stream_orders_impl(
+        self,
+        account_id: str,
+        handler: StreamHandler,
+    ) -> StreamSubscription:
+        client = self._get_stream_client()
+        await client.create_listen_key()
+        url = client.user_stream_url()
+
+        async def _dispatch(raw: str | bytes) -> None:
+            await client.dispatch_message(raw, on_order=handler)
+
+        self.websocket.set_message_dispatcher(_dispatch)
+        if not self.websocket.is_connected:
+            await self.websocket.connect(url, headers={"X-MBX-APIKEY": self._api_key})  # type: ignore[attr-defined]
+        return await self.websocket.subscribe(f"orders:{account_id}", handler)
+
+    async def _stream_market_data_impl(
+        self,
+        symbols: list[str],
+        handler: StreamHandler,
+    ) -> StreamSubscription:
+        client = self._get_stream_client()
+        url = client.market_stream_url(symbols)
+
+        async def _dispatch(raw: str | bytes) -> None:
+            await client.dispatch_message(raw, on_market=handler)
+
+        self.websocket.set_message_dispatcher(_dispatch)
+        await self.websocket.connect(url)
+        channel = f"market:{','.join(symbols)}"
+        return await self.websocket.subscribe(channel, handler)
 
     def _map_order(self, row: dict[str, Any], account_id: str) -> BrokerOrder:
         status = _STATUS_MAP.get(str(row.get("status", "NEW")), BrokerOrderStatus.OPEN)

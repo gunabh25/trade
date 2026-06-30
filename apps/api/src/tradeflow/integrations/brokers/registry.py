@@ -13,6 +13,7 @@ from tradeflow.integrations.brokers.adapters.paper import PaperBrokerAdapter
 from tradeflow.integrations.brokers.adapters.rithmic import RithmicBrokerAdapter
 from tradeflow.integrations.brokers.adapters.tradingview import TradingViewWebhookAdapter
 from tradeflow.integrations.brokers.adapters.tradovate import TradovateBrokerAdapter
+from tradeflow.integrations.brokers.capabilities import BrokerCapabilities
 from tradeflow.integrations.brokers.interface import BrokerAdapter
 from tradeflow.integrations.brokers.retry import RetryPolicy
 
@@ -39,6 +40,12 @@ class BrokerAdapterRegistry:
 
     def supported_brokers(self) -> list[BrokerType]:
         return list(self._factories.keys())
+
+    def get_capabilities(self, broker_type: BrokerType) -> BrokerCapabilities:
+        return self.create(broker_type).capabilities
+
+    def capabilities_map(self) -> dict[str, BrokerCapabilities]:
+        return {broker.value: self.get_capabilities(broker) for broker in self.supported_brokers()}
 
     def _register_defaults(self) -> None:
         policy = self._retry_policy

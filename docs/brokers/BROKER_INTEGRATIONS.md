@@ -9,6 +9,11 @@ integrations/brokers/
 ├── interface.py          # BrokerAdapter contract
 ├── base.py                 # Lifecycle, retry, metrics, reconnect
 ├── capabilities.py         # Feature detection per broker
+├── sdk/                    # Low-level WebSocket/protocol clients
+│   ├── binance_stream.py   # Binance user-data + combined streams
+│   ├── bybit_stream.py     # Bybit V5 private/public WS auth
+│   ├── normalizers.py      # Stream event normalization
+│   └── rithmic_protocol.py # R | Protocol architecture shell
 ├── errors.py               # Normalized error codes
 ├── exceptions.py           # Typed exceptions
 ├── http_client.py          # Pooled HTTP + error normalization
@@ -54,16 +59,16 @@ Every adapter implements:
 
 ## Supported Brokers
 
-| Broker                  | Status          | Auth                             | Notes                       |
-| ----------------------- | --------------- | -------------------------------- | --------------------------- |
-| **Paper**               | Full            | None                             | In-memory simulation        |
-| **Binance**             | Production REST | API key + HMAC secret            | Spot API, testnet supported |
-| **Bybit**               | Production REST | API key + HMAC secret            | V5 unified account          |
-| **OANDA**               | Production REST | Bearer token                     | Practice/live environments  |
-| **Interactive Brokers** | Production REST | Client Portal                    | Requires IB Gateway :5000   |
-| **Tradovate**           | Production REST | Username/password OAuth          | Token refresh supported     |
-| **TradingView**         | Webhook inbound | HMAC webhook secret              | Use `ingest_webhook()`      |
-| **Rithmic**             | Interface only  | username/password/system/gateway | Pending R \| Protocol SDK   |
+| Broker                  | Status               | Auth                             | Notes                                    |
+| ----------------------- | -------------------- | -------------------------------- | ---------------------------------------- |
+| **Paper**               | Full                 | None                             | In-memory simulation                     |
+| **Binance**             | Production REST + WS | API key + HMAC secret            | Spot API, user-data stream, testnet      |
+| **Bybit**               | Production REST + WS | API key + HMAC secret            | V5 unified account, private WS           |
+| **OANDA**               | Production REST      | Bearer token                     | Practice/live environments               |
+| **Interactive Brokers** | Production REST      | Client Portal                    | Requires IB Gateway :5000                |
+| **Tradovate**           | Production REST      | Username/password OAuth          | Token refresh supported                  |
+| **TradingView**         | Webhook inbound      | HMAC webhook secret              | `POST /broker/webhooks/tradingview/{id}` |
+| **Rithmic**             | Protocol shell       | username/password/system/gateway | SDK wiring pending                       |
 
 ## Credentials
 
@@ -140,6 +145,19 @@ Every adapter implements:
 }
 ```
 
+## REST API
+
+| Method | Path                                                  | Description                      |
+| ------ | ----------------------------------------------------- | -------------------------------- |
+| GET    | `/api/v1/broker/supported`                            | List brokers + capability matrix |
+| POST   | `/api/v1/broker/connections/{id}/orders`              | Place order                      |
+| PATCH  | `/api/v1/broker/connections/{id}/orders/{order_id}`   | Modify order                     |
+| DELETE | `/api/v1/broker/connections/{id}/orders/{order_id}`   | Cancel order                     |
+| POST   | `/api/v1/broker/connections/{id}/flatten`             | Flatten position                 |
+| POST   | `/api/v1/broker/connections/{id}/refresh-token`       | Refresh OAuth token              |
+| POST   | `/api/v1/broker/connections/{id}/validate`            | Validate connection              |
+| POST   | `/api/v1/broker/webhooks/tradingview/{connection_id}` | TradingView alert ingress        |
+
 ## Error Normalization
 
 All HTTP adapters map broker responses to stable codes:
@@ -182,20 +200,27 @@ get_broker_metrics().snapshot()
 
 ```bash
 cd apps/api
-pytest tests/test_broker_integration.py tests/test_broker_adapters.py -v
+pytest tests/test_broker_integration.py tests/test_broker_adapters.py tests/unit/test_broker_sdk.py -v
 ```
 
 Integration tests use mocked HTTP — no live API keys required.
 
 ## WebSocket Streaming
 
-Adapters with `capabilities.supports_stream_orders = True` expose real-time streams via `stream_orders()`. The WebSocket manager uses the `websockets` library with automatic reconnect on disconnect.
+Adapters with streaming capabilities use the `sdk/` WebSocket clients:
 
-TradingView emits order events when webhooks are ingested:
+- **Binance** — listen-key user data stream for orders; combined stream for quotes
+- **Bybit** — V5 private WS auth for orders/positions; public linear tickers
+- **Paper / TradingView** — in-process event bus via `BrokerWebSocketManager`
 
-```python
-adapter = TradingViewWebhookAdapter()
-await adapter.connect(BrokerCredentials(data={"webhook_secret": "..."}))
-sub = await adapter.stream_orders("default", my_handler)
-await adapter.ingest_webhook({"action": "buy", "symbol": "ES", "quantity": "1"})
+Stream payloads are normalized via `sdk/normalizers.py` to `{type: order|position|quote, ...}`.
+
+TradingView webhook endpoint (no session cookie required; HMAC validated):
+
+```http
+POST /api/v1/broker/webhooks/tradingview/{connection_id}
+X-TradingView-Signature: <hmac-sha256-hex>
+Content-Type: application/json
+
+{"action": "buy", "symbol": "ES", "quantity": "1"}
 ```

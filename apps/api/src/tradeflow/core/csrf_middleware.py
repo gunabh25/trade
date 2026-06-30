@@ -14,6 +14,7 @@ _EXEMPT_PREFIXES = (
     "/api/v1/health",
     "/api/v1/auth/oauth",
     "/api/v1/billing/webhooks",
+    "/api/v1/broker/webhooks",
     "/metrics",
     "/uploads/",
 )

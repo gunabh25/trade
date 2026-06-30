@@ -235,3 +235,55 @@ class PaperBrokerAdapter(BaseBrokerAdapter):
             entry_price=existing.entry_price,
             mark_price=fill_price,
         )
+
+    async def _stream_orders_impl(
+        self,
+        account_id: str,
+        handler: StreamHandler,
+    ) -> StreamSubscription:
+        return await self.websocket.subscribe(f"orders:{account_id}", handler)
+
+    async def _stream_positions_impl(
+        self,
+        account_id: str,
+        handler: StreamHandler,
+    ) -> StreamSubscription:
+        async def _poll_positions(message: dict) -> None:
+            positions = [
+                {
+                    "type": "position",
+                    "broker": "paper",
+                    "account_id": p.account_id,
+                    "symbol": p.symbol,
+                    "side": p.side.value,
+                    "quantity": str(p.quantity),
+                    "mark_price": str(p.mark_price),
+                }
+                for p in self._positions.values()
+                if p.account_id == account_id
+            ]
+            for pos in positions:
+                await handler(pos)
+
+        return await self.websocket.subscribe(f"positions:{account_id}", _poll_positions)
+
+    async def _stream_market_data_impl(
+        self,
+        symbols: list[str],
+        handler: StreamHandler,
+    ) -> StreamSubscription:
+        channel = f"market:{','.join(symbols)}"
+
+        async def _quote(message: dict) -> None:
+            for symbol in symbols:
+                await handler(
+                    {
+                        "type": "quote",
+                        "broker": "paper",
+                        "symbol": symbol,
+                        "price": "100.00",
+                        "simulated": True,
+                    },
+                )
+
+        return await self.websocket.subscribe(channel, _quote)

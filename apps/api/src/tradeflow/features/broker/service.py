@@ -16,11 +16,14 @@ from tradeflow.db.enums import BrokerType, ConnectionStatus, UsageMetric
 from tradeflow.db.models.broker import BrokerConnection
 from tradeflow.features.broker.schemas import (
     BrokerAccountResponse,
+    BrokerCapabilitiesResponse,
     BrokerConnectionResponse,
     BrokerHealthResponse,
     BrokerOrderResponse,
     BrokerPositionResponse,
     CreateBrokerConnectionRequest,
+    FlattenPositionRequest,
+    ModifyOrderRequest,
     PlaceOrderRequest,
     SupportedBrokersResponse,
 )
@@ -31,6 +34,9 @@ from tradeflow.integrations.brokers.types import (
     BrokerOrderSide,
     BrokerOrderType,
     ConnectionHealth,
+)
+from tradeflow.integrations.brokers.types import (
+    ModifyOrderRequest as BrokerModifyOrderRequest,
 )
 from tradeflow.integrations.brokers.types import (
     PlaceOrderRequest as BrokerPlaceOrderRequest,
@@ -58,8 +64,26 @@ class BrokerConnectionService:
         self._entitlements = entitlements
 
     def list_supported_brokers(self) -> SupportedBrokersResponse:
+        caps_map = self._registry.capabilities_map()
+        capabilities = [
+            BrokerCapabilitiesResponse(
+                broker=broker,
+                supports_rest=caps.supports_rest,
+                supports_websocket=caps.supports_websocket,
+                supports_stream_market_data=caps.supports_stream_market_data,
+                supports_stream_orders=caps.supports_stream_orders,
+                supports_stream_positions=caps.supports_stream_positions,
+                supports_token_refresh=caps.supports_token_refresh,
+                supports_webhook_inbound=caps.supports_webhook_inbound,
+                max_orders_per_second=caps.max_orders_per_second,
+                supported_asset_classes=list(caps.supported_asset_classes),
+                notes=caps.notes,
+            )
+            for broker, caps in caps_map.items()
+        ]
         return SupportedBrokersResponse(
             brokers=[b.value for b in self._registry.supported_brokers()],
+            capabilities=capabilities,
         )
 
     async def create_connection(
@@ -227,6 +251,126 @@ class BrokerConnectionService:
                 price=payload.price,
             ),
         )
+        return self._to_order_response(order)
+
+    async def modify_order(
+        self,
+        db: AsyncSession,
+        user_id: UUID,
+        connection_id: UUID,
+        order_id: str,
+        payload: ModifyOrderRequest,
+    ) -> BrokerOrderResponse:
+        await self._get_connection(db, user_id, connection_id)
+        order = await self._sessions.modify_order(
+            connection_id,
+            order_id,
+            BrokerModifyOrderRequest(
+                quantity=payload.quantity,
+                price=payload.price,
+            ),
+        )
+        return self._to_order_response(order)
+
+    async def cancel_order(
+        self,
+        db: AsyncSession,
+        user_id: UUID,
+        connection_id: UUID,
+        order_id: str,
+    ) -> BrokerOrderResponse:
+        await self._get_connection(db, user_id, connection_id)
+        order = await self._sessions.cancel_order(connection_id, order_id)
+        return self._to_order_response(order)
+
+    async def flatten_position(
+        self,
+        db: AsyncSession,
+        user_id: UUID,
+        connection_id: UUID,
+        payload: FlattenPositionRequest,
+    ) -> BrokerOrderResponse:
+        await self._get_connection(db, user_id, connection_id)
+        order = await self._sessions.flatten_position(
+            connection_id,
+            payload.account_id,
+            payload.symbol,
+        )
+        return self._to_order_response(order)
+
+    async def refresh_token(
+        self,
+        db: AsyncSession,
+        user_id: UUID,
+        connection_id: UUID,
+    ) -> BrokerConnectionResponse:
+        connection = await self._get_connection(db, user_id, connection_id)
+        await self._sessions.refresh_token(connection_id)
+        return self._to_response(connection)
+
+    async def validate_connection(
+        self,
+        db: AsyncSession,
+        user_id: UUID,
+        connection_id: UUID,
+    ) -> BrokerHealthResponse:
+        connection = await self._get_connection(db, user_id, connection_id)
+        valid = await self._sessions.validate_connection(connection_id)
+        health = self._sessions.get_health(connection_id)
+        if health is None:
+            return BrokerHealthResponse(
+                connection_id=connection.id,
+                status="disconnected" if not valid else "healthy",
+                connected=valid,
+                websocket_connected=False,
+                latency_ms=None,
+                reconnect_attempts=0,
+                last_error=connection.last_error,
+            )
+        return self._to_health_response(connection.id, health)
+
+    async def ingest_tradingview_webhook(
+        self,
+        db: AsyncSession,
+        connection_id: UUID,
+        *,
+        body: bytes,
+        signature: str | None,
+        payload: dict[str, object],
+    ) -> BrokerOrderResponse:
+        from tradeflow.integrations.brokers.adapters.tradingview import TradingViewWebhookAdapter
+
+        connection = await db.scalar(
+            select(BrokerConnection).where(
+                BrokerConnection.id == connection_id,
+                BrokerConnection.deleted_at.is_(None),
+            ),
+        )
+        if connection is None:
+            raise NotFoundError("Broker connection not found")
+        if BrokerType(connection.broker) != BrokerType.TRADINGVIEW:
+            raise NotFoundError("Connection is not a TradingView webhook integration")
+
+        adapter = self._sessions.get_adapter(connection_id)
+        if adapter is None:
+            await self._sessions.connect(
+                connection.id,
+                BrokerType.TRADINGVIEW,
+                connection.credentials_encrypted,
+            )
+            adapter = self._sessions.get_adapter(connection_id)
+        if not isinstance(adapter, TradingViewWebhookAdapter):
+            msg = "Invalid TradingView adapter instance"
+            raise NotFoundError(msg)
+
+        if not await adapter.validate_webhook_signature(body, signature):
+            from tradeflow.core.errors import ForbiddenError
+
+            raise ForbiddenError("Invalid TradingView webhook signature")
+
+        order = await adapter.ingest_webhook(payload)
+        connection.last_connected_at = datetime.now(tz=UTC)
+        await db.flush()
         return self._to_order_response(order)
 
     async def _get_connection(
