@@ -197,6 +197,18 @@ export async function fetchDashboardData(): Promise<DashboardData> {
 
   await Promise.all(
     connections.map(async (connection) => {
+      if (connection.status !== 'connected') {
+        accounts.push({
+          id: connection.id,
+          name: connection.name,
+          broker: connection.broker,
+          status: mapConnectionStatus(connection),
+          equity: 0,
+          lastSync: formatRelativeTime(connection.last_connected_at),
+        });
+        return;
+      }
+
       try {
         const brokerAccounts = await listBrokerAccounts(connection.id);
         for (const account of brokerAccounts) {
@@ -208,10 +220,6 @@ export async function fetchDashboardData(): Promise<DashboardData> {
             equity: account.equity,
             lastSync: formatRelativeTime(connection.last_connected_at),
           });
-
-          if (connection.status !== 'connected') {
-            continue;
-          }
 
           const [accountPositions, accountOrders] = await Promise.all([
             listBrokerPositions(connection.id, account.id).catch(() => []),

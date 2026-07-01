@@ -97,7 +97,7 @@ class PaperBrokerAdapter(BaseBrokerAdapter):
             equity=starting_balance,
             is_live=False,
         )
-        await self._connect_websocket("wss://paper.tradeflow.local/stream")
+        self.websocket.enable_in_memory()
 
     async def fetch_accounts(self) -> list[BrokerAccount]:
         async def _fetch() -> list[BrokerAccount]:

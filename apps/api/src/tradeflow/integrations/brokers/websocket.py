@@ -71,6 +71,12 @@ class BrokerWebSocketManager:
             self._connected = False
             raise
 
+    def enable_in_memory(self) -> None:
+        """Simulated brokers use in-process pub/sub only — no network socket."""
+        self._connected = True
+        self._should_run = False
+        logger.info("broker_websocket_in_memory", broker=self._broker_name)
+
     async def disconnect(self) -> None:
         self._should_run = False
         if self._listen_task and not self._listen_task.done():
