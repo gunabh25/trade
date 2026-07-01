@@ -27,19 +27,30 @@ export function AdminOverviewPage() {
 
   const load = useCallback(async () => {
     setLoading(true);
-    try {
-      const [overviewData, analyticsData] = await Promise.all([
-        getAdminOverview(),
-        getAdminAnalytics(),
-      ]);
-      setOverview(overviewData);
-      setAnalytics(analyticsData);
+    const [overviewResult, analyticsResult] = await Promise.allSettled([
+      getAdminOverview(),
+      getAdminAnalytics(),
+    ]);
+
+    if (overviewResult.status === 'fulfilled') {
+      setOverview(overviewResult.value);
       setError(null);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to load overview');
-    } finally {
-      setLoading(false);
+    } else {
+      setOverview(null);
+      setError(
+        overviewResult.reason instanceof Error
+          ? overviewResult.reason.message
+          : 'Failed to load overview',
+      );
     }
+
+    if (analyticsResult.status === 'fulfilled') {
+      setAnalytics(analyticsResult.value);
+    } else {
+      setAnalytics(null);
+    }
+
+    setLoading(false);
   }, []);
 
   useEffect(() => {

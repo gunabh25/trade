@@ -100,6 +100,20 @@ ROLE_PERMISSIONS: dict[str, list[str]] = {
 }
 
 
+def _enum_label(value: object) -> str:
+    """Serialize SQLAlchemy enum columns that may be returned as str or enum members."""
+    if isinstance(value, str):
+        return value
+    enum_value = getattr(value, "value", None)
+    if enum_value is not None:
+        return str(enum_value)
+    return str(value)
+
+
+def _as_int(value: object) -> int:
+    return int(value)  # type: ignore[arg-type]
+
+
 class AdminService:
     """Platform administration — users, ops, support, and system controls."""
 
@@ -708,23 +722,24 @@ class AdminService:
             .limit(12),
         )
         users_by_month = [
-            {"month": month, "count": count} for month, count in reversed(users_by_month_rows.all())
+            {"month": str(month), "count": _as_int(count)}
+            for month, count in reversed(users_by_month_rows.all())
         ]
         return AdminAnalyticsResponse(
             users_by_month=users_by_month,
             subscriptions_by_plan=[
-                {"code": code, "name": name, "count": count}
+                {"code": str(code), "name": str(name), "count": _as_int(count)}
                 for code, name, count in subs_by_plan.all()
             ],
             tickets_by_status=[
-                {"status": status.value, "count": count}
+                {"status": _enum_label(status), "count": _as_int(count)}
                 for status, count in tickets_by_status.all()
             ],
             connections_by_broker=[
-                {"broker": broker.value, "count": count}
+                {"broker": _enum_label(broker), "count": _as_int(count)}
                 for broker, count in connections_by_broker.all()
             ],
-            mrr_cents=int(mrr or 0),
+            mrr_cents=_as_int(mrr or 0),
         )
 
     async def get_system_health(self) -> AdminHealthResponse:
