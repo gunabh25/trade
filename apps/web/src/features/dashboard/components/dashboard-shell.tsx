@@ -31,11 +31,11 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
 
   return (
     <TooltipProvider>
-      <div className="bg-background flex min-h-screen">
+      <div className="bg-background flex h-dvh overflow-hidden">
         <DashboardSidebar />
-        <div className="flex min-w-0 flex-1 flex-col">
+        <div className="flex min-h-0 min-w-0 flex-1 flex-col">
           <DashboardHeader data={headerData} onNotificationsChange={headerData.setNotifications} />
-          <main className="flex-1 overflow-auto">{children}</main>
+          <main className="min-h-0 flex-1 overflow-y-auto">{children}</main>
         </div>
       </div>
     </TooltipProvider>

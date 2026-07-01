@@ -118,7 +118,7 @@ function NavContent({ onNavigate }: { onNavigate?: () => void }) {
 
 export function AdminSidebar() {
   return (
-    <aside className="border-border bg-card hidden w-64 shrink-0 border-r md:flex md:flex-col">
+    <aside className="border-border bg-card hidden h-full w-64 shrink-0 flex-col border-r md:flex">
       <div className="border-border flex h-14 items-center gap-2 border-b px-5">
         <Server className="text-primary h-5 w-5" />
         <div>
@@ -126,7 +126,7 @@ export function AdminSidebar() {
           <p className="text-muted-foreground text-[11px]">TradeFlow AI</p>
         </div>
       </div>
-      <ScrollArea className="flex-1">
+      <ScrollArea className="min-h-0 flex-1">
         <NavContent />
       </ScrollArea>
       <div className="border-border border-t p-3">
@@ -166,8 +166,8 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
   }
 
   return (
-    <div className="bg-background flex min-h-screen flex-col md:flex-row">
-      <div className="border-border flex h-14 items-center gap-3 border-b px-4 md:hidden">
+    <div className="bg-background flex h-dvh flex-col overflow-hidden md:flex-row">
+      <div className="border-border flex h-14 shrink-0 items-center gap-3 border-b px-4 md:hidden">
         <Sheet open={mobileOpen} onOpenChange={setMobileOpen}>
           <SheetTrigger asChild>
             <Button variant="outline" size="icon">
@@ -194,7 +194,7 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
       </div>
 
       <AdminSidebar />
-      <main className="min-w-0 flex-1 overflow-auto">{children}</main>
+      <main className="min-h-0 min-w-0 flex-1 overflow-y-auto">{children}</main>
     </div>
   );
 }

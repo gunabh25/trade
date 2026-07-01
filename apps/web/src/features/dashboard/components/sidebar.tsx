@@ -99,10 +99,10 @@ function SidebarBrand() {
 
 export function DashboardSidebar() {
   return (
-    <aside className="border-sidebar-border bg-sidebar hidden h-full w-60 flex-col border-r lg:flex">
+    <aside className="border-sidebar-border bg-sidebar hidden h-full w-60 shrink-0 flex-col border-r lg:flex">
       <SidebarBrand />
       <Separator className="bg-sidebar-border" />
-      <ScrollArea className="flex-1 py-4">
+      <ScrollArea className="min-h-0 flex-1 py-4">
         <NavLinks />
       </ScrollArea>
       <div className="border-sidebar-border border-t p-4">
