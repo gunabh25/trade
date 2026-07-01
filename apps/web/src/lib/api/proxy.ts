@@ -12,6 +12,9 @@ const HOP_BY_HOP_HEADERS = new Set([
   'upgrade',
 ]);
 
+/** Stripped from proxied responses — Node fetch decompresses gzip bodies automatically. */
+const STRIP_RESPONSE_HEADERS = new Set(['content-encoding', 'content-length']);
+
 function stripSetCookieDomain(value: string): string {
   return value
     .split(/;\s*/)
@@ -72,11 +75,13 @@ export async function proxyToBackend(
   const headers = new Headers();
   request.headers.forEach((value, key) => {
     const lower = key.toLowerCase();
-    if (HOP_BY_HOP_HEADERS.has(lower)) {
+    if (HOP_BY_HOP_HEADERS.has(lower) || lower === 'accept-encoding') {
       return;
     }
     headers.set(key, value);
   });
+  // Avoid gzip from upstream — Node decompresses the body but would leave Content-Encoding: gzip.
+  headers.set('Accept-Encoding', 'identity');
 
   const method = request.method.toUpperCase();
   const hasBody = method !== 'GET' && method !== 'HEAD';
@@ -93,7 +98,7 @@ export async function proxyToBackend(
   const responseHeaders = new Headers();
   upstreamResponse.headers.forEach((value, key) => {
     const lower = key.toLowerCase();
-    if (HOP_BY_HOP_HEADERS.has(lower)) {
+    if (HOP_BY_HOP_HEADERS.has(lower) || STRIP_RESPONSE_HEADERS.has(lower)) {
       return;
     }
     if (lower === 'set-cookie') {

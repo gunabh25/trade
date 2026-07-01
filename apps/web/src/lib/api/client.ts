@@ -124,6 +124,19 @@ export async function apiRequest<T>(
       });
     }
 
+    if (
+      !responseBody ||
+      typeof responseBody !== 'object' ||
+      !('data' in (responseBody as Record<string, unknown>))
+    ) {
+      throw new ApiClientError(response.status, {
+        error: {
+          code: 'INTERNAL_ERROR',
+          message: 'API returned an invalid response body',
+        },
+      });
+    }
+
     return responseBody as ApiResponse<T>;
   } catch (error) {
     if (error instanceof ApiClientError) {

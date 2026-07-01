@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { useState } from 'react';
+import { type SyntheticEvent, useState } from 'react';
 
 import { Button, Card, CardContent, CardHeader, CardTitle } from '@tradeflow/ui';
 
@@ -17,7 +17,7 @@ export default function RegisterPage() {
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
-  async function handleSubmit(event: React.SubmitEvent<HTMLFormElement>) {
+  async function handleSubmit(event: SyntheticEvent<HTMLFormElement>) {
     event.preventDefault();
     setError(null);
     setLoading(true);
