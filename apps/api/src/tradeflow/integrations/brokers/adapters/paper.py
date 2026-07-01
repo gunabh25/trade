@@ -119,21 +119,46 @@ class PaperBrokerAdapter(BaseBrokerAdapter):
 
     async def place_order(self, request: PlaceOrderRequest) -> BrokerOrder:
         async def _place() -> BrokerOrder:
-            return self._place_order_sync(request)
+            order = self._place_order_sync(request)
+            await self._emit_order_event(order, "order_submitted")
+            return order
 
         return await self._execute("place_order", _place)
 
     async def modify_order(self, order_id: str, request: ModifyOrderRequest) -> BrokerOrder:
         async def _modify() -> BrokerOrder:
-            return self._modify_order_sync(order_id, request)
+            order = self._modify_order_sync(order_id, request)
+            await self._emit_order_event(order, "order_modified")
+            return order
 
         return await self._execute("modify_order", _modify)
 
     async def cancel_order(self, order_id: str) -> BrokerOrder:
         async def _cancel() -> BrokerOrder:
-            return self._cancel_order_sync(order_id)
+            order = self._cancel_order_sync(order_id)
+            await self._emit_order_event(order, "order_cancelled")
+            return order
 
         return await self._execute("cancel_order", _cancel)
+
+    async def _emit_order_event(self, order: BrokerOrder, stream_event: str) -> None:
+        await self.websocket.publish(
+            {
+                "type": "order",
+                "broker": "paper",
+                "account_id": order.account_id,
+                "order_id": order.id,
+                "symbol": order.symbol,
+                "side": order.side.value,
+                "order_type": order.order_type.value,
+                "quantity": int(order.quantity),
+                "filled_quantity": int(order.filled_quantity),
+                "price": str(order.price) if order.price is not None else None,
+                "status": order.status.value,
+                "stream_event": stream_event,
+            },
+            channel=f"orders:{order.account_id}",
+        )
 
     def _place_order_sync(self, request: PlaceOrderRequest) -> BrokerOrder:
         order_id = str(uuid.uuid4())

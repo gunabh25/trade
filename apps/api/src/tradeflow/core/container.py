@@ -19,6 +19,7 @@ from tradeflow.core.security.encryption import EncryptionService
 from tradeflow.core.security.jwt import JwtService
 from tradeflow.core.security.rate_limit import LoginProtection, RateLimiter
 from tradeflow.db.session import create_session_factory
+from tradeflow.engine.leader_watch import LeaderWatchService
 from tradeflow.engine.mapping import TradeMappingStore
 from tradeflow.engine.orchestrator import CopyOrchestrator
 from tradeflow.engine.retry_queue import RetryQueue
@@ -210,6 +211,14 @@ class Container(containers.DeclarativeContainer):
         notification_dispatcher=notification_dispatcher,
     )
 
+    leader_watch_service: providers.Singleton[LeaderWatchService] = providers.Singleton(
+        LeaderWatchService,
+        session_factory=db_session_factory,
+        session_manager=broker_session_manager,
+        settings=config,
+        orchestrator=copy_orchestrator,
+    )
+
     risk_action_executor: providers.Singleton[RiskActionExecutor] = providers.Singleton(
         RiskActionExecutor,
         session_manager=broker_session_manager,
@@ -292,6 +301,7 @@ class Container(containers.DeclarativeContainer):
         mapping_store=trade_mapping_store,
         retry_queue=copy_retry_queue,
         entitlements=entitlement_service,
+        leader_watch=leader_watch_service,
     )
 
     ai_orchestrator: providers.Factory[AIOrchestrator] = providers.Factory(

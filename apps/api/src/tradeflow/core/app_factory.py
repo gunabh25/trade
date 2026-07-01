@@ -30,6 +30,7 @@ from tradeflow.core.observability.sentry import init_sentry
 from tradeflow.core.rate_limit_middleware import GlobalRateLimitMiddleware
 from tradeflow.core.security.rate_limit import RateLimiter
 from tradeflow.core.security_middleware import SecurityHeadersMiddleware
+from tradeflow.engine.leader_watch import LeaderWatchService
 from tradeflow.integrations.brokers.manager import BrokerSessionManager
 from tradeflow.integrations.brokers.monitor import ConnectionMonitor
 
@@ -50,6 +51,7 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     redis_client: Redis[Any] = container.redis_client()
     connection_monitor: ConnectionMonitor = container.connection_monitor()
     broker_sessions: BrokerSessionManager = container.broker_session_manager()
+    leader_watch: LeaderWatchService = container.leader_watch_service()
 
     logger.info(
         "application_starting",
@@ -60,11 +62,13 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     )
 
     await connection_monitor.start()
+    await leader_watch.start()
 
     try:
         yield
     finally:
         logger.info("application_shutting_down")
+        await leader_watch.stop()
         await broker_sessions.disconnect_all()
         await connection_monitor.stop()
         await redis_client.aclose()

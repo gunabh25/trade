@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from datetime import UTC, datetime
+from typing import TYPE_CHECKING
 from uuid import UUID, uuid4
 
 from sqlalchemy import func, select
@@ -35,6 +36,9 @@ from tradeflow.features.copy_trading.schemas import (
     SimulateLeaderEventRequest,
 )
 
+if TYPE_CHECKING:
+    from tradeflow.engine.leader_watch import LeaderWatchService
+
 logger = get_logger(__name__)
 
 
@@ -47,11 +51,13 @@ class CopyTradingService:
         mapping_store: TradeMappingStore,
         retry_queue: RetryQueue,
         entitlements: EntitlementService,
+        leader_watch: LeaderWatchService | None = None,
     ) -> None:
         self._orchestrator = orchestrator
         self._mapping = mapping_store
         self._retry = retry_queue
         self._entitlements = entitlements
+        self._leader_watch = leader_watch
 
     async def create_group(
         self,
@@ -128,6 +134,11 @@ class CopyTradingService:
         group.copying_enabled = True
         await db.flush()
         await db.refresh(group, ["followers"])
+        if self._leader_watch is not None:
+            await self._leader_watch.watch_group(group_id)
+        from tradeflow.workers.copy_tasks import recover_connections
+
+        recover_connections.delay()
         logger.info("copy_group_started", copy_group_id=str(group_id))
         return self._to_group_response(group)
 
@@ -142,6 +153,8 @@ class CopyTradingService:
         group.status = CopyGroupStatus.PAUSED
         await db.flush()
         await db.refresh(group, ["followers"])
+        if self._leader_watch is not None:
+            await self._leader_watch.unwatch_group(group_id)
         return self._to_group_response(group)
 
     async def list_groups(
