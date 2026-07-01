@@ -36,8 +36,9 @@ COPY apps/api/alembic ./alembic
 COPY apps/api/alembic.ini ./alembic.ini
 COPY apps/api/scripts/start.sh apps/api/scripts/migrate.sh \
      apps/api/scripts/start-worker.sh apps/api/scripts/start-beat.sh \
+     apps/api/scripts/promote_admin.py \
      ./scripts/
-RUN chmod +x ./scripts/*.sh
+RUN chmod +x ./scripts/*.sh ./scripts/promote_admin.py
 USER tradeflow
 EXPOSE 8000
 ENV API_HOST=0.0.0.0 \
