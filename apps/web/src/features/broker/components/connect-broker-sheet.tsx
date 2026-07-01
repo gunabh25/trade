@@ -78,7 +78,13 @@ export function ConnectBrokerSheet({
       onConnected();
       onOpenChange(false);
     } catch (err) {
-      setError(err instanceof ApiClientError ? err.message : 'Failed to connect broker');
+      if (err instanceof ApiClientError && err.code === 'FORBIDDEN') {
+        setError(
+          'Broker connection limit reached. Remove a pending connection below or click Connect on an existing one.',
+        );
+      } else {
+        setError(err instanceof ApiClientError ? err.message : 'Failed to connect broker');
+      }
     } finally {
       setSaving(false);
     }

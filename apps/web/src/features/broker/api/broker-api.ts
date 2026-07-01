@@ -141,6 +141,12 @@ export async function disconnectBroker(connectionId: string): Promise<BrokerConn
   return normalizeConnection(response.data);
 }
 
+export async function deleteBrokerConnection(connectionId: string): Promise<void> {
+  await apiRequest<Record<string, unknown>>(`/broker/connections/${connectionId}`, {
+    method: 'DELETE',
+  });
+}
+
 export async function getBrokerHealth(connectionId: string): Promise<BrokerHealth> {
   const response = await apiRequest<Record<string, unknown>>(
     `/broker/connections/${connectionId}/health`,

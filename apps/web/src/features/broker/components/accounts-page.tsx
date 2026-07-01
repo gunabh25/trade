@@ -1,6 +1,6 @@
 'use client';
 
-import { Link2, Plus, RefreshCw, Unplug } from 'lucide-react';
+import { Link2, Plus, RefreshCw, Trash2, Unplug } from 'lucide-react';
 import { useCallback, useEffect, useState } from 'react';
 
 import type { BrokerConnection, TradingAccount } from '@tradeflow/types/api';
@@ -59,7 +59,7 @@ export function AccountsPageContent({ autoOpenConnect = false }: AccountsPageCon
 
   async function runConnectionAction(
     connectionId: string,
-    action: 'connect' | 'disconnect' | 'sync',
+    action: 'connect' | 'disconnect' | 'sync' | 'delete',
   ) {
     setActionId(connectionId);
     setError(null);
@@ -68,6 +68,8 @@ export function AccountsPageContent({ autoOpenConnect = false }: AccountsPageCon
         await brokerApi.connectBroker(connectionId);
       } else if (action === 'disconnect') {
         await brokerApi.disconnectBroker(connectionId);
+      } else if (action === 'delete') {
+        await brokerApi.deleteBrokerConnection(connectionId);
       } else {
         await brokerApi.syncTradingAccounts(connectionId);
       }
@@ -183,6 +185,16 @@ export function AccountsPageContent({ autoOpenConnect = false }: AccountsPageCon
                     >
                       <Unplug className="mr-1 h-3.5 w-3.5" />
                       Disconnect
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      className="text-red-400 hover:text-red-300"
+                      disabled={actionId === connection.id}
+                      onClick={() => void runConnectionAction(connection.id, 'delete')}
+                    >
+                      <Trash2 className="mr-1 h-3.5 w-3.5" />
+                      Remove
                     </Button>
                   </div>
                 </div>

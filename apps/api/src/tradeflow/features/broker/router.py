@@ -143,6 +143,23 @@ async def disconnect_broker(
     return success(connection, request_id=getattr(request.state, "request_id", None))
 
 
+@router.delete(
+    "/connections/{connection_id}",
+    response_model=SuccessResponse[dict[str, str]],
+    summary="Delete broker connection",
+)
+@inject
+async def delete_broker_connection(
+    request: Request,
+    connection_id: UUID,
+    db: DbSession,
+    user: CurrentUser,
+    broker_service: BrokerConnectionService = Depends(Provide[Container.broker_service]),
+) -> SuccessResponse[dict[str, str]]:
+    await broker_service.delete_connection(db, user.id, connection_id)
+    return success({"status": "deleted"}, request_id=getattr(request.state, "request_id", None))
+
+
 @router.get(
     "/connections/{connection_id}/health",
     response_model=SuccessResponse[BrokerHealthResponse],

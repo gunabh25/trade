@@ -6,7 +6,7 @@ from datetime import UTC, datetime
 from typing import TYPE_CHECKING
 from uuid import UUID
 
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from tradeflow.core.errors import NotFoundError
@@ -167,6 +167,62 @@ class BrokerConnectionService:
         connection.status = ConnectionStatus.DISCONNECTED
         await db.flush()
         return self._to_response(connection)
+
+    async def delete_connection(
+        self,
+        db: AsyncSession,
+        user_id: UUID,
+        connection_id: UUID,
+    ) -> None:
+        from tradeflow.core.errors import ConflictError
+        from tradeflow.db.models.copy_trading import CopyGroup, CopyGroupFollower
+
+        connection = await self._get_connection(db, user_id, connection_id)
+        account_ids = list(
+            await db.scalars(
+                select(TradingAccount.id).where(
+                    TradingAccount.broker_connection_id == connection_id,
+                    TradingAccount.user_id == user_id,
+                    TradingAccount.deleted_at.is_(None),
+                ),
+            ),
+        )
+        if account_ids:
+            leader_in_use = await db.scalar(
+                select(func.count())
+                .select_from(CopyGroup)
+                .where(
+                    CopyGroup.leader_account_id.in_(account_ids),
+                    CopyGroup.deleted_at.is_(None),
+                ),
+            )
+            follower_in_use = await db.scalar(
+                select(func.count())
+                .select_from(CopyGroupFollower)
+                .where(
+                    CopyGroupFollower.follower_account_id.in_(account_ids),
+                    CopyGroupFollower.deleted_at.is_(None),
+                ),
+            )
+            if int(leader_in_use or 0) > 0 or int(follower_in_use or 0) > 0:
+                raise ConflictError(
+                    "Remove this connection from copy groups before deleting it",
+                )
+
+        await self._sessions.disconnect(connection.id)
+        now = datetime.now(tz=UTC)
+        connection.deleted_at = now
+        accounts = await db.scalars(
+            select(TradingAccount).where(
+                TradingAccount.broker_connection_id == connection_id,
+                TradingAccount.user_id == user_id,
+                TradingAccount.deleted_at.is_(None),
+            ),
+        )
+        for account in accounts.all():
+            account.deleted_at = now
+        await db.flush()
+        logger.info("broker_connection_deleted", connection_id=str(connection_id))
 
     async def get_health(
         self,
