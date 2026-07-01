@@ -1,6 +1,7 @@
 'use client';
 
 import { LayoutDashboard } from 'lucide-react';
+import Link from 'next/link';
 
 import { Button, Card, CardContent, CardDescription, CardHeader, CardTitle } from '@tradeflow/ui';
 
@@ -24,6 +25,7 @@ import {
 } from '@/features/dashboard/components/motion-primitives';
 import { StatWidgetsGrid } from '@/features/dashboard/components/stat-widgets';
 import { useDashboardData } from '@/features/dashboard/hooks/use-dashboard-data';
+import { OnboardingBanner } from '@/features/onboarding/components/onboarding-banner';
 
 export default function DashboardPage() {
   const { data, loading, isEmpty, error, refetch } = useDashboardData();
@@ -56,7 +58,11 @@ export default function DashboardPage() {
           icon={LayoutDashboard}
           title="No trading data yet"
           description="Connect your first broker account to see equity, positions, and performance analytics."
-          action={<Button size="sm">Connect account</Button>}
+          action={
+            <Button size="sm" asChild>
+              <Link href="/dashboard/accounts?connect=1">Connect account</Link>
+            </Button>
+          }
         />
       </div>
     );
@@ -64,6 +70,9 @@ export default function DashboardPage() {
 
   return (
     <FadeInStagger className="space-y-6 p-4 sm:p-6">
+      <FadeInItem>
+        <OnboardingBanner />
+      </FadeInItem>
       <FadeInItem>
         <StatWidgetsGrid stats={data.stats} />
       </FadeInItem>

@@ -70,3 +70,17 @@ export interface PlaceBrokerOrderRequest {
 export interface SupportedBrokers {
   brokers: string[];
 }
+
+export interface TradingAccount {
+  id: string;
+  broker_connection_id: string;
+  external_account_id: string;
+  name: string;
+  broker: string;
+  account_type: string;
+  account_role: string;
+  status: string;
+  currency: string;
+  balance: number | null;
+  created_at: string;
+}

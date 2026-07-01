@@ -7,6 +7,7 @@ import type {
   CreateBrokerConnectionRequest,
   PlaceBrokerOrderRequest,
   SupportedBrokers,
+  TradingAccount,
 } from '@tradeflow/types/api';
 
 import { apiRequest } from '@/lib/api/client';
@@ -72,6 +73,35 @@ function normalizeHealth(raw: Record<string, unknown>): BrokerHealth {
     reconnect_attempts: toNumber(raw.reconnect_attempts),
     last_error: toNullableString(raw.last_error),
   };
+}
+
+function normalizeTradingAccount(raw: Record<string, unknown>): TradingAccount {
+  return {
+    id: toString(raw.id),
+    broker_connection_id: toString(raw.broker_connection_id),
+    external_account_id: toString(raw.external_account_id),
+    name: toString(raw.name),
+    broker: toString(raw.broker),
+    account_type: toString(raw.account_type),
+    account_role: toString(raw.account_role),
+    status: toString(raw.status),
+    currency: toString(raw.currency),
+    balance: raw.balance != null ? toNumber(raw.balance) : null,
+    created_at: toString(raw.created_at),
+  };
+}
+
+export async function listTradingAccounts(): Promise<TradingAccount[]> {
+  const response = await apiRequest<Record<string, unknown>[]>('/broker/trading-accounts');
+  return response.data.map((item) => normalizeTradingAccount(item));
+}
+
+export async function syncTradingAccounts(connectionId: string): Promise<TradingAccount[]> {
+  const response = await apiRequest<Record<string, unknown>[]>(
+    `/broker/connections/${connectionId}/sync-accounts`,
+    { method: 'POST' },
+  );
+  return response.data.map((item) => normalizeTradingAccount(item));
 }
 
 export async function listSupportedBrokers(): Promise<SupportedBrokers> {

@@ -106,6 +106,7 @@ export type {
   CreateBrokerConnectionRequest,
   PlaceBrokerOrderRequest,
   SupportedBrokers,
+  TradingAccount,
 } from './broker';
 export type {
   AddCopyFollowerRequest,

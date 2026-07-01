@@ -9,7 +9,13 @@ from uuid import UUID
 
 from pydantic import BaseModel, Field
 
-from tradeflow.db.enums import BrokerType, ConnectionStatus
+from tradeflow.db.enums import (
+    BrokerType,
+    ConnectionStatus,
+    TradingAccountRole,
+    TradingAccountStatus,
+    TradingAccountType,
+)
 
 
 class CreateBrokerConnectionRequest(BaseModel):
@@ -106,3 +112,17 @@ class BrokerCapabilitiesResponse(BaseModel):
 class SupportedBrokersResponse(BaseModel):
     brokers: list[str]
     capabilities: list[BrokerCapabilitiesResponse] = Field(default_factory=list)
+
+
+class TradingAccountResponse(BaseModel):
+    id: UUID
+    broker_connection_id: UUID
+    external_account_id: str
+    name: str
+    broker: BrokerType
+    account_type: TradingAccountType
+    account_role: TradingAccountRole
+    status: TradingAccountStatus
+    currency: str
+    balance: Decimal | None
+    created_at: datetime

@@ -12,8 +12,16 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from tradeflow.core.errors import NotFoundError
 from tradeflow.core.logging import get_logger
 from tradeflow.core.security.encryption import EncryptionService
-from tradeflow.db.enums import BrokerType, ConnectionStatus, UsageMetric
+from tradeflow.db.enums import (
+    BrokerType,
+    ConnectionStatus,
+    TradingAccountRole,
+    TradingAccountStatus,
+    TradingAccountType,
+    UsageMetric,
+)
 from tradeflow.db.models.broker import BrokerConnection
+from tradeflow.db.models.trading import TradingAccount
 from tradeflow.features.broker.schemas import (
     BrokerAccountResponse,
     BrokerCapabilitiesResponse,
@@ -26,6 +34,7 @@ from tradeflow.features.broker.schemas import (
     ModifyOrderRequest,
     PlaceOrderRequest,
     SupportedBrokersResponse,
+    TradingAccountResponse,
 )
 from tradeflow.integrations.brokers.manager import BrokerSessionManager
 from tradeflow.integrations.brokers.registry import BrokerAdapterRegistry
@@ -144,6 +153,7 @@ class BrokerConnectionService:
         connection.last_connected_at = datetime.now(tz=UTC)
         connection.last_error = health.last_error
         await db.flush()
+        await self.sync_trading_accounts(db, user_id, connection_id)
         return self._to_health_response(connection.id, health)
 
     async def disconnect(
@@ -329,6 +339,86 @@ class BrokerConnectionService:
             )
         return self._to_health_response(connection.id, health)
 
+    async def list_trading_accounts(
+        self,
+        db: AsyncSession,
+        user_id: UUID,
+    ) -> list[TradingAccountResponse]:
+        accounts = await db.scalars(
+            select(TradingAccount)
+            .join(BrokerConnection)
+            .where(
+                TradingAccount.user_id == user_id,
+                TradingAccount.deleted_at.is_(None),
+                BrokerConnection.deleted_at.is_(None),
+            )
+            .order_by(TradingAccount.created_at.desc()),
+        )
+        results: list[TradingAccountResponse] = []
+        for account in accounts.all():
+            connection = await db.get(BrokerConnection, account.broker_connection_id)
+            if connection is None:
+                continue
+            results.append(self._to_trading_account_response(account, connection))
+        return results
+
+    async def sync_trading_accounts(
+        self,
+        db: AsyncSession,
+        user_id: UUID,
+        connection_id: UUID,
+    ) -> list[TradingAccountResponse]:
+        connection = await self._get_connection(db, user_id, connection_id)
+        broker_accounts = await self._sessions.fetch_accounts(connection_id)
+
+        existing = await db.scalars(
+            select(TradingAccount).where(
+                TradingAccount.broker_connection_id == connection_id,
+                TradingAccount.user_id == user_id,
+                TradingAccount.deleted_at.is_(None),
+            ),
+        )
+        existing_by_external = {account.external_account_id: account for account in existing.all()}
+
+        synced: list[TradingAccount] = []
+        for broker_account in broker_accounts:
+            account = existing_by_external.get(broker_account.id)
+            if account is None:
+                if self._entitlements is not None:
+                    await self._entitlements.assert_within_limit(
+                        db,
+                        user_id,
+                        UsageMetric.TRADING_ACCOUNTS,
+                    )
+                account = TradingAccount(
+                    user_id=user_id,
+                    broker_connection_id=connection_id,
+                    external_account_id=broker_account.id,
+                    name=broker_account.name,
+                    account_type=self._resolve_account_type(connection, broker_account.is_live),
+                    account_role=TradingAccountRole.UNASSIGNED,
+                    status=TradingAccountStatus.ACTIVE,
+                    currency=broker_account.currency,
+                    balance=broker_account.balance,
+                )
+                db.add(account)
+            else:
+                account.name = broker_account.name
+                account.balance = broker_account.balance
+                account.currency = broker_account.currency
+            synced.append(account)
+
+        await db.flush()
+        for account in synced:
+            await db.refresh(account)
+
+        logger.info(
+            "trading_accounts_synced",
+            connection_id=str(connection_id),
+            count=len(synced),
+        )
+        return [self._to_trading_account_response(account, connection) for account in synced]
+
     async def ingest_tradingview_webhook(
         self,
         db: AsyncSession,
@@ -412,6 +502,32 @@ class BrokerConnectionService:
             latency_ms=health.latency_ms,
             reconnect_attempts=health.reconnect_attempts,
             last_error=health.last_error,
+        )
+
+    @staticmethod
+    def _resolve_account_type(connection: BrokerConnection, is_live: bool) -> TradingAccountType:
+        broker = BrokerType(connection.broker)
+        if broker == BrokerType.PAPER:
+            return TradingAccountType.SIM
+        return TradingAccountType.LIVE if is_live else TradingAccountType.SIM
+
+    @staticmethod
+    def _to_trading_account_response(
+        account: TradingAccount,
+        connection: BrokerConnection,
+    ) -> TradingAccountResponse:
+        return TradingAccountResponse(
+            id=account.id,
+            broker_connection_id=account.broker_connection_id,
+            external_account_id=account.external_account_id,
+            name=account.name,
+            broker=BrokerType(connection.broker),
+            account_type=TradingAccountType(account.account_type),
+            account_role=TradingAccountRole(account.account_role),
+            status=TradingAccountStatus(account.status),
+            currency=account.currency,
+            balance=account.balance,
+            created_at=account.created_at,
         )
 
     @staticmethod

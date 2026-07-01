@@ -22,6 +22,7 @@ from tradeflow.features.broker.schemas import (
     ModifyOrderRequest,
     PlaceOrderRequest,
     SupportedBrokersResponse,
+    TradingAccountResponse,
 )
 from tradeflow.features.broker.service import BrokerConnectionService
 
@@ -73,6 +74,39 @@ async def create_connection(
 ) -> SuccessResponse[BrokerConnectionResponse]:
     connection = await broker_service.create_connection(db, user.id, payload)
     return success(connection, request_id=getattr(request.state, "request_id", None))
+
+
+@router.get(
+    "/trading-accounts",
+    response_model=SuccessResponse[list[TradingAccountResponse]],
+    summary="List linked trading accounts",
+)
+@inject
+async def list_trading_accounts(
+    request: Request,
+    db: DbSession,
+    user: CurrentUser,
+    broker_service: BrokerConnectionService = Depends(Provide[Container.broker_service]),
+) -> SuccessResponse[list[TradingAccountResponse]]:
+    accounts = await broker_service.list_trading_accounts(db, user.id)
+    return success(accounts, request_id=getattr(request.state, "request_id", None))
+
+
+@router.post(
+    "/connections/{connection_id}/sync-accounts",
+    response_model=SuccessResponse[list[TradingAccountResponse]],
+    summary="Sync trading accounts from broker",
+)
+@inject
+async def sync_trading_accounts(
+    request: Request,
+    connection_id: UUID,
+    db: DbSession,
+    user: CurrentUser,
+    broker_service: BrokerConnectionService = Depends(Provide[Container.broker_service]),
+) -> SuccessResponse[list[TradingAccountResponse]]:
+    accounts = await broker_service.sync_trading_accounts(db, user.id, connection_id)
+    return success(accounts, request_id=getattr(request.state, "request_id", None))
 
 
 @router.post(

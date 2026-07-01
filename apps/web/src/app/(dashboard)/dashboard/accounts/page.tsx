@@ -1,35 +1,12 @@
 'use client';
 
-import { useCallback } from 'react';
+import { useSearchParams } from 'next/navigation';
 
-import * as brokerApi from '@/features/broker/api/broker-api';
-import { AsyncListPage } from '@/features/dashboard/components/resource-pages';
+import { AccountsPageContent } from '@/features/broker/components/accounts-page';
 
 export default function AccountsPage() {
-  const loadItems = useCallback(() => brokerApi.listBrokerConnections(), []);
+  const searchParams = useSearchParams();
+  const autoOpenConnect = searchParams.get('connect') === '1';
 
-  return (
-    <AsyncListPage
-      title="Trading Accounts"
-      description="Broker connections and linked trading accounts."
-      emptyMessage="No broker connections yet. Connect a broker from the API or admin portal."
-      loadItems={loadItems}
-      getKey={(item) => item.id}
-      renderItem={(connection) => (
-        <div className="flex flex-wrap items-center justify-between gap-2">
-          <div>
-            <p className="font-medium">{connection.name}</p>
-            <p className="text-muted-foreground text-sm">
-              {connection.broker} · {connection.status}
-            </p>
-          </div>
-          {connection.last_connected_at ? (
-            <p className="text-muted-foreground text-xs">
-              Last connected {new Date(connection.last_connected_at).toLocaleString()}
-            </p>
-          ) : null}
-        </div>
-      )}
-    />
-  );
+  return <AccountsPageContent autoOpenConnect={autoOpenConnect} />;
 }
