@@ -1,5 +1,7 @@
 #!/bin/sh
 # Production API entrypoint — supports Railway $PORT and optional startup migrations.
+# Set RUN_CELERY_WORKER=true (and optionally RUN_CELERY_BEAT=true) when you cannot
+# deploy separate worker/beat services (e.g. Railway free tier service limit).
 set -eu
 
 WORKERS="${API_WORKERS:-1}"
@@ -12,6 +14,32 @@ RUN_MIGRATIONS="${RUN_MIGRATIONS_ON_START:-false}"
 if [ "$RUN_MIGRATIONS" = "true" ]; then
   echo "[api] Running migrations before startup…"
   alembic upgrade head
+fi
+
+CELERY_PID=""
+BEAT_PID=""
+
+cleanup() {
+  if [ -n "$CELERY_PID" ]; then
+    kill "$CELERY_PID" 2>/dev/null || true
+  fi
+  if [ -n "$BEAT_PID" ]; then
+    kill "$BEAT_PID" 2>/dev/null || true
+  fi
+}
+
+trap cleanup TERM INT
+
+if [ "${RUN_CELERY_WORKER:-false}" = "true" ]; then
+  echo "[api] Starting embedded Celery worker (same service)…"
+  ./scripts/start-worker.sh &
+  CELERY_PID=$!
+fi
+
+if [ "${RUN_CELERY_BEAT:-false}" = "true" ]; then
+  echo "[api] Starting embedded Celery beat (same service)…"
+  ./scripts/start-beat.sh &
+  BEAT_PID=$!
 fi
 
 echo "[api] Starting uvicorn on ${HOST}:${PORT} (workers=${WORKERS})…"
