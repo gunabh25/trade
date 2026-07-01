@@ -79,6 +79,13 @@ async def test_admin_analytics_as_admin(client: AsyncClient, db_ready) -> None:
     assert "data" in body
     assert "users_by_month" in body["data"]
 
+    users = await client.get("/api/v1/admin/users?page=1")
+    assert users.status_code == 200, users.text
+    users_body = users.json()
+    assert "data" in users_body
+    assert "items" in users_body["data"]
+    assert len(users_body["data"]["items"]) >= 1
+
 
 @pytest.mark.api
 @pytest.mark.asyncio
