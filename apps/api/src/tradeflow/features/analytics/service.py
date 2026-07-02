@@ -11,11 +11,12 @@ from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
-from tradeflow.db.enums import TradeStatus
+from tradeflow.db.enums import OrderStatus, TradeStatus
 from tradeflow.db.models.journal import Strategy, TradeJournal
-from tradeflow.db.models.trading import Trade, TradingAccount
+from tradeflow.db.models.trading import Order, Trade, TradingAccount
 from tradeflow.features.analytics import metrics
 from tradeflow.features.analytics.export import export_overview_csv, export_overview_pdf
+from tradeflow.features.analytics.order_activity import ActivitySnapshot, build_activity_snapshot
 from tradeflow.features.analytics.schemas import (
     AnalyticsFilterParams,
     AnalyticsMetricsResponse,
@@ -33,6 +34,7 @@ from tradeflow.features.analytics.schemas import (
     SessionPerformanceResponse,
     SymbolPerformanceResponse,
 )
+from tradeflow.integrations.brokers.manager import BrokerSessionManager
 
 DEFAULT_STARTING_EQUITY = Decimal("100000")
 PIE_COLORS = [
@@ -58,6 +60,9 @@ SESSION_HOURS: dict[str, range] = {
 class AnalyticsService:
     """Compute portfolio-level and comparative trading analytics."""
 
+    def __init__(self, session_manager: BrokerSessionManager | None = None) -> None:
+        self._sessions = session_manager
+
     async def get_overview(
         self,
         db: AsyncSession,
@@ -68,11 +73,20 @@ class AnalyticsService:
         trades = await self._load_closed_trades(db, user_id, filters)
         journal_entries = await self._load_journal_entries(db, user_id, filters)
 
+        activity = await build_activity_snapshot(db, user_id, self._sessions, filters)
+
         pnls = self._collect_pnls(trades, journal_entries)
         ordered_pnls = self._collect_ordered_pnls(trades, journal_entries)
         trade_dates = self._collect_trade_dates(trades, journal_entries)
 
+        if activity is not None and not pnls:
+            pnls = list(activity.ordered_pnls)
+            ordered_pnls = list(activity.ordered_pnls)
+            trade_dates = list(activity.trade_dates)
+
         starting_equity = DEFAULT_STARTING_EQUITY
+        if activity is not None and activity.starting_equity > 0:
+            starting_equity = activity.starting_equity
         daily = metrics.aggregate_daily_pnls(trade_dates)
         equity_series = metrics.equity_curve_from_daily(daily, starting_equity)
         if not equity_series:
@@ -88,7 +102,7 @@ class AnalyticsService:
         recovery = metrics.recovery_factor(net_profit, float(max_dd_dollars))
 
         metrics_response = AnalyticsMetricsResponse(
-            total_trades=len(pnls),
+            total_trades=max(len(pnls), activity.fill_count if activity else 0),
             total_pnl=Decimal(str(trade_metrics["total_pnl"])),
             win_count=int(trade_metrics["win_count"]),
             loss_count=int(trade_metrics["loss_count"]),
@@ -114,6 +128,26 @@ class AnalyticsService:
         profit_curve = metrics.profit_curve_from_trades(trade_dates)
         distribution = metrics.trade_distribution(ordered_pnls)
 
+        symbol_performance = self._symbol_performance(trades, journal_entries)
+        if not symbol_performance and activity is not None:
+            symbol_performance = self._symbol_performance_from_activity(activity)
+
+        calendar_heatmap = self._calendar_heatmap(trades, journal_entries)
+        if not calendar_heatmap and activity is not None:
+            calendar_heatmap = self._calendar_from_activity(activity)
+
+        hour_heatmap = self._hour_heatmap(trades)
+        if not hour_heatmap and activity is not None and activity.fill_count > 0:
+            hour_heatmap = await self._hour_heatmap_from_orders(db, user_id, filters)
+
+        session_performance = self._session_performance(trades)
+        if not session_performance and activity is not None and activity.fill_count > 0:
+            session_performance = await self._session_performance_from_orders(db, user_id, filters)
+
+        symbol_pie = self._symbol_pie(trades, journal_entries)
+        if not symbol_pie and activity is not None:
+            symbol_pie = self._symbol_pie_from_activity(activity)
+
         return AnalyticsOverviewResponse(
             metrics=metrics_response,
             equity_curve=[
@@ -129,17 +163,17 @@ class AnalyticsService:
             drawdown=[DrawdownPointResponse(date=d, drawdown_pct=dd) for d, dd in drawdown_series],
             daily_returns=self._daily_return_points(daily),
             monthly_returns=self._monthly_return_points(daily),
-            calendar_heatmap=self._calendar_heatmap(trades, journal_entries),
-            hour_heatmap=self._hour_heatmap(trades),
+            calendar_heatmap=calendar_heatmap,
+            hour_heatmap=hour_heatmap,
             trade_distribution=[
                 DistributionBucketResponse(label=label, count=count)
                 for label, count in distribution
             ],
             win_loss_pie=self._win_loss_pie(pnls),
-            symbol_pie=self._symbol_pie(trades, journal_entries),
+            symbol_pie=symbol_pie,
             strategy_pie=await self._strategy_pie(db, user_id, trades, journal_entries),
-            symbol_performance=self._symbol_performance(trades, journal_entries),
-            session_performance=self._session_performance(trades),
+            symbol_performance=symbol_performance,
+            session_performance=session_performance,
             account_leaderboard=await self._account_leaderboard(db, user_id, filters),
             strategy_leaderboard=await self._strategy_leaderboard(db, user_id, filters),
             comparison=await self._comparison_series(db, user_id, filters),
@@ -436,6 +470,22 @@ class AnalyticsService:
             trades = await self._load_closed_trades(db, user_id, account_filters)
             pnls = [t.realized_pnl for t in trades if t.realized_pnl is not None]
             if not pnls:
+                orders = await self._load_activity_orders(db, user_id, account_filters)
+                if not orders:
+                    continue
+                entries.append(
+                    LeaderboardEntryResponse(
+                        rank=0,
+                        id=str(account.id),
+                        name=account.name,
+                        subtitle=account.account_role,
+                        pnl=Decimal("0"),
+                        win_rate=0.0,
+                        profit_factor=None,
+                        trade_count=len(orders),
+                        sharpe_ratio=None,
+                    ),
+                )
                 continue
 
             trade_metrics = metrics.compute_trade_metrics(pnls)
@@ -562,7 +612,8 @@ class AnalyticsService:
             )
             equity = metrics.equity_curve_from_daily(daily, DEFAULT_STARTING_EQUITY)
             if not equity:
-                continue
+                balance = float(account.balance or DEFAULT_STARTING_EQUITY)
+                equity = [(date.today(), balance)]
 
             series_list.append(
                 ComparisonSeriesResponse(
@@ -576,6 +627,128 @@ class AnalyticsService:
             )
 
         return series_list
+
+    @staticmethod
+    def _symbol_performance_from_activity(
+        activity: ActivitySnapshot,
+    ) -> list[SymbolPerformanceResponse]:
+        results: list[SymbolPerformanceResponse] = []
+        symbols = set(activity.symbol_pnls) | set(activity.symbol_unrealized)
+        for symbol in symbols:
+            symbol_pnls = activity.symbol_pnls.get(symbol, [])
+            total = activity.symbol_unrealized.get(symbol, Decimal("0"))
+            if total == 0 and symbol_pnls:
+                total = sum(symbol_pnls, Decimal("0"))
+            trade_metrics = metrics.compute_trade_metrics(symbol_pnls or [total])
+            trade_count = len(symbol_pnls) or (1 if total != 0 else 0)
+            results.append(
+                SymbolPerformanceResponse(
+                    symbol=symbol,
+                    trade_count=trade_count,
+                    total_pnl=total,
+                    win_rate=float(trade_metrics["win_rate"]),
+                    avg_pnl=total / trade_count if trade_count else Decimal("0"),
+                ),
+            )
+        return sorted(results, key=lambda r: float(r.total_pnl), reverse=True)[:12]
+
+    @staticmethod
+    def _calendar_from_activity(activity: ActivitySnapshot) -> list[CalendarHeatmapDayResponse]:
+        buckets: dict[date, tuple[Decimal, int]] = defaultdict(
+            lambda: (Decimal("0"), 0),
+        )
+        for day, pnl in activity.trade_dates:
+            current_pnl, count = buckets[day]
+            buckets[day] = (current_pnl + pnl, count + 1)
+        return [
+            CalendarHeatmapDayResponse(date=day, pnl=pnl, trade_count=count)
+            for day, (pnl, count) in sorted(buckets.items())
+        ]
+
+    @staticmethod
+    def _symbol_pie_from_activity(activity: ActivitySnapshot) -> list[PieSliceResponse]:
+        totals: dict[str, Decimal] = defaultdict(lambda: Decimal("0"))
+        for symbol, symbol_pnls in activity.symbol_pnls.items():
+            totals[symbol] = sum(symbol_pnls, Decimal("0"))
+        if not totals and activity.unrealized_pnl != 0:
+            totals["Open P&L"] = activity.unrealized_pnl
+        slices = sorted(totals.items(), key=lambda item: abs(float(item[1])), reverse=True)[:8]
+        return [
+            PieSliceResponse(name=symbol, value=abs(value), color=PIE_COLORS[i % len(PIE_COLORS)])
+            for i, (symbol, value) in enumerate(slices)
+        ]
+
+    async def _hour_heatmap_from_orders(
+        self,
+        db: AsyncSession,
+        user_id: UUID,
+        filters: AnalyticsFilterParams,
+    ) -> list[HourHeatmapCellResponse]:
+        orders = await self._load_activity_orders(db, user_id, filters)
+        buckets: dict[tuple[int, int], tuple[Decimal, int]] = defaultdict(
+            lambda: (Decimal("0"), 0),
+        )
+        for order in orders:
+            ts = order.filled_at or order.created_at
+            dow = ts.weekday()
+            hour = ts.hour
+            pnl, count = buckets[(dow, hour)]
+            buckets[(dow, hour)] = (pnl, count + 1)
+        return [
+            HourHeatmapCellResponse(
+                day_of_week=dow,
+                hour=hour,
+                pnl=pnl,
+                trade_count=count,
+            )
+            for (dow, hour), (pnl, count) in buckets.items()
+        ]
+
+    async def _session_performance_from_orders(
+        self,
+        db: AsyncSession,
+        user_id: UUID,
+        filters: AnalyticsFilterParams,
+    ) -> list[SessionPerformanceResponse]:
+        orders = await self._load_activity_orders(db, user_id, filters)
+        buckets: dict[str, int] = defaultdict(int)
+        for order in orders:
+            ts = order.filled_at or order.created_at
+            session = next(
+                (name for name, hours in SESSION_HOURS.items() if ts.hour in hours),
+                "Other",
+            )
+            buckets[session] += 1
+        return [
+            SessionPerformanceResponse(
+                session=session,
+                trade_count=count,
+                total_pnl=Decimal("0"),
+                win_rate=0.0,
+            )
+            for session in ["Asia", "London", "New York", "After Hours"]
+            if (count := buckets.get(session, 0)) > 0
+        ]
+
+    async def _load_activity_orders(
+        self,
+        db: AsyncSession,
+        user_id: UUID,
+        filters: AnalyticsFilterParams,
+    ) -> list[Order]:
+        query = select(Order).where(
+            Order.user_id == user_id,
+            Order.deleted_at.is_(None),
+            Order.status.in_((OrderStatus.FILLED, OrderStatus.PARTIAL)),
+            Order.filled_quantity > 0,
+        )
+        if filters.trading_account_id:
+            query = query.where(Order.trading_account_id == filters.trading_account_id)
+        if filters.date_from:
+            query = query.where(func.date(Order.created_at) >= filters.date_from)
+        if filters.date_to:
+            query = query.where(func.date(Order.created_at) <= filters.date_to)
+        return list((await db.scalars(query.order_by(Order.created_at))).all())
 
     def _symbol_performance(
         self,

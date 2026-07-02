@@ -12,7 +12,6 @@ import {
   LineChart,
   Pie,
   PieChart,
-  ResponsiveContainer,
   Tooltip,
   XAxis,
   YAxis,
@@ -52,6 +51,8 @@ import {
   formatPercent,
 } from '@/features/analytics/utils/format';
 
+import { ChartFrame, HeatmapEmptyState } from '@/features/analytics/components/chart-frame';
+
 const chartTooltipStyle = {
   backgroundColor: 'hsl(240 5% 7%)',
   border: '1px solid hsl(240 4% 14%)',
@@ -73,7 +74,11 @@ export function EquityCurveChart({ data }: { data: AnalyticsEquityPoint[] }) {
         <CardDescription>Cumulative portfolio value</CardDescription>
       </CardHeader>
       <CardContent>
-        <ResponsiveContainer width="100%" height={300}>
+        <ChartFrame
+          height={300}
+          empty={data.length === 0}
+          emptyMessage="No equity history yet. Open positions and account balances will appear here."
+        >
           <AreaChart data={chartData} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
             <defs>
               <linearGradient id="analyticsEquityGradient" x1="0" y1="0" x2="0" y2="1">
@@ -108,7 +113,7 @@ export function EquityCurveChart({ data }: { data: AnalyticsEquityPoint[] }) {
               fill="url(#analyticsEquityGradient)"
             />
           </AreaChart>
-        </ResponsiveContainer>
+        </ChartFrame>
       </CardContent>
     </Card>
   );
@@ -128,7 +133,7 @@ export function DrawdownChart({ data }: { data: AnalyticsDrawdownPoint[] }) {
         <CardDescription>Underwater equity from peak (%)</CardDescription>
       </CardHeader>
       <CardContent>
-        <ResponsiveContainer width="100%" height={300}>
+        <ChartFrame height={300} empty={data.length === 0} emptyMessage="No drawdown data yet.">
           <AreaChart data={chartData} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
             <defs>
               <linearGradient id="drawdownGradient" x1="0" y1="0" x2="0" y2="1">
@@ -163,7 +168,7 @@ export function DrawdownChart({ data }: { data: AnalyticsDrawdownPoint[] }) {
               fill="url(#drawdownGradient)"
             />
           </AreaChart>
-        </ResponsiveContainer>
+        </ChartFrame>
       </CardContent>
     </Card>
   );
@@ -190,7 +195,11 @@ function ReturnsBarChart({
         <CardDescription>{description}</CardDescription>
       </CardHeader>
       <CardContent>
-        <ResponsiveContainer width="100%" height={240}>
+        <ChartFrame
+          height={240}
+          empty={data.length === 0}
+          emptyMessage="No return data for this period."
+        >
           <BarChart data={chartData} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
             <CartesianGrid stroke="hsl(240 4% 14%)" strokeDasharray="3 3" vertical={false} />
             <XAxis
@@ -214,7 +223,7 @@ function ReturnsBarChart({
             />
             <Bar dataKey="value" radius={[4, 4, 0, 0]} />
           </BarChart>
-        </ResponsiveContainer>
+        </ChartFrame>
       </CardContent>
     </Card>
   );
@@ -266,7 +275,7 @@ export function WinRateChart({
               {winCount} wins · {lossCount} losses
             </p>
           </div>
-          <ResponsiveContainer width="100%" height={180} className="max-w-[200px]">
+          <ChartFrame height={180} className="max-w-[200px]" empty={false}>
             <PieChart>
               <Pie
                 data={chartData}
@@ -281,7 +290,7 @@ export function WinRateChart({
               />
               <Tooltip contentStyle={chartTooltipStyle} />
             </PieChart>
-          </ResponsiveContainer>
+          </ChartFrame>
         </div>
       </CardContent>
     </Card>
@@ -312,7 +321,7 @@ export function ProfitFactorChart({
         <p className="mb-4 text-3xl font-semibold tabular-nums">
           {profitFactor?.toFixed(2) ?? '—'}
         </p>
-        <ResponsiveContainer width="100%" height={160}>
+        <ChartFrame height={160} empty={false}>
           <BarChart
             data={chartData}
             layout="vertical"
@@ -331,7 +340,7 @@ export function ProfitFactorChart({
             <Tooltip contentStyle={chartTooltipStyle} />
             <Bar dataKey="value" radius={[0, 4, 4, 0]} />
           </BarChart>
-        </ResponsiveContainer>
+        </ChartFrame>
       </CardContent>
     </Card>
   );
@@ -359,45 +368,51 @@ export function CalendarHeatmap({ data }: { data: AnalyticsCalendarDay[] }) {
         <CardDescription>Daily performance calendar</CardDescription>
       </CardHeader>
       <CardContent>
-        <TooltipProvider delayDuration={100}>
-          <div className="flex gap-1 overflow-x-auto pb-1">
-            {weeks.map((week, weekIndex) => (
-              <div key={weekIndex} className="flex flex-col gap-1">
-                {week.map((day) => (
-                  <UiTooltip key={day.date}>
-                    <TooltipTrigger asChild>
-                      <div
-                        className={cn(
-                          'h-4 w-4 rounded-sm transition-opacity hover:opacity-80 sm:h-5 sm:w-5',
-                          calendarColor(day.pnl),
-                        )}
-                      />
-                    </TooltipTrigger>
-                    <TooltipContent side="top" className="text-xs">
-                      <p className="font-medium">{day.date}</p>
-                      <p className={day.pnl >= 0 ? 'text-profit' : 'text-loss'}>
-                        {day.pnl >= 0 ? '+' : ''}
-                        {formatCurrency(day.pnl)}
-                      </p>
-                      <p className="text-muted-foreground">{day.trade_count} trades</p>
-                    </TooltipContent>
-                  </UiTooltip>
-                ))}
-              </div>
-            ))}
+        {data.length === 0 ? (
+          <HeatmapEmptyState height={120} message="No daily P&L calendar data yet." />
+        ) : (
+          <TooltipProvider delayDuration={100}>
+            <div className="flex gap-1 overflow-x-auto pb-1">
+              {weeks.map((week, weekIndex) => (
+                <div key={weekIndex} className="flex flex-col gap-1">
+                  {week.map((day) => (
+                    <UiTooltip key={day.date}>
+                      <TooltipTrigger asChild>
+                        <div
+                          className={cn(
+                            'h-4 w-4 rounded-sm transition-opacity hover:opacity-80 sm:h-5 sm:w-5',
+                            calendarColor(day.pnl),
+                          )}
+                        />
+                      </TooltipTrigger>
+                      <TooltipContent side="top" className="text-xs">
+                        <p className="font-medium">{day.date}</p>
+                        <p className={day.pnl >= 0 ? 'text-profit' : 'text-loss'}>
+                          {day.pnl >= 0 ? '+' : ''}
+                          {formatCurrency(day.pnl)}
+                        </p>
+                        <p className="text-muted-foreground">{day.trade_count} trades</p>
+                      </TooltipContent>
+                    </UiTooltip>
+                  ))}
+                </div>
+              ))}
+            </div>
+          </TooltipProvider>
+        )}
+        {data.length > 0 ? (
+          <div className="text-muted-foreground mt-4 flex items-center justify-end gap-2 text-[10px]">
+            <span>Loss</span>
+            <div className="flex gap-0.5">
+              <div className="bg-loss h-2.5 w-2.5 rounded-sm" />
+              <div className="bg-loss/40 h-2.5 w-2.5 rounded-sm" />
+              <div className="bg-muted h-2.5 w-2.5 rounded-sm" />
+              <div className="bg-profit/40 h-2.5 w-2.5 rounded-sm" />
+              <div className="bg-profit h-2.5 w-2.5 rounded-sm" />
+            </div>
+            <span>Profit</span>
           </div>
-        </TooltipProvider>
-        <div className="text-muted-foreground mt-4 flex items-center justify-end gap-2 text-[10px]">
-          <span>Loss</span>
-          <div className="flex gap-0.5">
-            <div className="bg-loss h-2.5 w-2.5 rounded-sm" />
-            <div className="bg-loss/40 h-2.5 w-2.5 rounded-sm" />
-            <div className="bg-muted h-2.5 w-2.5 rounded-sm" />
-            <div className="bg-profit/40 h-2.5 w-2.5 rounded-sm" />
-            <div className="bg-profit h-2.5 w-2.5 rounded-sm" />
-          </div>
-          <span>Profit</span>
-        </div>
+        ) : null}
       </CardContent>
     </Card>
   );
@@ -432,60 +447,67 @@ export function HourDayHeatmap({ data }: { data: AnalyticsHourCell[] }) {
         <CardDescription>P&L by day of week and hour (ET)</CardDescription>
       </CardHeader>
       <CardContent>
-        <TooltipProvider delayDuration={100}>
-          <div className="overflow-x-auto">
-            <div
-              className="inline-grid gap-1"
-              style={{ gridTemplateColumns: `48px repeat(${hours.length}, 1fr)` }}
-            >
-              <div />
-              {hours.map((h) => (
-                <div key={h} className="text-muted-foreground text-center text-[10px]">
-                  {h}:00
-                </div>
-              ))}
-              {DAY_LABELS.slice(0, 5).map((dayLabel, dow) => (
-                <Fragment key={dow}>
-                  <div className="text-muted-foreground flex items-center text-[10px]">
-                    {dayLabel}
+        {data.length === 0 ? (
+          <HeatmapEmptyState
+            height={200}
+            message="No session heatmap data yet. Order fills populate this view."
+          />
+        ) : (
+          <TooltipProvider delayDuration={100}>
+            <div className="overflow-x-auto">
+              <div
+                className="inline-grid gap-1"
+                style={{ gridTemplateColumns: `48px repeat(${hours.length}, 1fr)` }}
+              >
+                <div />
+                {hours.map((h) => (
+                  <div key={h} className="text-muted-foreground text-center text-[10px]">
+                    {h}:00
                   </div>
-                  {hours.map((hour) => {
-                    const cell = lookup.get(`${dow}-${hour}`);
-                    const pnl = cell?.pnl ?? 0;
-                    return (
-                      <UiTooltip key={`${dow}-${hour}`}>
-                        <TooltipTrigger asChild>
-                          <div
-                            className={cn(
-                              'h-7 min-w-[28px] rounded-sm transition-opacity hover:opacity-80',
-                              cell ? hourHeatColor(pnl, maxAbs) : 'bg-muted/30',
+                ))}
+                {DAY_LABELS.slice(0, 5).map((dayLabel, dow) => (
+                  <Fragment key={dow}>
+                    <div className="text-muted-foreground flex items-center text-[10px]">
+                      {dayLabel}
+                    </div>
+                    {hours.map((hour) => {
+                      const cell = lookup.get(`${dow}-${hour}`);
+                      const pnl = cell?.pnl ?? 0;
+                      return (
+                        <UiTooltip key={`${dow}-${hour}`}>
+                          <TooltipTrigger asChild>
+                            <div
+                              className={cn(
+                                'h-7 min-w-[28px] rounded-sm transition-opacity hover:opacity-80',
+                                cell ? hourHeatColor(pnl, maxAbs) : 'bg-muted/30',
+                              )}
+                            />
+                          </TooltipTrigger>
+                          <TooltipContent side="top" className="text-xs">
+                            <p className="font-medium">
+                              {dayLabel} {hour}:00
+                            </p>
+                            {cell ? (
+                              <>
+                                <p className={pnl >= 0 ? 'text-profit' : 'text-loss'}>
+                                  {pnl >= 0 ? '+' : ''}
+                                  {formatCurrency(pnl)}
+                                </p>
+                                <p className="text-muted-foreground">{cell.trade_count} trades</p>
+                              </>
+                            ) : (
+                              <p className="text-muted-foreground">No trades</p>
                             )}
-                          />
-                        </TooltipTrigger>
-                        <TooltipContent side="top" className="text-xs">
-                          <p className="font-medium">
-                            {dayLabel} {hour}:00
-                          </p>
-                          {cell ? (
-                            <>
-                              <p className={pnl >= 0 ? 'text-profit' : 'text-loss'}>
-                                {pnl >= 0 ? '+' : ''}
-                                {formatCurrency(pnl)}
-                              </p>
-                              <p className="text-muted-foreground">{cell.trade_count} trades</p>
-                            </>
-                          ) : (
-                            <p className="text-muted-foreground">No trades</p>
-                          )}
-                        </TooltipContent>
-                      </UiTooltip>
-                    );
-                  })}
-                </Fragment>
-              ))}
+                          </TooltipContent>
+                        </UiTooltip>
+                      );
+                    })}
+                  </Fragment>
+                ))}
+              </div>
             </div>
-          </div>
-        </TooltipProvider>
+          </TooltipProvider>
+        )}
       </CardContent>
     </Card>
   );
@@ -514,7 +536,7 @@ function AnalyticsPieChart({
         <CardDescription>{description}</CardDescription>
       </CardHeader>
       <CardContent>
-        <ResponsiveContainer width="100%" height={220}>
+        <ChartFrame height={220} empty={data.length === 0} emptyMessage="No allocation data yet.">
           <PieChart>
             <Pie
               data={chartData}
@@ -542,7 +564,7 @@ function AnalyticsPieChart({
               )}
             />
           </PieChart>
-        </ResponsiveContainer>
+        </ChartFrame>
       </CardContent>
     </Card>
   );
@@ -597,7 +619,11 @@ export function PerformanceComparisonChart({ series }: { series: AnalyticsCompar
         <CardDescription>Normalized equity curves across accounts</CardDescription>
       </CardHeader>
       <CardContent>
-        <ResponsiveContainer width="100%" height={320}>
+        <ChartFrame
+          height={320}
+          empty={series.length === 0 || chartData.length === 0}
+          emptyMessage="No account comparison data yet."
+        >
           <LineChart data={chartData} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
             <CartesianGrid stroke="hsl(240 4% 14%)" strokeDasharray="3 3" vertical={false} />
             <XAxis
@@ -644,7 +670,7 @@ export function PerformanceComparisonChart({ series }: { series: AnalyticsCompar
               />
             ))}
           </LineChart>
-        </ResponsiveContainer>
+        </ChartFrame>
       </CardContent>
     </Card>
   );
@@ -675,7 +701,7 @@ export function RatioComparisonChart({
         <CardDescription>Sharpe, Sortino, Average R, and Profit Factor</CardDescription>
       </CardHeader>
       <CardContent>
-        <ResponsiveContainer width="100%" height={220}>
+        <ChartFrame height={220} empty={false}>
           <BarChart data={chartData} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
             <CartesianGrid stroke="hsl(240 4% 14%)" strokeDasharray="3 3" vertical={false} />
             <XAxis
@@ -693,7 +719,7 @@ export function RatioComparisonChart({
             <Tooltip contentStyle={chartTooltipStyle} />
             <Bar dataKey="value" radius={[4, 4, 0, 0]} />
           </BarChart>
-        </ResponsiveContainer>
+        </ChartFrame>
       </CardContent>
     </Card>
   );
@@ -726,7 +752,7 @@ export function ExpectancyChart({
       </CardHeader>
       <CardContent>
         <p className="mb-3 text-3xl font-semibold tabular-nums">{formatCurrency(expectancy)}</p>
-        <ResponsiveContainer width="100%" height={180}>
+        <ChartFrame height={180} empty={false}>
           <BarChart data={chartData} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
             <CartesianGrid stroke="hsl(240 4% 14%)" strokeDasharray="3 3" vertical={false} />
             <XAxis
@@ -748,7 +774,7 @@ export function ExpectancyChart({
             />
             <Bar dataKey="value" radius={[4, 4, 0, 0]} />
           </BarChart>
-        </ResponsiveContainer>
+        </ChartFrame>
       </CardContent>
     </Card>
   );
@@ -771,7 +797,7 @@ export function AverageRChart({ averageR, winRate }: { averageR: number | null; 
       </CardHeader>
       <CardContent>
         <p className="mb-3 text-3xl font-semibold tabular-nums">{averageR?.toFixed(2) ?? '—'}R</p>
-        <ResponsiveContainer width="100%" height={160}>
+        <ChartFrame height={160} empty={false}>
           <BarChart data={chartData} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
             <CartesianGrid stroke="hsl(240 4% 14%)" strokeDasharray="3 3" vertical={false} />
             <XAxis
@@ -783,7 +809,7 @@ export function AverageRChart({ averageR, winRate }: { averageR: number | null; 
             <YAxis hide domain={[0, 1.2]} />
             <Bar dataKey="value" radius={[4, 4, 0, 0]} />
           </BarChart>
-        </ResponsiveContainer>
+        </ChartFrame>
       </CardContent>
     </Card>
   );
@@ -803,7 +829,11 @@ export function ProfitCurveChart({ data }: { data: AnalyticsProfitCurvePoint[] }
         <CardDescription>Cumulative P&L by trade number</CardDescription>
       </CardHeader>
       <CardContent>
-        <ResponsiveContainer width="100%" height={300}>
+        <ChartFrame
+          height={300}
+          empty={data.length === 0}
+          emptyMessage="No trade history yet. Copy fills will appear here."
+        >
           <LineChart data={chartData} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
             <CartesianGrid stroke="hsl(240 4% 14%)" strokeDasharray="3 3" vertical={false} />
             <XAxis
@@ -832,7 +862,7 @@ export function ProfitCurveChart({ data }: { data: AnalyticsProfitCurvePoint[] }
               dot={false}
             />
           </LineChart>
-        </ResponsiveContainer>
+        </ChartFrame>
       </CardContent>
     </Card>
   );
@@ -851,7 +881,11 @@ export function TradeDistributionChart({ data }: { data: AnalyticsDistributionBu
         <CardDescription>Per-trade P&L histogram</CardDescription>
       </CardHeader>
       <CardContent>
-        <ResponsiveContainer width="100%" height={260}>
+        <ChartFrame
+          height={260}
+          empty={data.length === 0}
+          emptyMessage="No trade distribution yet."
+        >
           <BarChart data={chartData} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
             <CartesianGrid stroke="hsl(240 4% 14%)" strokeDasharray="3 3" vertical={false} />
             <XAxis
@@ -874,7 +908,7 @@ export function TradeDistributionChart({ data }: { data: AnalyticsDistributionBu
             <Tooltip contentStyle={chartTooltipStyle} formatter={(v) => [String(v), 'Trades']} />
             <Bar dataKey="count" radius={[4, 4, 0, 0]} />
           </BarChart>
-        </ResponsiveContainer>
+        </ChartFrame>
       </CardContent>
     </Card>
   );
@@ -920,7 +954,7 @@ export function AvgWinLossChart({ avgWin, avgLoss }: { avgWin: number; avgLoss: 
         <CardDescription>Mean P&L on winning vs losing trades</CardDescription>
       </CardHeader>
       <CardContent>
-        <ResponsiveContainer width="100%" height={200}>
+        <ChartFrame height={200} empty={false}>
           <BarChart data={chartData} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
             <CartesianGrid stroke="hsl(240 4% 14%)" strokeDasharray="3 3" vertical={false} />
             <XAxis
@@ -942,7 +976,7 @@ export function AvgWinLossChart({ avgWin, avgLoss }: { avgWin: number; avgLoss: 
             />
             <Bar dataKey="value" radius={[4, 4, 0, 0]} />
           </BarChart>
-        </ResponsiveContainer>
+        </ChartFrame>
       </CardContent>
     </Card>
   );
@@ -986,7 +1020,7 @@ export function StreakMetricsChart({ maxWins, maxLosses }: { maxWins: number; ma
         <CardDescription>Maximum consecutive wins and losses</CardDescription>
       </CardHeader>
       <CardContent>
-        <ResponsiveContainer width="100%" height={200}>
+        <ChartFrame height={200} empty={false}>
           <BarChart data={chartData} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
             <CartesianGrid stroke="hsl(240 4% 14%)" strokeDasharray="3 3" vertical={false} />
             <XAxis
@@ -1005,7 +1039,7 @@ export function StreakMetricsChart({ maxWins, maxLosses }: { maxWins: number; ma
             <Tooltip contentStyle={chartTooltipStyle} formatter={(v) => [String(v), 'Trades']} />
             <Bar dataKey="value" radius={[4, 4, 0, 0]} />
           </BarChart>
-        </ResponsiveContainer>
+        </ChartFrame>
       </CardContent>
     </Card>
   );
@@ -1026,7 +1060,11 @@ export function SymbolPerformanceChart({ data }: { data: AnalyticsSymbolPerforma
         <CardDescription>P&L and win rate by instrument</CardDescription>
       </CardHeader>
       <CardContent>
-        <ResponsiveContainer width="100%" height={280}>
+        <ChartFrame
+          height={280}
+          empty={data.length === 0}
+          emptyMessage="No symbol performance yet."
+        >
           <BarChart
             data={chartData}
             layout="vertical"
@@ -1060,7 +1098,7 @@ export function SymbolPerformanceChart({ data }: { data: AnalyticsSymbolPerforma
             />
             <Bar dataKey="pnl" radius={[0, 4, 4, 0]} />
           </BarChart>
-        </ResponsiveContainer>
+        </ChartFrame>
       </CardContent>
     </Card>
   );
@@ -1081,7 +1119,7 @@ export function SessionPerformanceChart({ data }: { data: AnalyticsSessionPerfor
         <CardDescription>P&L by trading session (UTC)</CardDescription>
       </CardHeader>
       <CardContent>
-        <ResponsiveContainer width="100%" height={260}>
+        <ChartFrame height={260} empty={data.length === 0} emptyMessage="No session activity yet.">
           <BarChart data={chartData} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
             <CartesianGrid stroke="hsl(240 4% 14%)" strokeDasharray="3 3" vertical={false} />
             <XAxis
@@ -1109,7 +1147,7 @@ export function SessionPerformanceChart({ data }: { data: AnalyticsSessionPerfor
             />
             <Bar dataKey="pnl" radius={[4, 4, 0, 0]} />
           </BarChart>
-        </ResponsiveContainer>
+        </ChartFrame>
       </CardContent>
     </Card>
   );
@@ -1149,7 +1187,11 @@ export function StrategyComparisonChart({ series }: { series: AnalyticsCompariso
         <CardDescription>Equity curves overlaid by strategy</CardDescription>
       </CardHeader>
       <CardContent>
-        <ResponsiveContainer width="100%" height={300}>
+        <ChartFrame
+          height={300}
+          empty={chartData.length === 0}
+          emptyMessage="No strategy comparison data yet."
+        >
           <LineChart data={chartData} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
             <CartesianGrid stroke="hsl(240 4% 14%)" strokeDasharray="3 3" vertical={false} />
             <XAxis
@@ -1180,7 +1222,7 @@ export function StrategyComparisonChart({ series }: { series: AnalyticsCompariso
               />
             ))}
           </LineChart>
-        </ResponsiveContainer>
+        </ChartFrame>
       </CardContent>
     </Card>
   );

@@ -251,7 +251,10 @@ class Container(containers.DeclarativeContainer):
 
     journal_service: providers.Factory[JournalService] = providers.Factory(JournalService)
 
-    analytics_service: providers.Factory[AnalyticsService] = providers.Factory(AnalyticsService)
+    analytics_service: providers.Factory[AnalyticsService] = providers.Factory(
+        AnalyticsService,
+        session_manager=broker_session_manager,
+    )
 
     notification_service: providers.Factory[NotificationService] = providers.Factory(
         NotificationService,
