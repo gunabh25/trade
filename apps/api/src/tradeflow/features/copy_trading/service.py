@@ -133,10 +133,16 @@ class CopyTradingService:
         group.status = CopyGroupStatus.ACTIVE
         group.copying_enabled = True
         await db.flush()
+        await db.commit()
         await db.refresh(group, ["followers"])
         if self._leader_watch is not None:
             await self._leader_watch.recover_copy_connections()
-            await self._leader_watch.watch_group(group_id)
+            watching = await self._leader_watch.watch_group(group_id)
+            if not watching:
+                logger.warning(
+                    "copy_group_leader_watch_failed",
+                    copy_group_id=str(group_id),
+                )
         from tradeflow.workers.copy_tasks import recover_connections
 
         recover_connections.delay()
