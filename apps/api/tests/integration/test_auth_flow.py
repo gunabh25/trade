@@ -11,6 +11,27 @@ from tests.support.factories import register_payload, unique_email
 @pytest.mark.integration
 @pytest.mark.api
 @pytest.mark.asyncio
+async def test_update_profile(client: AsyncClient, db_ready) -> None:
+    await register_and_login(client)
+
+    patch = await client.patch(
+        "/api/v1/auth/me",
+        json={"first_name": "Updated", "last_name": "Trader", "bio": "Paper beta"},
+    )
+    assert patch.status_code == 200, patch.text
+    body = patch.json()["data"]
+    assert body["first_name"] == "Updated"
+    assert body["last_name"] == "Trader"
+    assert body["bio"] == "Paper beta"
+
+    me = await get_me(client)
+    assert me["first_name"] == "Updated"
+    assert me["bio"] == "Paper beta"
+
+
+@pytest.mark.integration
+@pytest.mark.api
+@pytest.mark.asyncio
 async def test_register_login_and_me_flow(client: AsyncClient, db_ready) -> None:
     payload = await register_and_login(client)
     me = await get_me(client)

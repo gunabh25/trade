@@ -381,8 +381,7 @@ class AuthService:
             user.bio = payload.bio
         if payload.timezone is not None:
             user.timezone = payload.timezone
-        await db.commit()
-        await db.refresh(user)
+        await db.flush()
         return self._to_profile(user)
 
     async def upload_avatar(

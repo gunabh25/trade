@@ -26,6 +26,8 @@ export default function ProfilePage() {
   const [disablePassword, setDisablePassword] = useState('');
   const [disableCode, setDisableCode] = useState('');
   const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState<string | null>(null);
+  const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState(false);
 
   useEffect(() => {
@@ -44,11 +46,16 @@ export default function ProfilePage() {
 
   async function saveProfile() {
     setError(null);
+    setSuccess(null);
+    setSaving(true);
     try {
       await authApi.updateProfile({ firstName, lastName, bio });
       await refresh();
+      setSuccess('Profile saved.');
     } catch (err) {
       setError(err instanceof ApiClientError ? err.message : 'Failed to save profile');
+    } finally {
+      setSaving(false);
     }
   }
 
@@ -118,6 +125,7 @@ export default function ProfilePage() {
   return (
     <div className="mx-auto max-w-2xl space-y-6 p-4 sm:p-6">
       {error ? <p className="text-sm text-red-400">{error}</p> : null}
+      {success ? <p className="text-sm text-green-400">{success}</p> : null}
 
       <Card className="border-border/60 bg-card/80 shadow-none">
         <CardHeader>
@@ -183,7 +191,9 @@ export default function ProfilePage() {
               setBio(e.target.value);
             }}
           />
-          <Button onClick={() => void saveProfile()}>Save profile</Button>
+          <Button type="button" disabled={saving} onClick={() => void saveProfile()}>
+            {saving ? 'Saving…' : 'Save profile'}
+          </Button>
         </CardContent>
       </Card>
 
