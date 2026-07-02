@@ -1017,6 +1017,7 @@ export function AdminHealthPage() {
 export function AdminLogsPage() {
   const [items, setItems] = useState<SystemLog[]>([]);
   const [q, setQ] = useState('');
+  const [level, setLevel] = useState('');
   const [page, setPage] = useState(1);
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(true);
@@ -1026,7 +1027,11 @@ export function AdminLogsPage() {
     setLoading(true);
     setError(null);
     try {
-      const data = await listSystemLogs({ page, ...(q ? { q } : {}) });
+      const data = await listSystemLogs({
+        page,
+        ...(q ? { q } : {}),
+        ...(level ? { level } : {}),
+      });
       setItems(data.items);
       setTotal(data.meta.total);
     } catch (err) {
@@ -1036,7 +1041,7 @@ export function AdminLogsPage() {
     } finally {
       setLoading(false);
     }
-  }, [q, page]);
+  }, [q, level, page]);
 
   useEffect(() => {
     void load();
@@ -1049,7 +1054,7 @@ export function AdminLogsPage() {
       <div className="p-6">
         <EmptyState
           icon={AlertCircle}
-          title="Logs unavailable"
+          title="System logs unavailable"
           description={error}
           action={
             <Button size="sm" onClick={() => void load()}>
@@ -1063,16 +1068,39 @@ export function AdminLogsPage() {
 
   return (
     <div>
-      <AdminPageHeader title="Logs" description="Application and system log entries." />
+      <AdminPageHeader
+        title="System Logs"
+        description="Structured application events stored in the database. For raw container output, use your Railway service logs."
+      />
       <div className="space-y-4 p-4 sm:p-6">
-        <div className="flex gap-2">
+        <div className="flex flex-col gap-2 sm:flex-row">
           <Input
-            placeholder="Search logs…"
+            placeholder="Search message or source…"
             value={q}
             onChange={(e) => {
               setQ(e.target.value);
             }}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') {
+                setPage(1);
+                void load();
+              }
+            }}
           />
+          <select
+            value={level}
+            onChange={(e) => {
+              setLevel(e.target.value);
+              setPage(1);
+            }}
+            className="border-input bg-background ring-offset-background focus-visible:ring-ring h-10 rounded-md border px-3 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2"
+          >
+            <option value="">All levels</option>
+            <option value="debug">Debug</option>
+            <option value="info">Info</option>
+            <option value="warning">Warning</option>
+            <option value="error">Error</option>
+          </select>
           <Button
             variant="outline"
             onClick={() => {
@@ -1082,6 +1110,9 @@ export function AdminLogsPage() {
           >
             Search
           </Button>
+          <Button variant="outline" onClick={() => void load()}>
+            Refresh
+          </Button>
         </div>
         <Card>
           <CardContent className="pt-6">
@@ -1089,13 +1120,22 @@ export function AdminLogsPage() {
               columns={['Time', 'Level', 'Source', 'Message']}
               rows={items.map((log) => [
                 formatDate(log.created_at),
-                <Badge key="lvl" variant={log.level === 'error' ? 'destructive' : 'secondary'}>
+                <Badge
+                  key={`${log.id}-level`}
+                  variant={
+                    log.level === 'error'
+                      ? 'destructive'
+                      : log.level === 'warning'
+                        ? 'outline'
+                        : 'secondary'
+                  }
+                >
                   {log.level}
                 </Badge>,
                 log.source,
-                log.message,
+                log.metadata ? `${log.message} · ${JSON.stringify(log.metadata)}` : log.message,
               ])}
-              emptyMessage="No log entries"
+              emptyMessage="No log entries yet. API startup and platform events will appear here."
             />
           </CardContent>
         </Card>

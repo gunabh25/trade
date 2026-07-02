@@ -176,10 +176,12 @@ export async function getAdminHealth(): Promise<AdminHealth> {
 
 export async function listSystemLogs(params?: {
   q?: string;
+  level?: string;
   page?: number;
 }): Promise<{ items: SystemLog[]; meta: PaginatedMeta }> {
   const search = new URLSearchParams();
   if (params?.q) search.set('q', params.q);
+  if (params?.level) search.set('level', params.level);
   if (params?.page) search.set('page', String(params.page));
   const qs = search.toString();
   const response = await apiRequest<{ items: SystemLog[]; meta: PaginatedMeta }>(

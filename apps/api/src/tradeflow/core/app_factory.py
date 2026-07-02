@@ -64,6 +64,23 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     await connection_monitor.start()
     await leader_watch.start()
 
+    session_factory = container.db_session_factory()
+    try:
+        from tradeflow.core.system_log import record_system_log
+        from tradeflow.db.enums import SystemLogLevel
+
+        async with session_factory() as db:
+            await record_system_log(
+                db,
+                level=SystemLogLevel.INFO,
+                source="api",
+                message=f"Application started ({settings.app_env})",
+                metadata={"version": __version__, "workers": settings.api_workers},
+            )
+            await db.commit()
+    except Exception as exc:
+        logger.warning("system_log_startup_failed", error=str(exc))
+
     try:
         yield
     finally:
