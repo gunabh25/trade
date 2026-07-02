@@ -3,7 +3,7 @@
 import { cn } from '@tradeflow/ui';
 import { Check, Eye, EyeOff, Lock, Mail } from 'lucide-react';
 import Link from 'next/link';
-import { useRouter, useSearchParams } from 'next/navigation';
+import { useSearchParams } from 'next/navigation';
 import { useMemo, useState } from 'react';
 
 import * as authApi from '@/features/auth/api/auth-api';
@@ -57,7 +57,6 @@ function getPasswordStrength(password: string): { score: number; label: string }
 }
 
 export function LoginForm() {
-  const router = useRouter();
   const searchParams = useSearchParams();
   const { refresh } = useAuth();
   const nextPath = searchParams.get('next') ?? '/dashboard';
@@ -72,6 +71,13 @@ export function LoginForm() {
 
   const passwordStrength = useMemo(() => getPasswordStrength(password), [password]);
 
+  function navigateAfterLogin() {
+    const destination = nextPath.startsWith('/') ? nextPath : '/dashboard';
+    // Auth is enforced by middleware via cookies, so use a full navigation
+    // after login to avoid racing a client-side route transition.
+    window.location.assign(destination);
+  }
+
   async function handleSubmit(event: React.SubmitEvent<HTMLFormElement>) {
     event.preventDefault();
     setError(null);
@@ -80,7 +86,7 @@ export function LoginForm() {
       if (challengeToken) {
         await authApi.verifyTwoFactorLogin(challengeToken, twoFactorCode);
         await refresh();
-        router.push(nextPath.startsWith('/') ? nextPath : '/dashboard');
+        navigateAfterLogin();
         return;
       }
       const result = await authApi.login({ email, password });
@@ -92,7 +98,7 @@ export function LoginForm() {
         localStorage.setItem('tf_remember_device', '1');
       }
       await refresh();
-      router.push(nextPath.startsWith('/') ? nextPath : '/dashboard');
+      navigateAfterLogin();
     } catch (err) {
       setError(
         err instanceof ApiClientError
