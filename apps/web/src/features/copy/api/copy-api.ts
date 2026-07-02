@@ -85,6 +85,7 @@ export async function createCopyGroup(payload: CreateCopyGroupRequest): Promise<
   const response = await apiRequest<Record<string, unknown>>('/copy/groups', {
     method: 'POST',
     body: payload,
+    timeoutMs: 30_000,
   });
   return normalizeGroup(response.data);
 }
@@ -96,6 +97,7 @@ export async function addCopyFollower(
   const response = await apiRequest<Record<string, unknown>>(`/copy/groups/${groupId}/followers`, {
     method: 'POST',
     body: payload,
+    timeoutMs: 30_000,
   });
   return normalizeFollower(response.data);
 }
@@ -103,6 +105,7 @@ export async function addCopyFollower(
 export async function startCopyGroup(groupId: string): Promise<CopyGroup> {
   const response = await apiRequest<Record<string, unknown>>(`/copy/groups/${groupId}/start`, {
     method: 'POST',
+    timeoutMs: 30_000,
   });
   return normalizeGroup(response.data);
 }
