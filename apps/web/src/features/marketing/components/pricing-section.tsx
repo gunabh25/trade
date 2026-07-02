@@ -111,7 +111,7 @@ function PricingCard({ plan, index }: { plan: Plan; index: number }) {
       viewport={{ once: true }}
       transition={{ duration: 0.5, delay: index * 0.08 }}
       className={cn(
-        'relative flex flex-col rounded-2xl border p-6 lg:p-8',
+        'relative flex flex-col rounded-2xl border p-5 sm:p-6 lg:p-8',
         isPopular
           ? 'border-indigo-500/40 bg-gradient-to-b from-indigo-500/[0.08] to-[#0a0d14] shadow-lg shadow-indigo-500/10'
           : 'border-white/[0.06] bg-[#0a0d14]',
@@ -132,7 +132,7 @@ function PricingCard({ plan, index }: { plan: Plan; index: number }) {
       </div>
 
       <div className="mt-6">
-        <span className="text-4xl font-bold tabular-nums text-white">
+        <span className="text-3xl font-bold tabular-nums text-white sm:text-4xl">
           {formatPrice(plan.price_cents, plan.currency)}
         </span>
         {!isFree ? (
@@ -195,14 +195,14 @@ export function PricingSection({ showHeading = true }: { showHeading?: boolean }
   }, []);
 
   return (
-    <section id="pricing" className="scroll-mt-20 py-20 lg:py-28">
-      <div className="mx-auto max-w-7xl px-6 lg:px-8">
+    <section id="pricing" className="scroll-mt-16 py-16 sm:scroll-mt-20 sm:py-20 lg:py-28">
+      <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         {showHeading ? (
           <div className="mx-auto max-w-2xl text-center">
-            <h2 className="text-3xl font-bold tracking-tight sm:text-4xl">
+            <h2 className="text-2xl font-bold tracking-tight sm:text-3xl lg:text-4xl">
               Simple, Transparent Pricing
             </h2>
-            <p className="mt-4 text-base leading-relaxed text-zinc-400">
+            <p className="mt-3 text-sm leading-relaxed text-zinc-400 sm:mt-4 sm:text-base">
               Start free with paper trading. Upgrade when you are ready to scale copy groups, risk
               controls, and analytics across live broker accounts.
             </p>
@@ -210,18 +210,18 @@ export function PricingSection({ showHeading = true }: { showHeading?: boolean }
         ) : null}
 
         {loading ? (
-          <div className="mt-14 flex justify-center text-zinc-500">
+          <div className="mt-10 flex justify-center text-zinc-500 sm:mt-14">
             <Loader2 className="h-6 w-6 animate-spin" />
           </div>
         ) : (
-          <div className="mt-14 grid gap-6 lg:grid-cols-3">
+          <div className="mt-10 grid gap-4 sm:mt-14 sm:gap-6 md:grid-cols-2 xl:grid-cols-3">
             {plans.map((plan, index) => (
               <PricingCard key={plan.id} plan={plan} index={index} />
             ))}
           </div>
         )}
 
-        <p className="mx-auto mt-10 max-w-2xl text-center text-xs leading-relaxed text-zinc-600">
+        <p className="mx-auto mt-8 max-w-2xl text-center text-[11px] leading-relaxed text-zinc-600 sm:mt-10 sm:text-xs">
           All plans include secure credential storage, real-time copy execution logs, and risk
           controls. Prices shown in USD. Taxes may apply. See{' '}
           <Link

@@ -2,11 +2,13 @@
 
 import { Button, cn } from '@tradeflow/ui';
 import { motion } from 'framer-motion';
-import { ArrowRight, Cloud, Layers, Shield, Sparkles } from 'lucide-react';
+import { ArrowRight, Cloud, Shield, Sparkles } from 'lucide-react';
 import Link from 'next/link';
 
 import { DashboardPreview } from '@/features/marketing/components/dashboard-preview';
 import { Hero3DGraphic } from '@/features/marketing/components/hero-3d-graphic';
+import { LandingFooter } from '@/features/marketing/components/landing-footer';
+import { LandingHeader } from '@/features/marketing/components/landing-header';
 import { PricingSection } from '@/features/marketing/components/pricing-section';
 
 const stats = [
@@ -44,150 +46,9 @@ function apiDocsHref(): string {
   return base ? `${base}/api/docs` : '/api/health';
 }
 
-function LandingHeader() {
-  return (
-    <header className="sticky top-0 z-50 border-b border-white/[0.06] bg-[#05070a]/80 backdrop-blur-xl">
-      <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-6 lg:px-8">
-        <Link href="/" className="flex items-center gap-2.5">
-          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-indigo-500/15 ring-1 ring-indigo-500/30">
-            <Layers className="h-4 w-4 text-indigo-300" />
-          </div>
-          <span className="text-sm font-semibold tracking-tight text-white">TradeFlow AI</span>
-        </Link>
-
-        <nav className="hidden items-center gap-8 md:flex">
-          <a href="#product" className="text-sm text-zinc-400 transition-colors hover:text-white">
-            Product
-          </a>
-          <a href="#features" className="text-sm text-zinc-400 transition-colors hover:text-white">
-            Features
-          </a>
-          <a href="#pricing" className="text-sm text-zinc-400 transition-colors hover:text-white">
-            Pricing
-          </a>
-        </nav>
-
-        <div className="flex items-center gap-3">
-          <Link
-            href="/login"
-            className="hidden text-sm text-zinc-400 transition-colors hover:text-white sm:inline"
-          >
-            Login
-          </Link>
-          <Button asChild className="rounded-lg bg-indigo-600 px-4 text-white hover:bg-indigo-500">
-            <Link href="/register">Get Started</Link>
-          </Button>
-        </div>
-      </div>
-    </header>
-  );
-}
-
-function HeroGraphic() {
-  return <Hero3DGraphic />;
-}
-
-function LandingFooter() {
-  return (
-    <footer className="border-t border-white/[0.06] bg-[#05070a]">
-      <div className="mx-auto grid max-w-7xl gap-10 px-6 py-14 md:grid-cols-[1.4fr_1fr_1fr_1fr] lg:px-8">
-        <div>
-          <div className="flex items-center gap-2.5">
-            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-indigo-500/15 ring-1 ring-indigo-500/30">
-              <Layers className="h-4 w-4 text-indigo-300" />
-            </div>
-            <span className="text-sm font-semibold text-white">TradeFlow AI</span>
-          </div>
-          <p className="mt-4 max-w-xs text-sm leading-relaxed text-zinc-500">
-            Professional cloud-based trade copier, risk management, and trading analytics — built
-            for serious futures and prop firm traders.
-          </p>
-        </div>
-
-        <div>
-          <p className="text-xs font-semibold uppercase tracking-wider text-zinc-400">Product</p>
-          <ul className="mt-4 space-y-2.5 text-sm text-zinc-500">
-            <li>
-              <Link href="/pricing" className="transition-colors hover:text-white">
-                Pricing
-              </Link>
-            </li>
-            <li>
-              <Link href="/dashboard" className="transition-colors hover:text-white">
-                Dashboard
-              </Link>
-            </li>
-            <li>
-              <Link href="/dashboard/analytics" className="transition-colors hover:text-white">
-                Analytics
-              </Link>
-            </li>
-            <li>
-              <Link href="/dashboard/billing" className="transition-colors hover:text-white">
-                Billing
-              </Link>
-            </li>
-          </ul>
-        </div>
-
-        <div>
-          <p className="text-xs font-semibold uppercase tracking-wider text-zinc-400">Legal</p>
-          <ul className="mt-4 space-y-2.5 text-sm text-zinc-500">
-            <li>
-              <Link href="/terms" className="transition-colors hover:text-white">
-                Terms of Service
-              </Link>
-            </li>
-            <li>
-              <Link href="/privacy" className="transition-colors hover:text-white">
-                Privacy Policy
-              </Link>
-            </li>
-            <li>
-              <Link href="/risk-disclosure" className="transition-colors hover:text-white">
-                Risk Disclosure
-              </Link>
-            </li>
-          </ul>
-        </div>
-
-        <div>
-          <p className="text-xs font-semibold uppercase tracking-wider text-zinc-400">Support</p>
-          <ul className="mt-4 space-y-2.5 text-sm text-zinc-500">
-            <li>
-              <a
-                href={apiDocsHref()}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="transition-colors hover:text-white"
-              >
-                API Docs
-              </a>
-            </li>
-            <li>
-              <Link href="/status" className="transition-colors hover:text-white">
-                System Status
-              </Link>
-            </li>
-            <li>
-              <Link href="/help" className="transition-colors hover:text-white">
-                Help &amp; FAQ
-              </Link>
-            </li>
-          </ul>
-        </div>
-      </div>
-
-      <div className="border-t border-white/[0.06] px-6 py-6 text-center text-xs text-zinc-600 lg:px-8">
-        © {new Date().getFullYear()} TradeFlow AI. All rights reserved.
-      </div>
-    </footer>
-  );
-}
-
 export function LandingPage() {
   return (
-    <div className="min-h-screen bg-[#05070a] text-white">
+    <div className="min-h-screen overflow-x-hidden bg-[#05070a] text-white">
       <LandingHeader />
 
       <main>
@@ -195,36 +56,37 @@ export function LandingPage() {
         <section className="relative overflow-hidden">
           <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_20%_50%,rgba(99,102,241,0.08)_0%,transparent_50%)]" />
 
-          <div className="mx-auto grid max-w-7xl items-center gap-12 px-6 pb-16 pt-14 lg:grid-cols-2 lg:gap-8 lg:px-8 lg:pb-24 lg:pt-20">
+          <div className="mx-auto grid max-w-7xl items-center gap-10 px-4 pb-12 pt-10 sm:gap-12 sm:px-6 sm:pb-16 sm:pt-14 lg:grid-cols-2 lg:gap-8 lg:px-8 lg:pb-24 lg:pt-20">
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.6 }}
+              className="mx-auto max-w-xl text-center lg:mx-0 lg:max-w-none lg:text-left"
             >
-              <div className="mb-6 inline-flex items-center gap-2 rounded-full border border-emerald-500/20 bg-emerald-500/5 px-3 py-1">
-                <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" />
-                <span className="text-[11px] font-medium uppercase tracking-wider text-emerald-400">
+              <div className="mb-5 inline-flex max-w-full items-center gap-2 rounded-full border border-emerald-500/20 bg-emerald-500/5 px-3 py-1 sm:mb-6">
+                <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-emerald-400" />
+                <span className="text-[10px] font-medium uppercase tracking-wider text-emerald-400 sm:text-[11px]">
                   Live Trading Network Active
                 </span>
               </div>
 
-              <h1 className="text-4xl font-bold leading-[1.1] tracking-tight sm:text-5xl lg:text-[3.25rem]">
+              <h1 className="text-3xl font-bold leading-[1.1] tracking-tight sm:text-4xl md:text-5xl lg:text-[3.25rem]">
                 Sync Your{' '}
                 <span className="bg-gradient-to-r from-cyan-400 to-indigo-400 bg-clip-text text-transparent">
                   Edge
                 </span>
               </h1>
 
-              <p className="mt-6 max-w-lg text-base leading-relaxed text-zinc-400 sm:text-lg">
+              <p className="mx-auto mt-5 max-w-lg text-sm leading-relaxed text-zinc-400 sm:mt-6 sm:text-base lg:mx-0 lg:text-lg">
                 The institutional-grade trade copier for futures and prop firm traders. Mirror
                 positions across accounts with real-time risk controls and unified analytics.
               </p>
 
-              <div className="mt-8 flex flex-wrap gap-3">
+              <div className="mt-7 flex flex-col gap-3 sm:mt-8 sm:flex-row sm:flex-wrap sm:justify-center lg:justify-start">
                 <Button
                   asChild
                   size="lg"
-                  className="rounded-lg bg-indigo-600 px-6 text-white hover:bg-indigo-500"
+                  className="h-12 w-full rounded-lg bg-indigo-600 px-6 text-white hover:bg-indigo-500 sm:w-auto"
                 >
                   <Link href="/register">
                     Get Started
@@ -235,14 +97,16 @@ export function LandingPage() {
                   asChild
                   size="lg"
                   variant="outline"
-                  className="rounded-lg border-white/10 bg-white/[0.03] text-white hover:bg-white/[0.06]"
+                  className="h-12 w-full rounded-lg border-white/10 bg-white/[0.03] text-white hover:bg-white/[0.06] sm:w-auto"
                 >
                   <Link href="/dashboard">View Dashboard</Link>
                 </Button>
               </div>
             </motion.div>
 
-            <HeroGraphic />
+            <div className="mx-auto w-full max-w-lg lg:max-w-none">
+              <Hero3DGraphic />
+            </div>
           </div>
         </section>
 
@@ -250,11 +114,11 @@ export function LandingPage() {
         <section className="border-y border-white/[0.06] bg-[#060910]">
           <div className="mx-auto grid max-w-7xl grid-cols-1 divide-y divide-white/[0.06] sm:grid-cols-3 sm:divide-x sm:divide-y-0">
             {stats.map((stat) => (
-              <div key={stat.label} className="px-6 py-10 text-center lg:px-8">
-                <p className="text-3xl font-bold tabular-nums text-cyan-400 sm:text-4xl">
+              <div key={stat.label} className="px-4 py-8 text-center sm:px-6 sm:py-10 lg:px-8">
+                <p className="text-2xl font-bold tabular-nums text-cyan-400 sm:text-3xl lg:text-4xl">
                   {stat.value}
                 </p>
-                <p className="mt-2 text-xs font-medium uppercase tracking-wider text-zinc-500">
+                <p className="mt-2 text-[10px] font-medium uppercase tracking-wider text-zinc-500 sm:text-xs">
                   {stat.label}
                 </p>
               </div>
@@ -263,19 +127,19 @@ export function LandingPage() {
         </section>
 
         {/* Features */}
-        <section id="features" className="scroll-mt-20 py-20 lg:py-28">
-          <div className="mx-auto max-w-7xl px-6 lg:px-8">
+        <section id="features" className="scroll-mt-16 py-16 sm:scroll-mt-20 sm:py-20 lg:py-28">
+          <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
             <div className="mx-auto max-w-2xl text-center">
-              <h2 className="text-3xl font-bold tracking-tight sm:text-4xl">
+              <h2 className="text-2xl font-bold tracking-tight sm:text-3xl lg:text-4xl">
                 Engineered for Dominance
               </h2>
-              <p className="mt-4 text-base leading-relaxed text-zinc-400">
+              <p className="mt-3 text-sm leading-relaxed text-zinc-400 sm:mt-4 sm:text-base">
                 Built on a high-performance stack with sub-millisecond routing, enterprise risk
                 gates, and multi-broker connectivity for serious trading operations.
               </p>
             </div>
 
-            <div className="mt-14 grid gap-6 md:grid-cols-3">
+            <div className="mt-10 grid gap-4 sm:mt-14 sm:gap-6 md:grid-cols-2 xl:grid-cols-3">
               {features.map((feature, i) => (
                 <motion.div
                   key={feature.title}
@@ -283,7 +147,11 @@ export function LandingPage() {
                   whileInView={{ opacity: 1, y: 0 }}
                   viewport={{ once: true }}
                   transition={{ duration: 0.5, delay: i * 0.1 }}
-                  className="rounded-2xl border border-white/[0.06] bg-[#0a0d14] p-6"
+                  className={cn(
+                    'rounded-2xl border border-white/[0.06] bg-[#0a0d14] p-5 sm:p-6',
+                    i === 2 &&
+                      'md:col-span-2 md:max-w-xl md:justify-self-center xl:col-span-1 xl:max-w-none',
+                  )}
                 >
                   <div
                     className={cn(
@@ -293,7 +161,9 @@ export function LandingPage() {
                   >
                     <feature.icon className="h-5 w-5" />
                   </div>
-                  <h3 className="mt-5 text-lg font-semibold text-white">{feature.title}</h3>
+                  <h3 className="mt-4 text-base font-semibold text-white sm:mt-5 sm:text-lg">
+                    {feature.title}
+                  </h3>
                   <p className="mt-2 text-sm leading-relaxed text-zinc-500">
                     {feature.description}
                   </p>
@@ -304,7 +174,7 @@ export function LandingPage() {
         </section>
 
         {/* Product preview */}
-        <section id="product" className="scroll-mt-20 pb-20 lg:pb-28">
+        <section id="product" className="scroll-mt-16 sm:scroll-mt-20">
           <DashboardPreview />
         </section>
 
@@ -312,21 +182,21 @@ export function LandingPage() {
         <PricingSection />
 
         {/* CTA */}
-        <section className="pb-20 lg:pb-28">
-          <div className="mx-auto max-w-5xl px-6 lg:px-8">
-            <div className="rounded-2xl border border-white/[0.08] bg-gradient-to-b from-[#0d1117] to-[#0a0d14] px-8 py-14 text-center sm:px-12">
-              <h2 className="text-3xl font-bold tracking-tight sm:text-4xl">
+        <section className="pb-16 sm:pb-20 lg:pb-28">
+          <div className="mx-auto max-w-5xl px-4 sm:px-6 lg:px-8">
+            <div className="rounded-2xl border border-white/[0.08] bg-gradient-to-b from-[#0d1117] to-[#0a0d14] px-5 py-10 text-center sm:px-8 sm:py-12 lg:px-12 lg:py-14">
+              <h2 className="text-2xl font-bold tracking-tight sm:text-3xl lg:text-4xl">
                 Ready to Scale Your Strategy?
               </h2>
-              <p className="mx-auto mt-4 max-w-lg text-base text-zinc-400">
+              <p className="mx-auto mt-3 max-w-lg text-sm text-zinc-400 sm:mt-4 sm:text-base">
                 Join traders who copy with confidence. Start free, connect your brokers, and scale
                 across every account in minutes.
               </p>
-              <div className="mt-8 flex flex-wrap justify-center gap-3">
+              <div className="mt-6 flex flex-col gap-3 sm:mt-8 sm:flex-row sm:flex-wrap sm:justify-center">
                 <Button
                   asChild
                   size="lg"
-                  className="rounded-lg bg-indigo-600 px-6 text-white hover:bg-indigo-500"
+                  className="h-12 w-full rounded-lg bg-indigo-600 px-6 text-white hover:bg-indigo-500 sm:w-auto"
                 >
                   <Link href="/register">Create Free Account</Link>
                 </Button>
@@ -334,7 +204,7 @@ export function LandingPage() {
                   asChild
                   size="lg"
                   variant="outline"
-                  className="rounded-lg border-white/10 bg-transparent text-white hover:bg-white/[0.06]"
+                  className="h-12 w-full rounded-lg border-white/10 bg-transparent text-white hover:bg-white/[0.06] sm:w-auto"
                 >
                   <a href={apiDocsHref()} target="_blank" rel="noopener noreferrer">
                     View API Docs
@@ -346,7 +216,7 @@ export function LandingPage() {
         </section>
       </main>
 
-      <LandingFooter />
+      <LandingFooter apiDocsHref={apiDocsHref()} />
     </div>
   );
 }

@@ -1,41 +1,27 @@
-import Link from 'next/link';
-
 import { PricingSection } from '@/features/marketing/components/pricing-section';
-import { Layers } from 'lucide-react';
+import { LandingFooter } from '@/features/marketing/components/landing-footer';
+import { LandingHeader } from '@/features/marketing/components/landing-header';
 
 export const metadata = {
   title: 'Pricing — TradeFlow AI',
   description: 'TradeFlow AI plans for paper trading, copy trading, and enterprise scale.',
 };
 
+function apiDocsHref(): string {
+  const base = process.env.NEXT_PUBLIC_API_URL?.replace(/\/$/, '');
+  return base ? `${base}/api/docs` : '/api/health';
+}
+
 export default function PricingPage() {
   return (
-    <div className="min-h-screen bg-[#05070a] text-white">
-      <header className="border-b border-white/[0.06] bg-[#05070a]/80 backdrop-blur-xl">
-        <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-6 lg:px-8">
-          <Link href="/" className="flex items-center gap-2.5">
-            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-indigo-500/15 ring-1 ring-indigo-500/30">
-              <Layers className="h-4 w-4 text-indigo-300" />
-            </div>
-            <span className="text-sm font-semibold tracking-tight text-white">TradeFlow AI</span>
-          </Link>
-          <div className="flex items-center gap-3">
-            <Link href="/login" className="text-sm text-zinc-400 hover:text-white">
-              Login
-            </Link>
-            <Link
-              href="/register"
-              className="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-500"
-            >
-              Get Started
-            </Link>
-          </div>
-        </div>
-      </header>
+    <div className="min-h-screen overflow-x-hidden bg-[#05070a] text-white">
+      <LandingHeader anchorBase="/" />
 
       <main>
         <PricingSection />
       </main>
+
+      <LandingFooter apiDocsHref={apiDocsHref()} />
     </div>
   );
 }

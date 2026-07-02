@@ -96,7 +96,7 @@ function WireframeSphere() {
 function PolyhedronCore() {
   return (
     <motion.div
-      className="relative z-[2] h-52 w-52 sm:h-60 sm:w-60"
+      className="relative z-[2] h-40 w-40 sm:h-52 sm:w-52 md:h-60 md:w-60"
       style={{ perspective: 900 }}
       animate={{ y: [0, -8, 0] }}
       transition={{ duration: 5, repeat: Infinity, ease: 'easeInOut' }}
@@ -111,8 +111,8 @@ function PolyhedronCore() {
         }}
       >
         <div className="absolute inset-0 flex items-center justify-center">
-          <div className="absolute h-36 w-36 rounded-full bg-lime-400/20 blur-3xl sm:h-44 sm:w-44" />
-          <div className="absolute h-28 w-28 rounded-full bg-cyan-400/25 blur-2xl sm:h-32 sm:w-32" />
+          <div className="absolute h-28 w-28 rounded-full bg-lime-400/20 blur-3xl sm:h-36 sm:w-36 md:h-44 md:w-44" />
+          <div className="absolute h-20 w-20 rounded-full bg-cyan-400/25 blur-2xl sm:h-28 sm:w-28 md:h-32 md:w-32" />
 
           <svg
             viewBox="0 0 200 200"
@@ -209,11 +209,10 @@ function Particles() {
 
 export function Hero3DGraphic() {
   return (
-    <div className="relative flex h-[420px] w-full items-center justify-center lg:h-[480px]">
+    <div className="relative flex h-[300px] w-full items-center justify-center sm:h-[360px] md:h-[380px] lg:h-[440px]">
       <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_center,rgba(99,102,241,0.1)_0%,transparent_68%)]" />
       <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_65%_35%,rgba(6,182,212,0.08)_0%,transparent_55%)]" />
 
-      {/* Dot grid */}
       <div
         className="pointer-events-none absolute inset-0 opacity-[0.35]"
         style={{
@@ -226,7 +225,7 @@ export function Hero3DGraphic() {
         initial={{ scale: 0.88, opacity: 0 }}
         animate={{ scale: 1, opacity: 1 }}
         transition={{ duration: 0.9, ease: 'easeOut' }}
-        className="relative flex h-64 w-64 items-center justify-center sm:h-72 sm:w-72"
+        className="relative flex h-52 w-52 items-center justify-center sm:h-60 sm:w-60 md:h-64 md:w-64 lg:h-72 lg:w-72"
       >
         <WireframeSphere />
         <Particles />
@@ -234,18 +233,18 @@ export function Hero3DGraphic() {
       </motion.div>
 
       <motion.div
-        initial={{ opacity: 0, x: 16 }}
-        animate={{ opacity: 1, x: 0 }}
+        initial={{ opacity: 0, y: 12 }}
+        animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.6, delay: 0.45 }}
-        className="absolute right-0 top-12 z-10 rounded-xl border border-white/10 bg-[#0a0e16]/95 px-4 py-3 shadow-2xl backdrop-blur-md sm:right-2 lg:right-6"
+        className="absolute bottom-2 left-1/2 z-10 w-[calc(100%-2rem)] max-w-[220px] -translate-x-1/2 rounded-xl border border-white/10 bg-[#0a0e16]/95 px-3 py-2.5 shadow-2xl backdrop-blur-md sm:bottom-auto sm:left-auto sm:right-2 sm:top-10 sm:w-auto sm:max-w-none sm:translate-x-0 sm:px-4 sm:py-3 md:right-4 lg:right-6"
       >
-        <div className="flex items-center gap-3">
-          <div className="flex h-9 w-9 items-center justify-center rounded-md bg-emerald-500/20 ring-1 ring-emerald-500/30">
+        <div className="flex items-center justify-center gap-3 sm:justify-start">
+          <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-emerald-500/20 ring-1 ring-emerald-500/30 sm:h-9 sm:w-9">
             <Zap className="h-4 w-4 text-emerald-400" fill="currentColor" />
           </div>
-          <div>
-            <p className="text-[11px] text-zinc-500">Avg. Latency</p>
-            <p className="text-base font-semibold tabular-nums text-emerald-400">12ms</p>
+          <div className="text-left">
+            <p className="text-[10px] text-zinc-500 sm:text-[11px]">Avg. Latency</p>
+            <p className="text-sm font-semibold tabular-nums text-emerald-400 sm:text-base">12ms</p>
           </div>
         </div>
       </motion.div>
