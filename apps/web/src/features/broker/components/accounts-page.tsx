@@ -1,6 +1,6 @@
 'use client';
 
-import { Link2, Plus, RefreshCw, Trash2, Unplug } from 'lucide-react';
+import { Link2, Loader2, Plus, RefreshCw, ShoppingCart, Trash2, Unplug } from 'lucide-react';
 import { useCallback, useEffect, useState } from 'react';
 
 import type { BrokerConnection, TradingAccount } from '@tradeflow/types/api';
@@ -13,6 +13,11 @@ import {
   CardDescription,
   CardHeader,
   CardTitle,
+  Input,
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
 } from '@tradeflow/ui';
 
 import * as brokerApi from '@/features/broker/api/broker-api';
@@ -34,6 +39,7 @@ export function AccountsPageContent({ autoOpenConnect = false }: AccountsPageCon
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [connectOpen, setConnectOpen] = useState(autoOpenConnect);
+  const [orderAccount, setOrderAccount] = useState<TradingAccount | null>(null);
   const [actionId, setActionId] = useState<string | null>(null);
 
   const load = useCallback(async () => {
@@ -230,6 +236,18 @@ export function AccountsPageContent({ autoOpenConnect = false }: AccountsPageCon
                     </p>
                   </div>
                   <div className="flex items-center gap-2">
+                    {account.account_role === 'leader' ? (
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => {
+                          setOrderAccount(account);
+                        }}
+                      >
+                        <ShoppingCart className="mr-1 h-3.5 w-3.5" />
+                        Place test order
+                      </Button>
+                    ) : null}
                     <Badge variant="outline">{account.status}</Badge>
                     {account.balance != null ? (
                       <span className="text-sm font-medium">
@@ -252,6 +270,164 @@ export function AccountsPageContent({ autoOpenConnect = false }: AccountsPageCon
         onOpenChange={setConnectOpen}
         onConnected={() => void load()}
       />
+      <PlaceTestOrderSheet
+        account={orderAccount}
+        open={orderAccount !== null}
+        onOpenChange={(open) => {
+          if (!open) setOrderAccount(null);
+        }}
+      />
     </FadeInStagger>
+  );
+}
+
+interface PlaceTestOrderSheetProps {
+  account: TradingAccount | null;
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+}
+
+function PlaceTestOrderSheet({ account, open, onOpenChange }: PlaceTestOrderSheetProps) {
+  const [symbol, setSymbol] = useState('AAPL');
+  const [side, setSide] = useState<'buy' | 'sell'>('buy');
+  const [quantity, setQuantity] = useState('1');
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    setSymbol('AAPL');
+    setSide('buy');
+    setQuantity('1');
+    setError(null);
+    setSuccess(null);
+  }, [open, account?.id]);
+
+  async function handleSubmit(event: React.SubmitEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!account) return;
+
+    const parsedQuantity = Number(quantity);
+    if (!symbol.trim()) {
+      setError('Enter a symbol.');
+      return;
+    }
+    if (!Number.isFinite(parsedQuantity) || parsedQuantity <= 0) {
+      setError('Quantity must be greater than zero.');
+      return;
+    }
+
+    setSubmitting(true);
+    setError(null);
+    setSuccess(null);
+    try {
+      const order = await brokerApi.placeBrokerOrder(account.broker_connection_id, {
+        account_id: account.external_account_id,
+        symbol: symbol.trim().toUpperCase(),
+        side,
+        order_type: 'market',
+        quantity: parsedQuantity,
+      });
+      setSuccess(`Placed ${order.side} ${order.quantity} ${order.symbol}.`);
+    } catch (err) {
+      setError(err instanceof ApiClientError ? err.message : 'Failed to place test order');
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
+  return (
+    <Sheet open={open} onOpenChange={onOpenChange}>
+      <SheetContent side="right" className="w-full overflow-y-auto sm:max-w-lg">
+        <SheetHeader className="text-left">
+          <SheetTitle>Place test order</SheetTitle>
+        </SheetHeader>
+
+        {account ? (
+          <form onSubmit={(event) => void handleSubmit(event)} className="mt-6 space-y-5">
+            <div className="space-y-1">
+              <p className="text-sm font-medium">{account.name}</p>
+              <p className="text-muted-foreground text-xs">
+                {account.broker} · {account.account_role} · {account.account_type}
+              </p>
+            </div>
+
+            <div className="space-y-2">
+              <label htmlFor="test-order-symbol" className="text-sm font-medium">
+                Symbol
+              </label>
+              <Input
+                id="test-order-symbol"
+                value={symbol}
+                onChange={(e) => {
+                  setSymbol(e.target.value);
+                }}
+                placeholder="AAPL"
+                required
+              />
+            </div>
+
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Side</label>
+              <div className="grid grid-cols-2 gap-2">
+                {(['buy', 'sell'] as const).map((value) => (
+                  <button
+                    key={value}
+                    type="button"
+                    onClick={() => {
+                      setSide(value);
+                    }}
+                    className={`rounded-lg border px-3 py-2 text-sm capitalize ${
+                      side === value
+                        ? 'border-primary bg-primary/5'
+                        : 'border-border hover:bg-accent/40'
+                    }`}
+                  >
+                    {value}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <label htmlFor="test-order-quantity" className="text-sm font-medium">
+                Quantity
+              </label>
+              <Input
+                id="test-order-quantity"
+                type="number"
+                min="0.01"
+                step="0.01"
+                value={quantity}
+                onChange={(e) => {
+                  setQuantity(e.target.value);
+                }}
+                required
+              />
+            </div>
+
+            <p className="text-muted-foreground text-xs">
+              This submits a market order to the paper leader account so you can verify copy
+              trading.
+            </p>
+
+            {error ? <p className="text-sm text-red-400">{error}</p> : null}
+            {success ? <p className="text-sm text-emerald-400">{success}</p> : null}
+
+            <Button type="submit" className="w-full" disabled={submitting}>
+              {submitting ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Placing order…
+                </>
+              ) : (
+                'Place test order'
+              )}
+            </Button>
+          </form>
+        ) : null}
+      </SheetContent>
+    </Sheet>
   );
 }
