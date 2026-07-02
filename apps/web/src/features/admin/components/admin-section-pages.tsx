@@ -1,6 +1,6 @@
 'use client';
 
-import { Activity, Search, Shield } from 'lucide-react';
+import { Activity, AlertCircle, Search, Shield } from 'lucide-react';
 import Link from 'next/link';
 import { useCallback, useEffect, useState } from 'react';
 
@@ -59,6 +59,7 @@ import {
   updateAnnouncement,
   updateSupportTicket,
 } from '@/features/admin/api/admin-api';
+import { AdminBarChart, AdminPieChart } from '@/features/admin/components/admin-charts';
 import {
   AdminPageHeader,
   DataTable,
@@ -818,11 +819,16 @@ export function AdminAnnouncementsPage() {
 export function AdminAnalyticsPage() {
   const [data, setData] = useState<AdminAnalytics | null>(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
+    setError(null);
     try {
       setData(await getAdminAnalytics());
+    } catch (err) {
+      setData(null);
+      setError(err instanceof Error ? err.message : 'Failed to load analytics');
     } finally {
       setLoading(false);
     }
@@ -833,13 +839,57 @@ export function AdminAnalyticsPage() {
   }, [load]);
 
   if (loading) return <LoadingBlock />;
-  if (!data) return null;
+
+  if (error || !data) {
+    return (
+      <div className="p-6">
+        <EmptyState
+          icon={AlertCircle}
+          title="Analytics unavailable"
+          description={error ?? 'Unable to load platform analytics.'}
+          action={
+            <Button size="sm" onClick={() => void load()}>
+              Retry
+            </Button>
+          }
+        />
+      </div>
+    );
+  }
+
+  const userGrowth = data.users_by_month.map((row) => ({
+    month: String(row.month),
+    count: Number(row.count),
+  }));
+
+  const subsByPlan = data.subscriptions_by_plan.map((plan) => ({
+    name: plan.name,
+    value: plan.count,
+  }));
 
   return (
     <div>
       <AdminPageHeader title="Analytics" description="Platform growth and usage metrics." />
       <FadeInStagger className="space-y-6 p-4 sm:p-6">
         <StatCard label="MRR" value={formatMrr(data.mrr_cents)} />
+        <div className="grid gap-4 lg:grid-cols-2">
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-base">User signups (12 months)</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <AdminBarChart data={userGrowth} xKey="month" yKey="count" />
+            </CardContent>
+          </Card>
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-base">Subscriptions by plan</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <AdminPieChart data={subsByPlan} />
+            </CardContent>
+          </Card>
+        </div>
         <div className="grid gap-4 md:grid-cols-2">
           <Card>
             <CardHeader>
@@ -889,11 +939,16 @@ export function AdminAnalyticsPage() {
 export function AdminHealthPage() {
   const [data, setData] = useState<AdminHealth | null>(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
+    setError(null);
     try {
       setData(await getAdminHealth());
+    } catch (err) {
+      setData(null);
+      setError(err instanceof Error ? err.message : 'Failed to load system health');
     } finally {
       setLoading(false);
     }
@@ -904,7 +959,23 @@ export function AdminHealthPage() {
   }, [load]);
 
   if (loading) return <LoadingBlock />;
-  if (!data) return null;
+
+  if (error || !data) {
+    return (
+      <div className="p-6">
+        <EmptyState
+          icon={AlertCircle}
+          title="System health unavailable"
+          description={error ?? 'Unable to load health status.'}
+          action={
+            <Button size="sm" onClick={() => void load()}>
+              Retry
+            </Button>
+          }
+        />
+      </div>
+    );
+  }
 
   const sections: { label: string; value: Record<string, unknown> }[] = [
     { label: 'Database', value: data.database },
@@ -949,13 +1020,19 @@ export function AdminLogsPage() {
   const [page, setPage] = useState(1);
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
+    setError(null);
     try {
       const data = await listSystemLogs({ page, ...(q ? { q } : {}) });
       setItems(data.items);
       setTotal(data.meta.total);
+    } catch (err) {
+      setItems([]);
+      setTotal(0);
+      setError(err instanceof Error ? err.message : 'Failed to load logs');
     } finally {
       setLoading(false);
     }
@@ -965,7 +1042,24 @@ export function AdminLogsPage() {
     void load();
   }, [load]);
 
-  if (loading && items.length === 0) return <LoadingBlock />;
+  if (loading && items.length === 0 && !error) return <LoadingBlock />;
+
+  if (error && items.length === 0) {
+    return (
+      <div className="p-6">
+        <EmptyState
+          icon={AlertCircle}
+          title="Logs unavailable"
+          description={error}
+          action={
+            <Button size="sm" onClick={() => void load()}>
+              Retry
+            </Button>
+          }
+        />
+      </div>
+    );
+  }
 
   return (
     <div>
