@@ -7,6 +7,7 @@ import Link from 'next/link';
 
 import { DashboardPreview } from '@/features/marketing/components/dashboard-preview';
 import { Hero3DGraphic } from '@/features/marketing/components/hero-3d-graphic';
+import { PricingSection } from '@/features/marketing/components/pricing-section';
 
 const stats = [
   { value: '50ms', label: 'Avg Copy Latency' },
@@ -106,6 +107,11 @@ function LandingFooter() {
         <div>
           <p className="text-xs font-semibold uppercase tracking-wider text-zinc-400">Product</p>
           <ul className="mt-4 space-y-2.5 text-sm text-zinc-500">
+            <li>
+              <Link href="/pricing" className="transition-colors hover:text-white">
+                Pricing
+              </Link>
+            </li>
             <li>
               <Link href="/dashboard" className="transition-colors hover:text-white">
                 Dashboard
@@ -302,8 +308,11 @@ export function LandingPage() {
           <DashboardPreview />
         </section>
 
+        {/* Pricing */}
+        <PricingSection />
+
         {/* CTA */}
-        <section id="pricing" className="scroll-mt-20 pb-20 lg:pb-28">
+        <section className="pb-20 lg:pb-28">
           <div className="mx-auto max-w-5xl px-6 lg:px-8">
             <div className="rounded-2xl border border-white/[0.08] bg-gradient-to-b from-[#0d1117] to-[#0a0d14] px-8 py-14 text-center sm:px-12">
               <h2 className="text-3xl font-bold tracking-tight sm:text-4xl">
