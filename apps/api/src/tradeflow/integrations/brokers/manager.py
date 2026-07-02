@@ -42,11 +42,12 @@ class BrokerSessionManager:
     async def connect(
         self,
         connection_id: UUID,
-        broker_type: BrokerType,
+        broker_type: BrokerType | str,
         credentials_encrypted: str,
     ) -> ConnectionHealth:
+        resolved_broker = BrokerType(broker_type)
         credentials_json = self._encryption.decrypt_json(credentials_encrypted)
-        adapter = self._registry.create(broker_type)
+        adapter = self._registry.create(resolved_broker)
         await adapter.connect(BrokerCredentials(data=credentials_json))
         self._sessions[connection_id] = adapter
         self._monitor.register(connection_id, adapter)
@@ -54,7 +55,7 @@ class BrokerSessionManager:
         logger.info(
             "broker_session_connected",
             connection_id=str(connection_id),
-            broker=broker_type.value,
+            broker=str(resolved_broker),
         )
         return health
 

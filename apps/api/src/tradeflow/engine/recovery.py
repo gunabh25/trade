@@ -9,7 +9,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from tradeflow.core.logging import get_logger
-from tradeflow.db.enums import ConnectionStatus, CopyGroupStatus
+from tradeflow.db.enums import BrokerType, ConnectionStatus, CopyGroupStatus
 from tradeflow.db.models.broker import BrokerConnection
 from tradeflow.db.models.copy_trading import CopyGroup, CopyGroupFollower
 from tradeflow.db.models.trading import TradingAccount
@@ -49,7 +49,7 @@ class ConnectionRecovery:
 
                 await self._sessions.connect(
                     connection_id,
-                    connection.broker,
+                    BrokerType(connection.broker),
                     connection.credentials_encrypted,
                 )
                 connection.status = ConnectionStatus.CONNECTED
@@ -64,7 +64,7 @@ class ConnectionRecovery:
                         await self._notifications.notify_broker_offline(
                             db,
                             user_id=connection.user_id,
-                            broker=connection.broker.value,
+                            broker=str(BrokerType(connection.broker)),
                             connection_name=connection.name,
                             connection_id=connection.id,
                         )
@@ -85,7 +85,7 @@ class ConnectionRecovery:
         try:
             await self._sessions.connect(
                 connection_id,
-                connection.broker,
+                BrokerType(connection.broker),
                 connection.credentials_encrypted,
             )
             connection.status = ConnectionStatus.CONNECTED
