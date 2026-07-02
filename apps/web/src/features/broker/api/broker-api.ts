@@ -92,7 +92,9 @@ function normalizeTradingAccount(raw: Record<string, unknown>): TradingAccount {
 }
 
 export async function listTradingAccounts(): Promise<TradingAccount[]> {
-  const response = await apiRequest<Record<string, unknown>[]>('/broker/trading-accounts');
+  const response = await apiRequest<Record<string, unknown>[]>('/broker/trading-accounts', {
+    timeoutMs: 30_000,
+  });
   return response.data.map((item) => normalizeTradingAccount(item));
 }
 
@@ -111,7 +113,9 @@ export async function listSupportedBrokers(): Promise<SupportedBrokers> {
 }
 
 export async function listBrokerConnections(): Promise<BrokerConnection[]> {
-  const response = await apiRequest<Record<string, unknown>[]>('/broker/connections');
+  const response = await apiRequest<Record<string, unknown>[]>('/broker/connections', {
+    timeoutMs: 30_000,
+  });
   return response.data.map((item) => normalizeConnection(item));
 }
 
