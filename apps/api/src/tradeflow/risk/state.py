@@ -58,7 +58,7 @@ class RiskStateStore:
             "current_leverage": str(state.current_leverage),
             "kill_switch_active": state.kill_switch_active,
             "last_reset_at": state.last_reset_at.isoformat() if state.last_reset_at else None,
-            "status": state.status.value,
+            "status": str(state.status),
         }
         await self._redis.set(key, json.dumps(payload), ex=STATE_TTL_SECONDS)
 

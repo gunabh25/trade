@@ -160,16 +160,16 @@ class NotificationDispatcher:
             else:
                 await self._enqueue_external_delivery(
                     user_id=user_id,
-                    event=event.value,
+                    event=str(event),
                     rendered=rendered,
-                    channels=[c.value for c in external],
+                    channels=[str(channel) for channel in external],
                 )
 
         logger.info(
             "notification_dispatched",
             user_id=str(user_id),
-            event=event.value,
-            channels=[c.value for c in channels],
+            notification_event=str(event),
+            channels=[str(channel) for channel in channels],
         )
         return notification
 
@@ -510,7 +510,10 @@ class NotificationDispatcher:
         for row in pref_rows:
             if row.event_type != event or not row.enabled:
                 continue
-            enabled.append(row.channel)
+            channel = row.channel
+            if not isinstance(channel, NotificationChannel):
+                channel = NotificationChannel(channel)
+            enabled.append(channel)
         if not enabled:
             return [NotificationChannel.IN_APP]
         if NotificationChannel.IN_APP not in enabled:
@@ -586,8 +589,8 @@ class NotificationDispatcher:
     ) -> None:
         payload = {
             "type": "notification",
-            "event": event.value,
-            "notification_type": notification.type.value,
+            "event": str(event),
+            "notification_type": str(notification.type),
             "notification_id": str(notification.id),
             "title": notification.title,
             "body": notification.body,

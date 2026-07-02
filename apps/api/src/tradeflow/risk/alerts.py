@@ -37,20 +37,20 @@ class RiskAlertService:
     ) -> Notification:
         message = breach.message
         if breach.action_taken != RiskAction.BLOCK:
-            message += f" — Action: {breach.action_taken.value.replace('_', ' ')}"
+            message += f" — Action: {str(breach.action_taken).replace('_', ' ')}"
 
         if self._dispatcher is not None:
             notification = await self._dispatcher.notify_risk_alert(
                 db,
                 user_id=user_id,
-                breach_type=breach.breach_type.value,
+                breach_type=str(breach.breach_type),
                 message=message,
                 account_id=breach.trading_account_id,
                 breach_id=breach.id,
-                action_taken=breach.action_taken.value,
+                action_taken=str(breach.action_taken),
             )
         else:
-            title = f"Risk Breach: {breach.breach_type.value.replace('_', ' ').title()}"
+            title = f"Risk Breach: {str(breach.breach_type).replace('_', ' ').title()}"
             notification = Notification(
                 user_id=user_id,
                 type=NotificationType.RISK_BREACH,
@@ -59,8 +59,8 @@ class RiskAlertService:
                 action_url=f"/dashboard/risk?account={breach.trading_account_id}",
                 metadata_={
                     "breach_id": str(breach.id),
-                    "breach_type": breach.breach_type.value,
-                    "action_taken": breach.action_taken.value,
+                    "breach_type": str(breach.breach_type),
+                    "action_taken": str(breach.action_taken),
                     "account_id": str(breach.trading_account_id),
                 },
             )
@@ -71,7 +71,7 @@ class RiskAlertService:
             user_id,
             {
                 "type": "notification",
-                "notification_type": NotificationType.RISK_BREACH.value,
+                "notification_type": str(NotificationType.RISK_BREACH),
                 "title": notification.title,
                 "body": notification.body,
                 "breach_id": str(breach.id),
@@ -122,7 +122,7 @@ class RiskAlertService:
             user_id,
             {
                 "type": "notification",
-                "notification_type": NotificationType.KILL_SWITCH.value,
+                "notification_type": str(NotificationType.KILL_SWITCH),
                 "title": title,
                 "body": body,
             },
@@ -142,7 +142,7 @@ class RiskAlertService:
             {
                 "type": "risk_warning",
                 "account_id": str(account_id),
-                "breach_type": violation.breach_type.value,
+                "breach_type": str(violation.breach_type),
                 "message": violation.message,
             },
         )

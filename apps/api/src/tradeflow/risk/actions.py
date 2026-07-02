@@ -78,17 +78,17 @@ class RiskActionExecutor:
             {
                 "type": "risk_breach",
                 "account_id": str(account_id),
-                "breach_type": violation.breach_type.value,
+                "breach_type": str(violation.breach_type),
                 "message": violation.message,
-                "action": action.value,
+                "action": str(action),
             },
         )
 
         logger.warning(
             "risk_breach_handled",
             account_id=str(account_id),
-            breach_type=violation.breach_type.value,
-            action=action.value,
+            breach_type=str(violation.breach_type),
+            action=str(action),
         )
         return breach
 
@@ -171,7 +171,7 @@ class RiskActionExecutor:
         for position in positions:
             if position.quantity <= 0:
                 continue
-            side = BrokerOrderSide.SELL if position.side.value == "long" else BrokerOrderSide.BUY
+            side = BrokerOrderSide.SELL if str(position.side) == "long" else BrokerOrderSide.BUY
             try:
                 await self._sessions.place_order(
                     account.broker_connection_id,
