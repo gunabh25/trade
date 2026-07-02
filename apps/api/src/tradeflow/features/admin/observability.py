@@ -41,7 +41,7 @@ class AdminObservabilityService:
 
         return {
             "health": {
-                "status": readiness.status.value,
+                "status": str(readiness.status),
                 "database": readiness.checks["database"].model_dump(),
                 "redis": readiness.checks["redis"].model_dump(),
                 "celery_broker": readiness.checks["celery_broker"].model_dump(),

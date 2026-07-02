@@ -114,6 +114,13 @@ def _as_int(value: object) -> int:
     return int(value)  # type: ignore[arg-type]
 
 
+def _format_month_bucket(value: object) -> str:
+    if hasattr(value, "strftime"):
+        return value.strftime("%Y-%m")  # type: ignore[union-attr]
+    text = str(value)
+    return text[:7] if len(text) >= 7 else text
+
+
 class AdminService:
     """Platform administration — users, ops, support, and system controls."""
 
@@ -686,7 +693,10 @@ class AdminService:
         subs_by_plan = await db.execute(
             select(Plan.code, Plan.name, func.count(Subscription.id))
             .join(Subscription, Subscription.plan_id == Plan.id)
-            .where(Subscription.deleted_at.is_(None))
+            .where(
+                Subscription.deleted_at.is_(None),
+                Plan.deleted_at.is_(None),
+            )
             .group_by(Plan.code, Plan.name),
         )
         tickets_by_status = await db.execute(
@@ -705,24 +715,29 @@ class AdminService:
             .join(Plan, Subscription.plan_id == Plan.id)
             .where(
                 Subscription.deleted_at.is_(None),
+                Plan.deleted_at.is_(None),
                 Subscription.status.in_(
                     [SubscriptionStatus.ACTIVE, SubscriptionStatus.TRIALING],
                 ),
                 Plan.price_cents > 0,
             ),
         )
+        month_bucket = func.date_trunc("month", User.created_at)
         users_by_month_rows = await db.execute(
             select(
-                func.to_char(func.date_trunc("month", User.created_at), "YYYY-MM").label("month"),
+                month_bucket.label("month"),
                 func.count(User.id).label("count"),
             )
             .where(User.deleted_at.is_(None))
-            .group_by(func.date_trunc("month", User.created_at))
-            .order_by(func.date_trunc("month", User.created_at).desc())
+            .group_by(month_bucket)
+            .order_by(month_bucket.desc())
             .limit(12),
         )
         users_by_month = [
-            {"month": str(month), "count": _as_int(count)}
+            {
+                "month": _format_month_bucket(month),
+                "count": _as_int(count),
+            }
             for month, count in reversed(users_by_month_rows.all())
         ]
         return AdminAnalyticsResponse(
@@ -762,7 +777,7 @@ class AdminService:
         except Exception as exc:
             celery_payload["inspect_error"] = str(exc)
         return AdminHealthResponse(
-            status=readiness.status.value,
+            status=str(readiness.status),
             environment=self._settings.app_env,
             version=__version__,
             database=readiness.checks["database"].model_dump(),
