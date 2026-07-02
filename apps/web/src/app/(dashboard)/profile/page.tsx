@@ -6,14 +6,8 @@ import { Button, Card, CardContent, CardHeader, CardTitle, Input } from '@tradef
 
 import * as authApi from '@/features/auth/api/auth-api';
 import { useAuth } from '@/features/auth/components/auth-provider';
-import { getApiAssetBaseUrl } from '@/lib/api/client';
+import { resolveAvatarUrl } from '@/lib/avatar-url';
 import { ApiClientError } from '@/lib/errors';
-
-function resolveAvatarUrl(url: string | null | undefined): string | null {
-  if (!url) return null;
-  if (url.startsWith('http://') || url.startsWith('https://')) return url;
-  return `${getApiAssetBaseUrl()}${url.startsWith('/') ? url : `/${url}`}`;
-}
 
 export default function ProfilePage() {
   const { user, refresh } = useAuth();

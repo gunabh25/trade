@@ -6,6 +6,7 @@ import Link from 'next/link';
 import {
   Avatar,
   AvatarFallback,
+  AvatarImage,
   Button,
   DropdownMenu,
   DropdownMenuContent,
@@ -16,6 +17,7 @@ import {
 } from '@tradeflow/ui';
 
 import { useAuth } from '@/features/auth/components/auth-provider';
+import { resolveAvatarUrl } from '@/lib/avatar-url';
 
 function getInitials(name: string | null, email: string): string {
   if (name) {
@@ -36,12 +38,14 @@ export function UserMenu() {
   }
 
   const displayName = [user.firstName, user.lastName].filter(Boolean).join(' ') || user.email;
+  const avatarUrl = resolveAvatarUrl(user.avatarUrl);
 
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
         <Button variant="ghost" className="relative h-9 gap-2 px-2">
           <Avatar className="h-7 w-7">
+            {avatarUrl ? <AvatarImage src={avatarUrl} alt="" /> : null}
             <AvatarFallback className="bg-muted text-xs">
               {getInitials(displayName, user.email)}
             </AvatarFallback>
