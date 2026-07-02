@@ -135,6 +135,7 @@ class CopyTradingService:
         await db.flush()
         await db.refresh(group, ["followers"])
         if self._leader_watch is not None:
+            await self._leader_watch.recover_copy_connections()
             await self._leader_watch.watch_group(group_id)
         from tradeflow.workers.copy_tasks import recover_connections
 

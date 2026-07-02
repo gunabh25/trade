@@ -60,11 +60,24 @@ class LeaderWatchService:
         self._watches: dict[UUID, _ActiveWatch] = {}
 
     async def start(self) -> None:
+        await self.recover_copy_connections()
         async with self._session_factory() as db:
             groups = await self._load_active_groups(db)
         for group in groups:
             await self.watch_group(group.id)
         logger.info("leader_watch_started", active_groups=len(self._watches))
+
+    async def recover_copy_connections(self) -> int:
+        """Reconnect broker sessions for active copy groups in this process."""
+        from tradeflow.engine.recovery import ConnectionRecovery
+
+        recovery = ConnectionRecovery(self._sessions)
+        async with self._session_factory() as db:
+            count = await recovery.recover_active_connections(db)
+            await db.commit()
+        if count:
+            logger.info("api_copy_connections_recovered", count=count)
+        return count
 
     async def stop(self) -> None:
         for group_id in list(self._watches.keys()):
@@ -152,10 +165,20 @@ class LeaderWatchService:
         await self._dispatch(event)
 
     async def _dispatch(self, event: LeaderEvent) -> None:
-        if self._settings.celery_task_always_eager and self._orchestrator is not None:
-            async with self._session_factory() as db:
-                await self._orchestrator.handle_leader_event(db, event)
-                await db.commit()
+        # Run copy in the API process so paper/simulated broker state is shared with
+        # the leader order stream. Celery workers have separate in-memory sessions.
+        if self._orchestrator is not None:
+            try:
+                async with self._session_factory() as db:
+                    await self._orchestrator.handle_leader_event(db, event)
+                    await db.commit()
+            except Exception as exc:
+                logger.error(
+                    "leader_event_inline_failed",
+                    event_id=event.id,
+                    copy_group_id=str(event.copy_group_id),
+                    error=str(exc),
+                )
             return
 
         from tradeflow.workers.copy_tasks import process_leader_event
