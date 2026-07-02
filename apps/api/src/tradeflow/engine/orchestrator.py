@@ -16,6 +16,7 @@ from tradeflow.db.enums import (
     CopyEventAction,
     CopyEventResult,
     CopyGroupStatus,
+    CopyMode,
     ExecutionLogStatus,
 )
 from tradeflow.db.models.copy_trading import (
@@ -400,10 +401,10 @@ class CopyOrchestrator:
                 follower_account_id=follower.follower_account_id,
                 broker_connection_id=account.broker_connection_id,
                 external_account_id=account.external_account_id,
-                copy_mode=follower.copy_mode,
+                copy_mode=CopyMode(follower.copy_mode),
                 sizing_value=follower.sizing_value,
                 enabled=follower.enabled,
-                status=follower.status.value,
+                status=str(follower.status),
                 follower_balance=account.balance,
             )
         return contexts

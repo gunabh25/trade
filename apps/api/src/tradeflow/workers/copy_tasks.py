@@ -9,7 +9,7 @@ from uuid import UUID
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from tradeflow.core.logging import get_logger
-from tradeflow.db.enums import CopyEventAction, OrderSide, OrderType
+from tradeflow.db.enums import CopyEventAction, CopyMode, OrderSide, OrderType
 from tradeflow.db.models.copy_trading import ExecutionLog
 from tradeflow.engine.orchestrator import CopyOrchestrator
 from tradeflow.engine.recovery import ConnectionRecovery
@@ -238,9 +238,9 @@ async def _load_follower_context(
         follower_account_id=follower_account_id,
         broker_connection_id=account.broker_connection_id,
         external_account_id=account.external_account_id,
-        copy_mode=follower.copy_mode,
+        copy_mode=CopyMode(follower.copy_mode),
         sizing_value=follower.sizing_value,
         enabled=follower.enabled,
-        status=follower.status.value,
+        status=str(follower.status),
         follower_balance=account.balance,
     )
