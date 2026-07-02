@@ -886,7 +886,7 @@ export function AdminAnalyticsPage() {
               <CardTitle className="text-base">Subscriptions by plan</CardTitle>
             </CardHeader>
             <CardContent>
-              <AdminPieChart data={subsByPlan} />
+              <AdminPieChart data={subsByPlan} nameKey="name" valueKey="value" />
             </CardContent>
           </Card>
         </div>
