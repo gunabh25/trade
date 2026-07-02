@@ -5,31 +5,7 @@ from __future__ import annotations
 import pytest
 from httpx import AsyncClient
 from tests.support.auth_helpers import register_and_login
-
-
-async def _connect_paper_account(client: AsyncClient) -> str:
-    create = await client.post(
-        "/api/v1/broker/connections",
-        json={
-            "broker": "paper",
-            "name": "Risk Paper",
-            "credentials": {
-                "account_id": "risk-kill-switch-1",
-                "account_name": "Risk Demo",
-                "starting_balance": "50000",
-            },
-        },
-    )
-    assert create.status_code == 200, create.text
-    connection_id = create.json()["data"]["id"]
-
-    connect = await client.post(f"/api/v1/broker/connections/{connection_id}/connect")
-    assert connect.status_code == 200, connect.text
-
-    accounts = await client.get("/api/v1/broker/trading-accounts")
-    assert accounts.status_code == 200, accounts.text
-    account_id = accounts.json()["data"][0]["id"]
-    return account_id
+from tests.support.broker_helpers import connect_paper_account
 
 
 @pytest.mark.integration
@@ -40,7 +16,12 @@ async def test_activate_kill_switch_returns_updated_rule(
     db_ready,
 ) -> None:
     await register_and_login(client)
-    account_id = await _connect_paper_account(client)
+    account_id = await connect_paper_account(
+        client,
+        account_id="risk-kill-switch-1",
+        account_name="Risk Demo",
+        connection_name="Risk Paper",
+    )
 
     create_rule = await client.post(
         "/api/v1/risk/rules",

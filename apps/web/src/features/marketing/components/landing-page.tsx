@@ -125,15 +125,22 @@ function LandingFooter() {
         </div>
 
         <div>
-          <p className="text-xs font-semibold uppercase tracking-wider text-zinc-400">Company</p>
+          <p className="text-xs font-semibold uppercase tracking-wider text-zinc-400">Legal</p>
           <ul className="mt-4 space-y-2.5 text-sm text-zinc-500">
             <li>
-              <a href="#features" className="transition-colors hover:text-white">
-                About
-              </a>
+              <Link href="/terms" className="transition-colors hover:text-white">
+                Terms of Service
+              </Link>
             </li>
             <li>
-              <span className="cursor-default">Legal</span>
+              <Link href="/privacy" className="transition-colors hover:text-white">
+                Privacy Policy
+              </Link>
+            </li>
+            <li>
+              <Link href="/risk-disclosure" className="transition-colors hover:text-white">
+                Risk Disclosure
+              </Link>
             </li>
           </ul>
         </div>
@@ -152,8 +159,13 @@ function LandingFooter() {
               </a>
             </li>
             <li>
-              <Link href="/api/health" className="transition-colors hover:text-white">
+              <Link href="/status" className="transition-colors hover:text-white">
                 System Status
+              </Link>
+            </li>
+            <li>
+              <Link href="/help" className="transition-colors hover:text-white">
+                Help &amp; FAQ
               </Link>
             </li>
           </ul>

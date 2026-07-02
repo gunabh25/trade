@@ -29,6 +29,7 @@ export default function RegisterPage() {
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
   const [showPassword, setShowPassword] = useState(false);
+  const [acceptedTerms, setAcceptedTerms] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
@@ -36,6 +37,10 @@ export default function RegisterPage() {
 
   async function handleSubmit(event: SyntheticEvent<HTMLFormElement>) {
     event.preventDefault();
+    if (!acceptedTerms) {
+      setError('Please accept the Terms of Service and Risk Disclosure to continue.');
+      return;
+    }
     setError(null);
     setLoading(true);
     try {
@@ -194,9 +199,36 @@ export default function RegisterPage() {
               </p>
             ) : null}
 
+            <label className="flex items-start gap-2.5 text-xs leading-relaxed text-zinc-500">
+              <input
+                type="checkbox"
+                checked={acceptedTerms}
+                onChange={(e) => {
+                  setAcceptedTerms(e.target.checked);
+                }}
+                className="border-border mt-0.5 rounded"
+                required
+              />
+              <span>
+                I agree to the{' '}
+                <Link href="/terms" className="text-indigo-400 hover:text-indigo-300">
+                  Terms of Service
+                </Link>
+                ,{' '}
+                <Link href="/privacy" className="text-indigo-400 hover:text-indigo-300">
+                  Privacy Policy
+                </Link>
+                , and{' '}
+                <Link href="/risk-disclosure" className="text-indigo-400 hover:text-indigo-300">
+                  Risk Disclosure
+                </Link>
+                .
+              </span>
+            </label>
+
             <button
               type="submit"
-              disabled={loading}
+              disabled={loading || !acceptedTerms}
               className="group flex h-12 w-full items-center justify-center gap-2 rounded-lg bg-gradient-to-r from-indigo-500 via-violet-500 to-cyan-500 text-sm font-semibold text-white shadow-lg shadow-indigo-500/25 transition-all hover:shadow-indigo-500/40 hover:brightness-110 disabled:opacity-60"
             >
               {loading ? 'Creating account…' : 'Request Access'}

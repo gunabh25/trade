@@ -2,7 +2,9 @@
 
 Professional cloud-based **multi-account trade copier**, **risk management**, and **trading analytics** platform.
 
-This repository contains the **enterprise-grade foundation** — no product features yet. It is production-ready infrastructure for building TradeFlow AI.
+TradeFlow AI is a full-stack monorepo with auth, paper/live broker onboarding, copy trading, risk engine, analytics, journal, billing, admin, and AI assistant modules. It is **ready for controlled paper beta** deployment on Railway.
+
+**Release checklist:** [docs/deployment/PAPER_BETA_RELEASE.md](./docs/deployment/PAPER_BETA_RELEASE.md)
 
 ---
 
@@ -30,14 +32,14 @@ See [docs/ARCHITECTURE.md](./docs/ARCHITECTURE.md) for detailed architectural de
 
 ## Tech Stack
 
-| Layer | Technology |
-|-------|------------|
-| Frontend | Next.js 15, React 19, TypeScript, Tailwind CSS, shadcn/ui |
-| Backend | FastAPI, Python 3.12, Pydantic v2, SQLAlchemy 2 |
-| Database | PostgreSQL 16, Alembic migrations |
-| Cache / Queue | Redis 7, Celery |
-| Tooling | pnpm, Turborepo, ESLint, Prettier, Husky, lint-staged |
-| Infrastructure | Docker, Docker Compose, GitHub Actions |
+| Layer          | Technology                                                |
+| -------------- | --------------------------------------------------------- |
+| Frontend       | Next.js 15, React 19, TypeScript, Tailwind CSS, shadcn/ui |
+| Backend        | FastAPI, Python 3.12, Pydantic v2, SQLAlchemy 2           |
+| Database       | PostgreSQL 16, Alembic migrations                         |
+| Cache / Queue  | Redis 7, Celery                                           |
+| Tooling        | pnpm, Turborepo, ESLint, Prettier, Husky, lint-staged     |
+| Infrastructure | Docker, Docker Compose, GitHub Actions                    |
 
 ---
 
@@ -61,6 +63,7 @@ See [docs/ARCHITECTURE.md](./docs/ARCHITECTURE.md) for detailed architectural de
 ### Feature-Based Folders
 
 **Web** (`apps/web/src/`):
+
 ```
 features/<domain>/
   api/           # API client functions
@@ -72,6 +75,7 @@ lib/
 ```
 
 **API** (`apps/api/src/tradeflow/`):
+
 ```
 features/<domain>/
   router.py      # FastAPI routes
@@ -115,22 +119,24 @@ chmod +x scripts/dev.sh
 ./scripts/dev.sh
 ```
 
-| Service | URL |
-|---------|-----|
-| Web | http://localhost:3000 |
-| API | http://localhost:8000 |
-| Swagger UI | http://localhost:8000/api/docs |
-| ReDoc | http://localhost:8000/api/redoc |
+| Service      | URL                                    |
+| ------------ | -------------------------------------- |
+| Web          | http://localhost:3000                  |
+| API          | http://localhost:8000                  |
+| Swagger UI   | http://localhost:8000/api/docs         |
+| ReDoc        | http://localhost:8000/api/redoc        |
 | OpenAPI JSON | http://localhost:8000/api/openapi.json |
 
 ### 3. Run locally (without Docker)
 
 **Infrastructure:**
+
 ```bash
 docker compose up postgres redis -d
 ```
 
 **API:**
+
 ```bash
 cd apps/api
 python -m venv .venv
@@ -141,6 +147,7 @@ uvicorn tradeflow.main:app --reload --app-dir src --port 8000
 ```
 
 **Celery worker:**
+
 ```bash
 cd apps/api
 source .venv/bin/activate
@@ -148,6 +155,7 @@ celery -A tradeflow.workers.celery_app:celery_app worker --loglevel=INFO
 ```
 
 **Web:**
+
 ```bash
 pnpm install
 pnpm --filter @tradeflow/types build
@@ -159,11 +167,24 @@ pnpm --filter @tradeflow/web dev
 
 ## API Endpoints (v1)
 
-| Method | Path | Description |
-|--------|------|-------------|
-| GET | `/api/v1/health/live` | Liveness probe (process alive) |
-| GET | `/api/v1/health/ready` | Readiness probe (DB + Redis) |
-| GET | `/api/v1/health/` | Health summary for dashboards |
+| Area      | Paths                                                |
+| --------- | ---------------------------------------------------- |
+| Health    | `/api/v1/health/live`, `/ready`, `/`                 |
+| Auth      | `/api/v1/auth/register`, `/login`, `/me`, `/profile` |
+| Broker    | `/api/v1/broker/connections`, `/trading-accounts`    |
+| Copy      | `/api/v1/copy/groups`, `/simulate`, `/health`        |
+| Risk      | `/api/v1/risk/rules`, `/kill-switch/activate`        |
+| Analytics | `/api/v1/analytics/overview`                         |
+| Admin     | `/api/v1/admin/*` (admin role required)              |
+
+Full OpenAPI docs available in development at `/api/docs`.
+
+Production smoke test:
+
+```bash
+chmod +x scripts/smoke-production.sh
+./scripts/smoke-production.sh
+```
 
 All successful responses:
 
@@ -221,6 +242,7 @@ The frontend shares types and UI via pnpm workspaces. The API is a standalone Py
 ### 2. FastAPI Application Factory
 
 `create_app()` in `core/app_factory.py` enables:
+
 - Test isolation with injected containers
 - Multiple app instances without global state
 - Clean lifespan management for DB/Redis
@@ -249,7 +271,7 @@ All success responses wrap payload in `{ data, meta }`. This gives room for pagi
 
 ### 8. Feature Modules
 
-Each domain (health, future: auth, copy-engine, risk) is a self-contained module with router, service, and schemas. Shared infrastructure stays in `core/`.
+Each domain (auth, broker, copy-trading, risk, analytics, journal, billing, admin, AI) is a self-contained module with router, service, and schemas. Shared infrastructure stays in `core/`.
 
 ### 9. Celery Foundation
 
@@ -276,20 +298,21 @@ Three parallel jobs: TypeScript lint/build, Python lint/test with service contai
 
 Copy `.env.example` to `.env`. Key variables:
 
-| Variable | Description |
-|----------|-------------|
-| `API_SECRET_KEY` | Min 32 chars — required |
-| `DATABASE_URL` | Async PostgreSQL URL (asyncpg) |
-| `DATABASE_URL_SYNC` | Sync URL for Alembic (psycopg) |
-| `REDIS_URL` | Redis connection |
-| `CELERY_BROKER_URL` | Celery message broker |
-| `NEXT_PUBLIC_API_URL` | Web → API base URL |
+| Variable              | Description                    |
+| --------------------- | ------------------------------ |
+| `API_SECRET_KEY`      | Min 32 chars — required        |
+| `DATABASE_URL`        | Async PostgreSQL URL (asyncpg) |
+| `DATABASE_URL_SYNC`   | Sync URL for Alembic (psycopg) |
+| `REDIS_URL`           | Redis connection               |
+| `CELERY_BROKER_URL`   | Celery message broker          |
+| `NEXT_PUBLIC_API_URL` | Web → API base URL             |
 
 ---
 
 ## Git Hooks
 
 Husky runs lint-staged on pre-commit:
+
 - TypeScript: ESLint + Prettier
 - Python: Ruff check + format
 
