@@ -14,7 +14,8 @@ import type {
   UserProfile,
 } from '@tradeflow/types/api';
 
-import { apiRequest } from '@/lib/api/client';
+import { apiRequest, buildApiUrl, getCsrfToken } from '@/lib/api/client';
+import { ApiClientError, isApiErrorResponse } from '@/lib/errors';
 
 function mapUser(raw: Record<string, unknown>): UserProfile {
   return {
@@ -168,6 +169,70 @@ export async function confirmTwoFactor(code: string): Promise<UserProfile> {
   const response = await apiRequest<Record<string, unknown>>('/auth/2fa/verify', {
     method: 'POST',
     body: { code },
+  });
+  return mapUser(response.data);
+}
+
+export async function disableTwoFactor(password: string, code: string): Promise<UserProfile> {
+  const response = await apiRequest<Record<string, unknown>>('/auth/2fa/disable', {
+    method: 'POST',
+    body: { password, code },
+  });
+  return mapUser(response.data);
+}
+
+export async function revokeOtherSessions(): Promise<void> {
+  await apiRequest<MessageResponse>('/auth/sessions', { method: 'DELETE' });
+}
+
+export async function uploadAvatar(file: File): Promise<UserProfile> {
+  const url = buildApiUrl('/auth/me/avatar');
+  const formData = new FormData();
+  formData.append('file', file);
+
+  const headers = new Headers({ Accept: 'application/json' });
+  const csrf = getCsrfToken();
+  if (csrf) {
+    headers.set('X-CSRF-Token', csrf);
+  }
+
+  const response = await fetch(url, {
+    method: 'POST',
+    headers,
+    body: formData,
+    credentials: 'include',
+    cache: 'no-store',
+  });
+
+  const responseBody: unknown = await response.json().catch(() => null);
+  if (!response.ok) {
+    if (isApiErrorResponse(responseBody)) {
+      throw new ApiClientError(response.status, responseBody);
+    }
+    throw new ApiClientError(response.status, {
+      error: {
+        code: 'INTERNAL_ERROR',
+        message: `Upload failed with status ${String(response.status)}`,
+      },
+    });
+  }
+
+  if (
+    !responseBody ||
+    typeof responseBody !== 'object' ||
+    !('data' in (responseBody as Record<string, unknown>))
+  ) {
+    throw new ApiClientError(response.status, {
+      error: { code: 'INTERNAL_ERROR', message: 'Invalid upload response' },
+    });
+  }
+
+  return mapUser((responseBody as { data: Record<string, unknown> }).data);
+}
+
+export async function deleteAvatar(): Promise<UserProfile> {
+  const response = await apiRequest<Record<string, unknown>>('/auth/me/avatar', {
+    method: 'DELETE',
   });
   return mapUser(response.data);
 }

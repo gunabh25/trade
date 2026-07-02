@@ -64,7 +64,7 @@ export interface RequestOptions extends Omit<RequestInit, 'body'> {
   silent?: boolean;
 }
 
-function getCsrfToken(): string | undefined {
+export function getCsrfToken(): string | undefined {
   if (typeof document === 'undefined') {
     return undefined;
   }

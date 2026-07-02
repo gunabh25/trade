@@ -1,19 +1,32 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 
 import { Button, Card, CardContent, CardHeader, CardTitle, Input } from '@tradeflow/ui';
 
 import * as authApi from '@/features/auth/api/auth-api';
 import { useAuth } from '@/features/auth/components/auth-provider';
+import { getApiAssetBaseUrl } from '@/lib/api/client';
+import { ApiClientError } from '@/lib/errors';
+
+function resolveAvatarUrl(url: string | null | undefined): string | null {
+  if (!url) return null;
+  if (url.startsWith('http://') || url.startsWith('https://')) return url;
+  return `${getApiAssetBaseUrl()}${url.startsWith('/') ? url : `/${url}`}`;
+}
 
 export default function ProfilePage() {
   const { user, refresh } = useAuth();
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
   const [bio, setBio] = useState('');
   const [totpSetup, setTotpSetup] = useState<string | null>(null);
   const [totpCode, setTotpCode] = useState('');
+  const [disablePassword, setDisablePassword] = useState('');
+  const [disableCode, setDisableCode] = useState('');
+  const [error, setError] = useState<string | null>(null);
+  const [uploading, setUploading] = useState(false);
 
   useEffect(() => {
     if (user) {
@@ -27,25 +40,122 @@ export default function ProfilePage() {
     return null;
   }
 
+  const avatarUrl = resolveAvatarUrl(user.avatarUrl);
+
   async function saveProfile() {
-    await authApi.updateProfile({ firstName, lastName, bio });
-    await refresh();
+    setError(null);
+    try {
+      await authApi.updateProfile({ firstName, lastName, bio });
+      await refresh();
+    } catch (err) {
+      setError(err instanceof ApiClientError ? err.message : 'Failed to save profile');
+    }
   }
 
   async function startTwoFactor() {
-    const setup = await authApi.setupTwoFactor();
-    setTotpSetup(setup.provisioningUri);
+    setError(null);
+    try {
+      const setup = await authApi.setupTwoFactor();
+      setTotpSetup(setup.provisioningUri);
+    } catch (err) {
+      setError(err instanceof ApiClientError ? err.message : 'Failed to start 2FA setup');
+    }
   }
 
   async function confirmTwoFactor() {
-    await authApi.confirmTwoFactor(totpCode);
-    setTotpSetup(null);
-    setTotpCode('');
-    await refresh();
+    setError(null);
+    try {
+      await authApi.confirmTwoFactor(totpCode);
+      setTotpSetup(null);
+      setTotpCode('');
+      await refresh();
+    } catch (err) {
+      setError(err instanceof ApiClientError ? err.message : 'Invalid 2FA code');
+    }
+  }
+
+  async function disableTwoFactor() {
+    setError(null);
+    try {
+      await authApi.disableTwoFactor(disablePassword, disableCode);
+      setDisablePassword('');
+      setDisableCode('');
+      await refresh();
+    } catch (err) {
+      setError(err instanceof ApiClientError ? err.message : 'Failed to disable 2FA');
+    }
+  }
+
+  async function handleAvatarChange(event: React.ChangeEvent<HTMLInputElement>) {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    setUploading(true);
+    setError(null);
+    try {
+      await authApi.uploadAvatar(file);
+      await refresh();
+    } catch (err) {
+      setError(err instanceof ApiClientError ? err.message : 'Failed to upload avatar');
+    } finally {
+      setUploading(false);
+      event.target.value = '';
+    }
+  }
+
+  async function removeAvatar() {
+    setUploading(true);
+    setError(null);
+    try {
+      await authApi.deleteAvatar();
+      await refresh();
+    } catch (err) {
+      setError(err instanceof ApiClientError ? err.message : 'Failed to remove avatar');
+    } finally {
+      setUploading(false);
+    }
   }
 
   return (
     <div className="mx-auto max-w-2xl space-y-6 p-4 sm:p-6">
+      {error ? <p className="text-sm text-red-400">{error}</p> : null}
+
+      <Card className="border-border/60 bg-card/80 shadow-none">
+        <CardHeader>
+          <CardTitle className="text-base font-medium">Avatar</CardTitle>
+        </CardHeader>
+        <CardContent className="flex flex-wrap items-center gap-4">
+          <div className="bg-muted flex h-16 w-16 items-center justify-center overflow-hidden rounded-full text-lg font-semibold">
+            {avatarUrl ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src={avatarUrl} alt="" className="h-full w-full object-cover" />
+            ) : (
+              (user.firstName?.[0] ?? user.email[0] ?? '?').toUpperCase()
+            )}
+          </div>
+          <div className="flex flex-wrap gap-2">
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/jpeg,image/png,image/webp,image/gif"
+              className="hidden"
+              onChange={(event) => void handleAvatarChange(event)}
+            />
+            <Button
+              variant="outline"
+              disabled={uploading}
+              onClick={() => fileInputRef.current?.click()}
+            >
+              {uploading ? 'Uploading…' : 'Upload photo'}
+            </Button>
+            {avatarUrl ? (
+              <Button variant="ghost" disabled={uploading} onClick={() => void removeAvatar()}>
+                Remove
+              </Button>
+            ) : null}
+          </div>
+        </CardContent>
+      </Card>
+
       <Card className="border-border/60 bg-card/80 shadow-none">
         <CardHeader>
           <CardTitle className="text-base font-medium">Profile</CardTitle>
@@ -76,6 +186,7 @@ export default function ProfilePage() {
           <Button onClick={() => void saveProfile()}>Save profile</Button>
         </CardContent>
       </Card>
+
       <Card className="border-border/60 bg-card/80 shadow-none">
         <CardHeader>
           <CardTitle className="text-base font-medium">Two-factor authentication</CardTitle>
@@ -103,7 +214,31 @@ export default function ProfilePage() {
                 </>
               ) : null}
             </>
-          ) : null}
+          ) : (
+            <div className="border-border space-y-3 border-t pt-3">
+              <p className="text-muted-foreground text-sm">
+                Enter your password and a current authenticator code to disable 2FA.
+              </p>
+              <Input
+                type="password"
+                placeholder="Password"
+                value={disablePassword}
+                onChange={(e) => {
+                  setDisablePassword(e.target.value);
+                }}
+              />
+              <Input
+                placeholder="6-digit code"
+                value={disableCode}
+                onChange={(e) => {
+                  setDisableCode(e.target.value);
+                }}
+              />
+              <Button variant="destructive" onClick={() => void disableTwoFactor()}>
+                Disable 2FA
+              </Button>
+            </div>
+          )}
         </CardContent>
       </Card>
     </div>

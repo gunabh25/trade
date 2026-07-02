@@ -1,10 +1,10 @@
 'use client';
 
-import { Copy, Pause, Play, Plus } from 'lucide-react';
+import { Copy, History, Pause, Play, Plus, Zap } from 'lucide-react';
 import Link from 'next/link';
 import { useCallback, useEffect, useState } from 'react';
 
-import type { CopyGroup } from '@tradeflow/types/api';
+import type { CopyEvent, CopyGroup, ExecutionLog } from '@tradeflow/types/api';
 
 import {
   Badge,
@@ -18,6 +18,7 @@ import {
 
 import * as copyApi from '@/features/copy/api/copy-api';
 import { CreateCopyGroupSheet } from '@/features/copy/components/create-copy-group-sheet';
+import { SimulateCopyEventSheet } from '@/features/copy/components/simulate-copy-event-sheet';
 import {
   EmptyState,
   FadeInItem,
@@ -35,6 +36,11 @@ export function CopyTradingPageContent({ autoOpenCreate = false }: CopyTradingPa
   const [error, setError] = useState<string | null>(null);
   const [createOpen, setCreateOpen] = useState(autoOpenCreate);
   const [actionId, setActionId] = useState<string | null>(null);
+  const [simulateGroup, setSimulateGroup] = useState<CopyGroup | null>(null);
+  const [detailsGroupId, setDetailsGroupId] = useState<string | null>(null);
+  const [events, setEvents] = useState<CopyEvent[]>([]);
+  const [executionLogs, setExecutionLogs] = useState<ExecutionLog[]>([]);
+  const [detailsLoading, setDetailsLoading] = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -66,6 +72,27 @@ export function CopyTradingPageContent({ autoOpenCreate = false }: CopyTradingPa
       setError(err instanceof ApiClientError ? err.message : 'Failed to update copy group');
     } finally {
       setActionId(null);
+    }
+  }
+
+  async function loadGroupDetails(groupId: string) {
+    if (detailsGroupId === groupId) {
+      setDetailsGroupId(null);
+      return;
+    }
+    setDetailsGroupId(groupId);
+    setDetailsLoading(true);
+    try {
+      const [nextEvents, nextLogs] = await Promise.all([
+        copyApi.listCopyEvents(groupId),
+        copyApi.listExecutionLogs(groupId),
+      ]);
+      setEvents(nextEvents);
+      setExecutionLogs(nextLogs);
+    } catch (err) {
+      setError(err instanceof ApiClientError ? err.message : 'Failed to load copy activity');
+    } finally {
+      setDetailsLoading(false);
     }
   }
 
@@ -168,7 +195,7 @@ export function CopyTradingPageContent({ autoOpenCreate = false }: CopyTradingPa
                     </Button>
                   </div>
                 </CardHeader>
-                <CardContent className="space-y-2">
+                <CardContent className="space-y-3">
                   {group.followers.map((follower) => (
                     <div
                       key={follower.id}
@@ -180,6 +207,68 @@ export function CopyTradingPageContent({ autoOpenCreate = false }: CopyTradingPa
                       </span>
                     </div>
                   ))}
+                  <div className="flex flex-wrap gap-2 pt-1">
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => {
+                        setSimulateGroup(group);
+                      }}
+                    >
+                      <Zap className="mr-1 h-3.5 w-3.5" />
+                      Simulate event
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => void loadGroupDetails(group.id)}
+                    >
+                      <History className="mr-1 h-3.5 w-3.5" />
+                      {detailsGroupId === group.id ? 'Hide activity' : 'View activity'}
+                    </Button>
+                  </div>
+                  {detailsGroupId === group.id ? (
+                    <div className="border-border space-y-3 rounded-lg border p-3 text-sm">
+                      {detailsLoading ? (
+                        <p className="text-muted-foreground">Loading activity…</p>
+                      ) : (
+                        <>
+                          <div>
+                            <p className="mb-1 font-medium">Recent events</p>
+                            {events.length === 0 ? (
+                              <p className="text-muted-foreground text-xs">No events yet.</p>
+                            ) : (
+                              <ul className="text-muted-foreground space-y-1 text-xs">
+                                {events.slice(0, 5).map((event) => (
+                                  <li key={event.id}>
+                                    {event.action} · {event.result}
+                                    {event.symbol ? ` · ${event.symbol}` : ''} ·{' '}
+                                    {new Date(event.created_at).toLocaleString()}
+                                  </li>
+                                ))}
+                              </ul>
+                            )}
+                          </div>
+                          <div>
+                            <p className="mb-1 font-medium">Execution logs</p>
+                            {executionLogs.length === 0 ? (
+                              <p className="text-muted-foreground text-xs">No execution logs.</p>
+                            ) : (
+                              <ul className="text-muted-foreground space-y-1 text-xs">
+                                {executionLogs.slice(0, 5).map((log) => (
+                                  <li key={log.id}>
+                                    {log.action} · {log.status}
+                                    {log.error_message ? ` · ${log.error_message}` : ''} · attempt{' '}
+                                    {log.attempt}/{log.max_attempts}
+                                  </li>
+                                ))}
+                              </ul>
+                            )}
+                          </div>
+                        </>
+                      )}
+                    </div>
+                  ) : null}
                 </CardContent>
               </Card>
             ))}
@@ -191,6 +280,19 @@ export function CopyTradingPageContent({ autoOpenCreate = false }: CopyTradingPa
         open={createOpen}
         onOpenChange={setCreateOpen}
         onCreated={() => void load()}
+      />
+
+      <SimulateCopyEventSheet
+        open={simulateGroup != null}
+        onOpenChange={(open) => {
+          if (!open) setSimulateGroup(null);
+        }}
+        group={simulateGroup}
+        onSimulated={() => {
+          if (detailsGroupId === simulateGroup?.id) {
+            void loadGroupDetails(simulateGroup.id);
+          }
+        }}
       />
     </FadeInStagger>
   );
