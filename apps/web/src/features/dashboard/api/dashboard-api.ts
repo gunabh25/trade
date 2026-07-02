@@ -149,17 +149,28 @@ function buildStats(
   };
 }
 
-function buildEquityCurve(analytics: AnalyticsOverview | null): EquityPoint[] {
-  if (!analytics?.equity_curve.length) {
-    return [];
+function buildEquityCurve(
+  analytics: AnalyticsOverview | null,
+  accounts: ConnectedAccount[],
+): EquityPoint[] {
+  if (analytics?.equity_curve.length) {
+    const step = Math.max(1, Math.floor(analytics.equity_curve.length / 12));
+    return analytics.equity_curve
+      .filter((_, index) => index % step === 0 || index === analytics.equity_curve.length - 1)
+      .map((point) => ({
+        date: formatChartDate(point.date),
+        equity: point.equity,
+      }));
   }
-  const step = Math.max(1, Math.floor(analytics.equity_curve.length / 12));
-  return analytics.equity_curve
-    .filter((_, index) => index % step === 0 || index === analytics.equity_curve.length - 1)
-    .map((point) => ({
-      date: formatChartDate(point.date),
-      equity: point.equity,
-    }));
+
+  const accountEquity = accounts.reduce((sum, account) => sum + account.equity, 0);
+  const fallbackEquity =
+    accountEquity > 0 ? accountEquity : (analytics?.metrics.ending_equity ?? 0);
+  if (fallbackEquity > 0) {
+    return [{ date: 'Current', equity: fallbackEquity }];
+  }
+
+  return [];
 }
 
 function buildProfitCalendar(analytics: AnalyticsOverview | null): CalendarDay[] {
@@ -250,7 +261,7 @@ export async function fetchDashboardData(): Promise<DashboardData> {
     workspaces,
     activeWorkspaceId: workspaces[0]?.id ?? 'default',
     stats: buildStats(accounts, positions, orders, analytics, risk),
-    equityCurve: buildEquityCurve(analytics),
+    equityCurve: buildEquityCurve(analytics, accounts),
     profitCalendar: buildProfitCalendar(analytics),
     dailyReturns: buildDailyReturns(analytics),
     monthlyReturns: buildMonthlyReturns(analytics),

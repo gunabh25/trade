@@ -77,16 +77,16 @@ export default function DashboardPage() {
         <StatWidgetsGrid stats={data.stats} />
       </FadeInItem>
 
-      <FadeInItem className="grid gap-4 lg:grid-cols-5">
-        <div className="lg:col-span-3">
+      <FadeInItem className="grid min-w-0 gap-4 lg:grid-cols-5">
+        <div className="min-w-0 lg:col-span-3">
           <EquityCurveChart data={data.equityCurve} />
         </div>
-        <div className="lg:col-span-2">
+        <div className="min-w-0 lg:col-span-2">
           <ProfitCalendar data={data.profitCalendar} />
         </div>
       </FadeInItem>
 
-      <FadeInItem className="grid gap-4 md:grid-cols-2">
+      <FadeInItem className="grid min-w-0 gap-4 md:grid-cols-2">
         <DailyReturnsChart data={data.dailyReturns} />
         <MonthlyReturnsChart data={data.monthlyReturns} />
       </FadeInItem>

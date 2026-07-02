@@ -75,6 +75,8 @@ class AnalyticsService:
         starting_equity = DEFAULT_STARTING_EQUITY
         daily = metrics.aggregate_daily_pnls(trade_dates)
         equity_series = metrics.equity_curve_from_daily(daily, starting_equity)
+        if not equity_series:
+            equity_series = [(date.today(), float(starting_equity))]
         drawdown_series = metrics.drawdown_series(equity_series)
         daily_rates = metrics.daily_return_rates(daily, starting_equity)
         trade_metrics = metrics.compute_trade_metrics(ordered_pnls)
