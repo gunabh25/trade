@@ -117,6 +117,12 @@ export async function stopCopyGroup(groupId: string): Promise<CopyGroup> {
   return normalizeGroup(response.data);
 }
 
+export async function deleteCopyGroup(groupId: string): Promise<void> {
+  await apiRequest<Record<string, unknown>>(`/copy/groups/${groupId}`, {
+    method: 'DELETE',
+  });
+}
+
 export async function listCopyEvents(groupId: string): Promise<CopyEvent[]> {
   const response = await apiRequest<Record<string, unknown>[]>(`/copy/groups/${groupId}/events`);
   return response.data.map((item) => normalizeEvent(item));

@@ -164,6 +164,25 @@ class CopyTradingService:
             await self._leader_watch.unwatch_group(group_id)
         return self._to_group_response(group)
 
+    async def delete_group(
+        self,
+        db: AsyncSession,
+        user_id: UUID,
+        group_id: UUID,
+    ) -> None:
+        group = await self._get_group(db, user_id, group_id, load_followers=True)
+        now = datetime.now(tz=UTC)
+        group.copying_enabled = False
+        group.status = CopyGroupStatus.STOPPED
+        group.deleted_at = now
+        for follower in group.followers:
+            if follower.deleted_at is None:
+                follower.deleted_at = now
+        await db.flush()
+        if self._leader_watch is not None:
+            await self._leader_watch.unwatch_group(group_id)
+        logger.info("copy_group_deleted", copy_group_id=str(group_id))
+
     async def list_groups(
         self,
         db: AsyncSession,

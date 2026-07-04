@@ -127,6 +127,23 @@ async def stop_copying(
     return success(result, request_id=getattr(request.state, "request_id", None))
 
 
+@router.delete(
+    "/groups/{group_id}",
+    response_model=SuccessResponse[dict[str, str]],
+    summary="Delete a copy group",
+)
+@inject
+async def delete_copy_group(
+    request: Request,
+    group_id: UUID,
+    db: DbSession,
+    user: CurrentUser,
+    copy_service: CopyTradingService = Depends(Provide[Container.copy_trading_service]),
+) -> SuccessResponse[dict[str, str]]:
+    await copy_service.delete_group(db, user.id, group_id)
+    return success({"status": "deleted"}, request_id=getattr(request.state, "request_id", None))
+
+
 @router.get(
     "/groups/{group_id}/events",
     response_model=SuccessResponse[list[CopyEventResponse]],

@@ -1,6 +1,6 @@
 'use client';
 
-import { Copy, History, Pause, Play, Plus, Zap } from 'lucide-react';
+import { Copy, History, Pause, Play, Plus, Trash2, Zap } from 'lucide-react';
 import Link from 'next/link';
 import { useCallback, useEffect, useState } from 'react';
 
@@ -70,6 +70,28 @@ export function CopyTradingPageContent({ autoOpenCreate = false }: CopyTradingPa
       await load();
     } catch (err) {
       setError(err instanceof ApiClientError ? err.message : 'Failed to update copy group');
+    } finally {
+      setActionId(null);
+    }
+  }
+
+  async function deleteGroup(group: CopyGroup) {
+    const confirmed = window.confirm(
+      `Delete copy group “${group.name}”? You can remove broker connections after this.`,
+    );
+    if (!confirmed) {
+      return;
+    }
+    setActionId(group.id);
+    setError(null);
+    try {
+      await copyApi.deleteCopyGroup(group.id);
+      if (detailsGroupId === group.id) {
+        setDetailsGroupId(null);
+      }
+      await load();
+    } catch (err) {
+      setError(err instanceof ApiClientError ? err.message : 'Failed to delete copy group');
     } finally {
       setActionId(null);
     }
@@ -225,6 +247,16 @@ export function CopyTradingPageContent({ autoOpenCreate = false }: CopyTradingPa
                     >
                       <History className="mr-1 h-3.5 w-3.5" />
                       {detailsGroupId === group.id ? 'Hide activity' : 'View activity'}
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      className="text-red-400 hover:bg-red-500/10 hover:text-red-300"
+                      disabled={actionId === group.id}
+                      onClick={() => void deleteGroup(group)}
+                    >
+                      <Trash2 className="mr-1 h-3.5 w-3.5" />
+                      Delete
                     </Button>
                   </div>
                   {detailsGroupId === group.id ? (
