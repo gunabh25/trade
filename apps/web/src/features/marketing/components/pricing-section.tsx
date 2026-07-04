@@ -114,7 +114,7 @@ function PricingCard({ plan, index }: { plan: Plan; index: number }) {
         'relative flex flex-col rounded-2xl border p-5 sm:p-6 lg:p-8',
         isPopular
           ? 'border-indigo-500/40 bg-gradient-to-b from-indigo-500/[0.08] to-[#0a0d14] shadow-lg shadow-indigo-500/10'
-          : 'border-white/[0.06] bg-[#0a0d14]',
+          : 'border-border bg-card',
       )}
     >
       {isPopular ? (
@@ -127,18 +127,18 @@ function PricingCard({ plan, index }: { plan: Plan; index: number }) {
       ) : null}
 
       <div>
-        <h3 className="text-lg font-semibold text-white">{plan.name}</h3>
-        <p className="mt-1 text-sm text-zinc-500">{plan.description}</p>
+        <h3 className="text-foreground text-lg font-semibold">{plan.name}</h3>
+        <p className="text-muted-foreground mt-1 text-sm">{plan.description}</p>
       </div>
 
       <div className="mt-6">
-        <span className="text-3xl font-bold tabular-nums text-white sm:text-4xl">
+        <span className="text-foreground text-3xl font-bold tabular-nums sm:text-4xl">
           {formatPrice(plan.price_cents, plan.currency)}
         </span>
         {!isFree ? (
-          <span className="text-sm text-zinc-500"> / {plan.interval}</span>
+          <span className="text-muted-foreground text-sm"> / {plan.interval}</span>
         ) : (
-          <span className="text-sm text-zinc-500"> forever</span>
+          <span className="text-muted-foreground text-sm"> forever</span>
         )}
       </div>
 
@@ -148,7 +148,7 @@ function PricingCard({ plan, index }: { plan: Plan; index: number }) {
 
       <ul className="mt-8 flex-1 space-y-3">
         {bullets.map((bullet) => (
-          <li key={bullet} className="flex items-start gap-2.5 text-sm text-zinc-400">
+          <li key={bullet} className="text-muted-foreground flex items-start gap-2.5 text-sm">
             <Check className="mt-0.5 h-4 w-4 shrink-0 text-emerald-400" />
             <span className="capitalize">{bullet}</span>
           </li>
@@ -160,8 +160,8 @@ function PricingCard({ plan, index }: { plan: Plan; index: number }) {
         className={cn(
           'mt-8 w-full rounded-lg',
           isPopular
-            ? 'bg-indigo-600 text-white hover:bg-indigo-500'
-            : 'border-white/10 bg-white/[0.04] text-white hover:bg-white/[0.08]',
+            ? 'text-foreground bg-indigo-600 hover:bg-indigo-500'
+            : 'border-border text-foreground hover:bg-muted bg-white/[0.04]',
         )}
         variant={isPopular ? 'default' : 'outline'}
       >
@@ -202,7 +202,7 @@ export function PricingSection({ showHeading = true }: { showHeading?: boolean }
             <h2 className="text-2xl font-bold tracking-tight sm:text-3xl lg:text-4xl">
               Simple, Transparent Pricing
             </h2>
-            <p className="mt-3 text-sm leading-relaxed text-zinc-400 sm:mt-4 sm:text-base">
+            <p className="text-muted-foreground mt-3 text-sm leading-relaxed sm:mt-4 sm:text-base">
               Start free with paper trading. Upgrade when you are ready to scale copy groups, risk
               controls, and analytics across live broker accounts.
             </p>
@@ -210,7 +210,7 @@ export function PricingSection({ showHeading = true }: { showHeading?: boolean }
         ) : null}
 
         {loading ? (
-          <div className="mt-10 flex justify-center text-zinc-500 sm:mt-14">
+          <div className="text-muted-foreground mt-10 flex justify-center sm:mt-14">
             <Loader2 className="h-6 w-6 animate-spin" />
           </div>
         ) : (
@@ -221,12 +221,12 @@ export function PricingSection({ showHeading = true }: { showHeading?: boolean }
           </div>
         )}
 
-        <p className="mx-auto mt-8 max-w-2xl text-center text-[11px] leading-relaxed text-zinc-600 sm:mt-10 sm:text-xs">
+        <p className="text-muted-foreground mx-auto mt-8 max-w-2xl text-center text-[11px] leading-relaxed sm:mt-10 sm:text-xs">
           All plans include secure credential storage, real-time copy execution logs, and risk
           controls. Prices shown in USD. Taxes may apply. See{' '}
           <Link
             href="/terms"
-            className="text-zinc-500 underline underline-offset-2 hover:text-white"
+            className="text-muted-foreground hover:text-foreground underline underline-offset-2"
           >
             Terms of Service
           </Link>{' '}

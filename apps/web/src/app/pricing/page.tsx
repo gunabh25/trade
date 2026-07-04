@@ -14,7 +14,7 @@ function apiDocsHref(): string {
 
 export default function PricingPage() {
   return (
-    <div className="min-h-screen overflow-x-hidden bg-[#05070a] text-white">
+    <div className="bg-background text-foreground min-h-screen overflow-x-hidden">
       <LandingHeader anchorBase="/" />
 
       <main>

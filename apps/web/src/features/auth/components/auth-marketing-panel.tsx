@@ -31,7 +31,7 @@ function FloatingCard({
 
 export function AuthMarketingPanel() {
   return (
-    <div className="relative hidden h-full flex-col items-center justify-center overflow-hidden border-l border-white/[0.06] bg-[#06080f] px-12 lg:flex">
+    <div className="border-border bg-muted/30 relative hidden h-full flex-col items-center justify-center overflow-hidden border-l px-12 lg:flex dark:bg-[#06080f]">
       <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_center,rgba(99,102,241,0.08)_0%,transparent_70%)]" />
       <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_80%_20%,rgba(6,182,212,0.06)_0%,transparent_50%)]" />
 

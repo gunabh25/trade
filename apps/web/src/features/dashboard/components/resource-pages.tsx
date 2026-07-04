@@ -3,6 +3,8 @@
 import { Card, CardContent, CardHeader, CardTitle } from '@tradeflow/ui';
 import { useEffect, useState, type ReactNode } from 'react';
 
+import { ThemeToggle } from '@/components/theme-toggle';
+
 interface AsyncListPageProps<T> {
   title: string;
   description: string;
@@ -93,13 +95,26 @@ interface SettingsLink {
 
 export function SettingsHubPage({ links }: { links: SettingsLink[] }) {
   return (
-    <div className="p-6">
-      <div className="mb-6">
+    <div className="space-y-6 p-6">
+      <div>
         <h1 className="text-2xl font-semibold tracking-tight">Settings</h1>
         <p className="text-muted-foreground mt-1 text-sm">
           Manage your account, security, and platform preferences.
         </p>
       </div>
+
+      <Card>
+        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+          <div>
+            <CardTitle className="text-base">Appearance</CardTitle>
+            <p className="text-muted-foreground mt-1 text-sm">
+              Choose Light, Dark, or match your system preference.
+            </p>
+          </div>
+          <ThemeToggle variant="menu" />
+        </CardHeader>
+      </Card>
+
       <div className="grid gap-4 md:grid-cols-2">
         {links.map((link) => (
           <a key={link.href} href={link.href} className="block">

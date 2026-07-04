@@ -48,7 +48,7 @@ function apiDocsHref(): string {
 
 export function LandingPage() {
   return (
-    <div className="min-h-screen overflow-x-hidden bg-[#05070a] text-white">
+    <div className="bg-background text-foreground min-h-screen overflow-x-hidden">
       <LandingHeader />
 
       <main>
@@ -77,7 +77,7 @@ export function LandingPage() {
                 </span>
               </h1>
 
-              <p className="mx-auto mt-5 max-w-lg text-sm leading-relaxed text-zinc-400 sm:mt-6 sm:text-base lg:mx-0 lg:text-lg">
+              <p className="text-muted-foreground mx-auto mt-5 max-w-lg text-sm leading-relaxed sm:mt-6 sm:text-base lg:mx-0 lg:text-lg">
                 The institutional-grade trade copier for futures and prop firm traders. Mirror
                 positions across accounts with real-time risk controls and unified analytics.
               </p>
@@ -97,7 +97,7 @@ export function LandingPage() {
                   asChild
                   size="lg"
                   variant="outline"
-                  className="h-12 w-full rounded-lg border-white/10 bg-white/[0.03] text-white hover:bg-white/[0.06] sm:w-auto"
+                  className="border-border bg-muted/40 text-foreground hover:bg-muted/50 h-12 w-full rounded-lg sm:w-auto"
                 >
                   <Link href="/dashboard">View Dashboard</Link>
                 </Button>
@@ -111,14 +111,14 @@ export function LandingPage() {
         </section>
 
         {/* Stats */}
-        <section className="border-y border-white/[0.06] bg-[#060910]">
+        <section className="border-border bg-muted/40 border-y">
           <div className="mx-auto grid max-w-7xl grid-cols-1 divide-y divide-white/[0.06] sm:grid-cols-3 sm:divide-x sm:divide-y-0">
             {stats.map((stat) => (
               <div key={stat.label} className="px-4 py-8 text-center sm:px-6 sm:py-10 lg:px-8">
                 <p className="text-2xl font-bold tabular-nums text-cyan-400 sm:text-3xl lg:text-4xl">
                   {stat.value}
                 </p>
-                <p className="mt-2 text-[10px] font-medium uppercase tracking-wider text-zinc-500 sm:text-xs">
+                <p className="text-muted-foreground mt-2 text-[10px] font-medium uppercase tracking-wider sm:text-xs">
                   {stat.label}
                 </p>
               </div>
@@ -133,7 +133,7 @@ export function LandingPage() {
               <h2 className="text-2xl font-bold tracking-tight sm:text-3xl lg:text-4xl">
                 Engineered for Dominance
               </h2>
-              <p className="mt-3 text-sm leading-relaxed text-zinc-400 sm:mt-4 sm:text-base">
+              <p className="text-muted-foreground mt-3 text-sm leading-relaxed sm:mt-4 sm:text-base">
                 Built on a high-performance stack with sub-millisecond routing, enterprise risk
                 gates, and multi-broker connectivity for serious trading operations.
               </p>
@@ -148,7 +148,7 @@ export function LandingPage() {
                   viewport={{ once: true }}
                   transition={{ duration: 0.5, delay: i * 0.1 }}
                   className={cn(
-                    'rounded-2xl border border-white/[0.06] bg-[#0a0d14] p-5 sm:p-6',
+                    'border-border bg-card rounded-2xl border p-5 sm:p-6',
                     i === 2 &&
                       'md:col-span-2 md:max-w-xl md:justify-self-center xl:col-span-1 xl:max-w-none',
                   )}
@@ -161,10 +161,10 @@ export function LandingPage() {
                   >
                     <feature.icon className="h-5 w-5" />
                   </div>
-                  <h3 className="mt-4 text-base font-semibold text-white sm:mt-5 sm:text-lg">
+                  <h3 className="text-foreground mt-4 text-base font-semibold sm:mt-5 sm:text-lg">
                     {feature.title}
                   </h3>
-                  <p className="mt-2 text-sm leading-relaxed text-zinc-500">
+                  <p className="text-muted-foreground mt-2 text-sm leading-relaxed">
                     {feature.description}
                   </p>
                 </motion.div>
@@ -184,11 +184,11 @@ export function LandingPage() {
         {/* CTA */}
         <section className="pb-16 sm:pb-20 lg:pb-28">
           <div className="mx-auto max-w-5xl px-4 sm:px-6 lg:px-8">
-            <div className="rounded-2xl border border-white/[0.08] bg-gradient-to-b from-[#0d1117] to-[#0a0d14] px-5 py-10 text-center sm:px-8 sm:py-12 lg:px-12 lg:py-14">
+            <div className="border-border from-card to-background rounded-2xl border bg-gradient-to-b px-5 py-10 text-center sm:px-8 sm:py-12 lg:px-12 lg:py-14">
               <h2 className="text-2xl font-bold tracking-tight sm:text-3xl lg:text-4xl">
                 Ready to Scale Your Strategy?
               </h2>
-              <p className="mx-auto mt-3 max-w-lg text-sm text-zinc-400 sm:mt-4 sm:text-base">
+              <p className="text-muted-foreground mx-auto mt-3 max-w-lg text-sm sm:mt-4 sm:text-base">
                 Join traders who copy with confidence. Start free, connect your brokers, and scale
                 across every account in minutes.
               </p>
@@ -204,7 +204,7 @@ export function LandingPage() {
                   asChild
                   size="lg"
                   variant="outline"
-                  className="h-12 w-full rounded-lg border-white/10 bg-transparent text-white hover:bg-white/[0.06] sm:w-auto"
+                  className="border-border text-foreground hover:bg-muted/50 h-12 w-full rounded-lg bg-transparent sm:w-auto"
                 >
                   <a href={apiDocsHref()} target="_blank" rel="noopener noreferrer">
                     View API Docs

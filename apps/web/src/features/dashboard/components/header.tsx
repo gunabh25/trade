@@ -7,6 +7,7 @@ import type { InAppNotification } from '@tradeflow/types/api';
 
 import { Input, Separator } from '@tradeflow/ui';
 
+import { ThemeToggle } from '@/components/theme-toggle';
 import { NotificationCenter } from '@/features/dashboard/components/notification-center';
 import { MobileSidebarTrigger } from '@/features/dashboard/components/sidebar';
 import { UserMenu } from '@/features/dashboard/components/user-menu';
@@ -57,6 +58,7 @@ export function DashboardHeader({ data, onNotificationsChange }: DashboardHeader
           notifications={data.notifications}
           {...(onNotificationsChange ? { onNotificationsChange } : {})}
         />
+        <ThemeToggle />
         <UserMenu />
       </div>
     </header>

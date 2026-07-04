@@ -25,6 +25,7 @@ import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 
+import { ThemeToggle } from '@/components/theme-toggle';
 import {
   Button,
   ScrollArea,
@@ -129,7 +130,11 @@ export function AdminSidebar() {
       <ScrollArea className="min-h-0 flex-1">
         <NavContent />
       </ScrollArea>
-      <div className="border-border border-t p-3">
+      <div className="border-border space-y-2 border-t p-3">
+        <div className="flex items-center justify-between px-1">
+          <span className="text-muted-foreground text-xs">Theme</span>
+          <ThemeToggle />
+        </div>
         <Button variant="outline" size="sm" className="w-full" asChild>
           <Link href="/dashboard">
             <BarChart3 className="mr-2 h-4 w-4" />
@@ -191,6 +196,9 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
           </SheetContent>
         </Sheet>
         <p className="text-sm font-semibold">Admin Portal</p>
+        <div className="ml-auto">
+          <ThemeToggle />
+        </div>
       </div>
 
       <AdminSidebar />

@@ -16,6 +16,7 @@ import {
   DropdownMenuTrigger,
 } from '@tradeflow/ui';
 
+import { ThemeMenuItems } from '@/components/theme-toggle';
 import { useAuth } from '@/features/auth/components/auth-provider';
 import { resolveAvatarUrl } from '@/lib/avatar-url';
 
@@ -75,6 +76,11 @@ export function UserMenu() {
             Settings
           </Link>
         </DropdownMenuItem>
+        <DropdownMenuSeparator />
+        <DropdownMenuLabel className="text-muted-foreground text-xs font-normal">
+          Theme
+        </DropdownMenuLabel>
+        <ThemeMenuItems />
         <DropdownMenuSeparator />
         <DropdownMenuItem
           className="text-destructive focus:text-destructive"

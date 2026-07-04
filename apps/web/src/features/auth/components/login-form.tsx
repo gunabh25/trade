@@ -119,20 +119,20 @@ export function LoginForm() {
           <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br from-indigo-500 to-cyan-500">
             <span className="text-sm font-bold text-white">T</span>
           </div>
-          <span className="text-lg font-semibold tracking-tight text-white">TradeFlow</span>
+          <span className="text-foreground text-lg font-semibold tracking-tight">TradeFlow</span>
         </div>
-        <p className="mt-1 text-[10px] font-medium uppercase tracking-[0.2em] text-zinc-600">
+        <p className="text-muted-foreground mt-1 text-[10px] font-medium uppercase tracking-[0.2em]">
           Institutional Grade Trade Copying
         </p>
       </div>
 
       <div className="mb-8">
-        <h1 className="text-3xl font-semibold tracking-tight text-white">Welcome Back</h1>
-        <p className="mt-2 text-sm text-zinc-500">Access your trading command center.</p>
+        <h1 className="text-foreground text-3xl font-semibold tracking-tight">Welcome Back</h1>
+        <p className="text-muted-foreground mt-2 text-sm">Access your trading command center.</p>
         {process.env.NODE_ENV === 'development' ? (
-          <p className="mt-3 rounded-md border border-white/[0.08] bg-white/[0.03] px-3 py-2 text-xs text-zinc-400">
-            Dev login: <span className="text-zinc-300">demo@tradeflow.ai</span> /{' '}
-            <span className="text-zinc-300">DemoPass123</span>
+          <p className="border-border bg-muted/40 text-muted-foreground mt-3 rounded-md border px-3 py-2 text-xs">
+            Dev login: <span className="text-foreground/90">demo@tradeflow.ai</span> /{' '}
+            <span className="text-foreground/90">DemoPass123</span>
           </p>
         ) : null}
       </div>
@@ -142,14 +142,14 @@ export function LoginForm() {
           <div className="grid grid-cols-2 gap-3">
             <a
               href={getOAuthUrl('google')}
-              className="flex h-11 items-center justify-center gap-2 rounded-lg border border-white/[0.08] bg-white/[0.03] text-sm font-medium text-zinc-300 transition-colors hover:bg-white/[0.06] hover:text-white"
+              className="border-border bg-muted/40 text-foreground/90 hover:bg-muted/60 hover:text-foreground flex h-11 items-center justify-center gap-2 rounded-lg border text-sm font-medium transition-colors"
             >
               <GoogleIcon />
               Google
             </a>
             <a
               href={getOAuthUrl('github')}
-              className="flex h-11 items-center justify-center gap-2 rounded-lg border border-white/[0.08] bg-white/[0.03] text-sm font-medium text-zinc-300 transition-colors hover:bg-white/[0.06] hover:text-white"
+              className="border-border bg-muted/40 text-foreground/90 hover:bg-muted/60 hover:text-foreground flex h-11 items-center justify-center gap-2 rounded-lg border text-sm font-medium transition-colors"
             >
               <GitHubIcon />
               GitHub
@@ -158,10 +158,10 @@ export function LoginForm() {
 
           <div className="relative my-6">
             <div className="absolute inset-0 flex items-center">
-              <div className="w-full border-t border-white/[0.06]" />
+              <div className="border-border w-full border-t" />
             </div>
             <div className="relative flex justify-center">
-              <span className="bg-[#080b12] px-3 text-[10px] font-medium uppercase tracking-widest text-zinc-600">
+              <span className="bg-background text-muted-foreground px-3 text-[10px] font-medium uppercase tracking-widest">
                 Or continue with
               </span>
             </div>
@@ -178,11 +178,11 @@ export function LoginForm() {
         {!challengeToken ? (
           <>
             <div className="space-y-2">
-              <label htmlFor="email" className="text-sm font-medium text-zinc-300">
+              <label htmlFor="email" className="text-foreground/90 text-sm font-medium">
                 Work Email
               </label>
               <div className="relative">
-                <Mail className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-zinc-400" />
+                <Mail className="text-muted-foreground absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2" />
                 <input
                   id="email"
                   type="email"
@@ -192,14 +192,14 @@ export function LoginForm() {
                     setEmail(e.target.value);
                   }}
                   required
-                  className="h-12 w-full rounded-lg border-0 bg-white pl-10 pr-4 text-sm text-zinc-900 placeholder:text-zinc-400 focus:outline-none focus:ring-2 focus:ring-indigo-500/50"
+                  className="border-input bg-background text-foreground placeholder:text-muted-foreground h-12 w-full rounded-lg border pl-10 pr-4 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/50"
                 />
               </div>
             </div>
 
             <div className="space-y-2">
               <div className="flex items-center justify-between">
-                <label htmlFor="password" className="text-sm font-medium text-zinc-300">
+                <label htmlFor="password" className="text-foreground/90 text-sm font-medium">
                   Password
                 </label>
                 <Link
@@ -210,7 +210,7 @@ export function LoginForm() {
                 </Link>
               </div>
               <div className="relative">
-                <Lock className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-zinc-400" />
+                <Lock className="text-muted-foreground absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2" />
                 <input
                   id="password"
                   type={showPassword ? 'text' : 'password'}
@@ -220,14 +220,14 @@ export function LoginForm() {
                     setPassword(e.target.value);
                   }}
                   required
-                  className="h-12 w-full rounded-lg border-0 bg-white pl-10 pr-11 text-sm text-zinc-900 placeholder:text-zinc-400 focus:outline-none focus:ring-2 focus:ring-indigo-500/50"
+                  className="border-input bg-background text-foreground placeholder:text-muted-foreground h-12 w-full rounded-lg border pl-10 pr-11 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/50"
                 />
                 <button
                   type="button"
                   onClick={() => {
                     setShowPassword((v) => !v);
                   }}
-                  className="absolute right-3.5 top-1/2 -translate-y-1/2 text-zinc-400 transition-colors hover:text-zinc-600"
+                  className="text-muted-foreground hover:text-muted-foreground absolute right-3.5 top-1/2 -translate-y-1/2 transition-colors"
                   aria-label={showPassword ? 'Hide password' : 'Show password'}
                 >
                   {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
@@ -244,7 +244,7 @@ export function LoginForm() {
                           'h-1 flex-1 rounded-full transition-colors',
                           i < passwordStrength.score
                             ? 'bg-gradient-to-r from-indigo-500 to-cyan-400'
-                            : 'bg-zinc-800',
+                            : 'bg-muted',
                         )}
                       />
                     ))}
@@ -266,12 +266,14 @@ export function LoginForm() {
                 }}
                 className="h-4 w-4 rounded border-zinc-700 bg-zinc-900 text-indigo-500 focus:ring-indigo-500/50 focus:ring-offset-0"
               />
-              <span className="text-sm text-zinc-500">Remember this device for 30 days</span>
+              <span className="text-muted-foreground text-sm">
+                Remember this device for 30 days
+              </span>
             </label>
           </>
         ) : (
           <div className="space-y-2">
-            <label htmlFor="totp" className="text-sm font-medium text-zinc-300">
+            <label htmlFor="totp" className="text-foreground/90 text-sm font-medium">
               Authenticator Code
             </label>
             <input
@@ -285,7 +287,7 @@ export function LoginForm() {
                 setTwoFactorCode(e.target.value);
               }}
               required
-              className="h-12 w-full rounded-lg border border-white/[0.08] bg-white/[0.04] px-4 text-center text-lg tracking-[0.3em] text-white placeholder:text-zinc-600 focus:outline-none focus:ring-2 focus:ring-indigo-500/50"
+              className="border-input bg-background text-foreground placeholder:text-muted-foreground h-12 w-full rounded-lg border px-4 text-center text-lg tracking-[0.3em] focus:outline-none focus:ring-2 focus:ring-indigo-500/50"
             />
           </div>
         )}
@@ -308,7 +310,7 @@ export function LoginForm() {
         </button>
       </form>
 
-      <p className="mt-8 text-center text-sm text-zinc-500">
+      <p className="text-muted-foreground mt-8 text-center text-sm">
         New to the platform?{' '}
         <Link
           href="/register"

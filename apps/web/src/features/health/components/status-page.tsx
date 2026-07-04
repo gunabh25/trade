@@ -7,6 +7,7 @@ import { AlertCircle, CheckCircle2, Loader2 } from 'lucide-react';
 import type { HealthSummaryResponse, ReadinessResponse } from '@tradeflow/types/api';
 import { cn } from '@tradeflow/ui';
 
+import { ThemeToggle } from '@/components/theme-toggle';
 import { fetchHealthSummary, fetchReadiness } from '@/features/health/api/health-api';
 
 function StatusBadge({ status }: { status: string }) {
@@ -57,21 +58,24 @@ export function StatusPageContent() {
   }, []);
 
   return (
-    <div className="min-h-screen bg-[#05070a] text-zinc-200">
-      <header className="border-b border-white/[0.06]">
-        <div className="mx-auto flex h-14 max-w-3xl items-center justify-between px-6">
-          <Link href="/" className="text-sm font-semibold text-white">
+    <div className="bg-background text-foreground min-h-screen">
+      <header className="border-border border-b">
+        <div className="mx-auto flex h-14 max-w-3xl items-center justify-between gap-3 px-6">
+          <Link href="/" className="text-sm font-semibold">
             TradeFlow AI
           </Link>
-          <Link href="/login" className="text-xs text-zinc-500 hover:text-white">
-            Login
-          </Link>
+          <div className="flex items-center gap-3">
+            <Link href="/login" className="text-muted-foreground hover:text-foreground text-xs">
+              Login
+            </Link>
+            <ThemeToggle />
+          </div>
         </div>
       </header>
 
       <main className="mx-auto max-w-3xl px-6 py-12">
-        <h1 className="text-3xl font-semibold tracking-tight text-white">System Status</h1>
-        <p className="mt-2 text-sm text-zinc-500">
+        <h1 className="text-foreground text-3xl font-semibold tracking-tight">System Status</h1>
+        <p className="text-muted-foreground mt-2 text-sm">
           Live health checks for TradeFlow web and API services.
         </p>
 
@@ -90,22 +94,22 @@ export function StatusPageContent() {
 
         {!loading && !error ? (
           <div className="mt-10 space-y-4">
-            <div className="rounded-xl border border-white/[0.08] bg-white/[0.02] p-5">
+            <div className="border-border bg-muted/30 rounded-xl border p-5">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="font-medium text-white">Web Application</p>
-                  <p className="text-xs text-zinc-500">tradeflow-web</p>
+                  <p className="text-foreground font-medium">Web Application</p>
+                  <p className="text-muted-foreground text-xs">tradeflow-web</p>
                 </div>
                 <StatusBadge status={webOk ? 'ok' : 'unhealthy'} />
               </div>
             </div>
 
             {summary ? (
-              <div className="rounded-xl border border-white/[0.08] bg-white/[0.02] p-5">
+              <div className="border-border bg-muted/30 rounded-xl border p-5">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="font-medium text-white">API</p>
-                    <p className="text-xs text-zinc-500">
+                    <p className="text-foreground font-medium">API</p>
+                    <p className="text-muted-foreground text-xs">
                       {summary.service} · v{summary.version} · {summary.environment}
                     </p>
                   </div>
@@ -115,15 +119,15 @@ export function StatusPageContent() {
             ) : null}
 
             {readiness ? (
-              <div className="rounded-xl border border-white/[0.08] bg-white/[0.02] p-5">
-                <p className="mb-4 font-medium text-white">Dependencies</p>
+              <div className="border-border bg-muted/30 rounded-xl border p-5">
+                <p className="text-foreground mb-4 font-medium">Dependencies</p>
                 <div className="space-y-3 text-sm">
                   {(['database', 'redis'] as const).map((key) => (
                     <div key={key} className="flex items-center justify-between">
-                      <span className="capitalize text-zinc-400">{key}</span>
+                      <span className="text-muted-foreground capitalize">{key}</span>
                       <div className="flex items-center gap-3">
                         {readiness.checks[key].latencyMs != null ? (
-                          <span className="text-xs text-zinc-600">
+                          <span className="text-muted-foreground text-xs">
                             {readiness.checks[key].latencyMs}ms
                           </span>
                         ) : null}
@@ -135,7 +139,7 @@ export function StatusPageContent() {
               </div>
             ) : null}
 
-            <p className="text-xs text-zinc-600">
+            <p className="text-muted-foreground text-xs">
               Last checked: {summary?.timestamp ?? new Date().toISOString()}
             </p>
           </div>

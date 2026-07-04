@@ -236,14 +236,14 @@ export function Hero3DGraphic() {
         initial={{ opacity: 0, y: 12 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.6, delay: 0.45 }}
-        className="absolute bottom-2 left-1/2 z-10 w-[calc(100%-2rem)] max-w-[220px] -translate-x-1/2 rounded-xl border border-white/10 bg-[#0a0e16]/95 px-3 py-2.5 shadow-2xl backdrop-blur-md sm:bottom-auto sm:left-auto sm:right-2 sm:top-10 sm:w-auto sm:max-w-none sm:translate-x-0 sm:px-4 sm:py-3 md:right-4 lg:right-6"
+        className="border-border bg-card/95 absolute bottom-2 left-1/2 z-10 w-[calc(100%-2rem)] max-w-[220px] -translate-x-1/2 rounded-xl border px-3 py-2.5 shadow-2xl backdrop-blur-md sm:bottom-auto sm:left-auto sm:right-2 sm:top-10 sm:w-auto sm:max-w-none sm:translate-x-0 sm:px-4 sm:py-3 md:right-4 lg:right-6"
       >
         <div className="flex items-center justify-center gap-3 sm:justify-start">
           <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-emerald-500/20 ring-1 ring-emerald-500/30 sm:h-9 sm:w-9">
             <Zap className="h-4 w-4 text-emerald-400" fill="currentColor" />
           </div>
           <div className="text-left">
-            <p className="text-[10px] text-zinc-500 sm:text-[11px]">Avg. Latency</p>
+            <p className="text-muted-foreground text-[10px] sm:text-[11px]">Avg. Latency</p>
             <p className="text-sm font-semibold tabular-nums text-emerald-400 sm:text-base">12ms</p>
           </div>
         </div>

@@ -5,6 +5,7 @@ import { Suspense, useState } from 'react';
 
 import { Button, Card, CardContent, CardHeader, CardTitle } from '@tradeflow/ui';
 
+import { AuthThemeBar } from '@/components/auth-theme-bar';
 import * as authApi from '@/features/auth/api/auth-api';
 
 function ResetPasswordForm() {
@@ -30,7 +31,8 @@ function ResetPasswordForm() {
   }
 
   return (
-    <main className="flex min-h-screen items-center justify-center p-6">
+    <main className="bg-background relative flex min-h-screen items-center justify-center p-6">
+      <AuthThemeBar />
       <Card className="w-full max-w-md">
         <CardHeader>
           <CardTitle>Set a new password</CardTitle>
@@ -48,7 +50,7 @@ function ResetPasswordForm() {
               <label className="block space-y-1 text-sm">
                 <span>New password</span>
                 <input
-                  className="w-full rounded-md border border-zinc-700 bg-zinc-900 px-3 py-2"
+                  className="border-input bg-background text-foreground w-full rounded-md border px-3 py-2"
                   type="password"
                   value={password}
                   onChange={(e) => {
@@ -80,7 +82,7 @@ export default function ResetPasswordPage() {
               <CardTitle>Set a new password</CardTitle>
             </CardHeader>
             <CardContent>
-              <p className="text-sm text-zinc-400">Loading…</p>
+              <p className="text-muted-foreground text-sm">Loading…</p>
             </CardContent>
           </Card>
         </main>

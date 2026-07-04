@@ -5,6 +5,7 @@ import { Suspense, useEffect, useState } from 'react';
 
 import { Card, CardContent, CardHeader, CardTitle } from '@tradeflow/ui';
 
+import { AuthThemeBar } from '@/components/auth-theme-bar';
 import * as authApi from '@/features/auth/api/auth-api';
 import { useAuth } from '@/features/auth/components/auth-provider';
 
@@ -50,13 +51,14 @@ function VerifyEmailContent() {
   }, [token, router, refresh]);
 
   return (
-    <main className="flex min-h-screen items-center justify-center p-6">
+    <main className="bg-background relative flex min-h-screen items-center justify-center p-6">
+      <AuthThemeBar />
       <Card className="w-full max-w-md">
         <CardHeader>
           <CardTitle>Email verification</CardTitle>
         </CardHeader>
         <CardContent>
-          <p className="text-sm text-zinc-300">{message}</p>
+          <p className="text-foreground/90 text-sm">{message}</p>
         </CardContent>
       </Card>
     </main>
@@ -73,7 +75,7 @@ export default function VerifyEmailPage() {
               <CardTitle>Email verification</CardTitle>
             </CardHeader>
             <CardContent>
-              <p className="text-sm text-zinc-300">Verifying email…</p>
+              <p className="text-foreground/90 text-sm">Verifying email…</p>
             </CardContent>
           </Card>
         </main>

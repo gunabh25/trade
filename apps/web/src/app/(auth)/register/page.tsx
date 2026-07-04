@@ -5,6 +5,7 @@ import { Check, Eye, EyeOff, Lock, Mail, User } from 'lucide-react';
 import Link from 'next/link';
 import { type SyntheticEvent, useMemo, useState } from 'react';
 
+import { AuthThemeBar } from '@/components/auth-theme-bar';
 import { AuthMarketingPanel } from '@/features/auth/components/auth-marketing-panel';
 
 import * as authApi from '@/features/auth/api/auth-api';
@@ -54,7 +55,8 @@ export default function RegisterPage() {
   }
 
   return (
-    <div className="flex min-h-screen bg-[#080b12]">
+    <div className="bg-background relative flex min-h-screen">
+      <AuthThemeBar />
       <div className="flex flex-1 flex-col items-center justify-center px-6 py-12 sm:px-12">
         <div className="flex w-full max-w-[420px] flex-col">
           <div className="mb-10">
@@ -62,16 +64,20 @@ export default function RegisterPage() {
               <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br from-indigo-500 to-cyan-500">
                 <span className="text-sm font-bold text-white">T</span>
               </div>
-              <span className="text-lg font-semibold tracking-tight text-white">TradeFlow</span>
+              <span className="text-foreground text-lg font-semibold tracking-tight">
+                TradeFlow
+              </span>
             </div>
-            <p className="mt-1 text-[10px] font-medium uppercase tracking-[0.2em] text-zinc-600">
+            <p className="text-muted-foreground mt-1 text-[10px] font-medium uppercase tracking-[0.2em]">
               Institutional Grade Trade Copying
             </p>
           </div>
 
           <div className="mb-8">
-            <h1 className="text-3xl font-semibold tracking-tight text-white">Request Access</h1>
-            <p className="mt-2 text-sm text-zinc-500">
+            <h1 className="text-foreground text-3xl font-semibold tracking-tight">
+              Request Access
+            </h1>
+            <p className="text-muted-foreground mt-2 text-sm">
               Create your account to access the trading command center.
             </p>
           </div>
@@ -84,36 +90,36 @@ export default function RegisterPage() {
           >
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-2">
-                <label htmlFor="first-name" className="text-sm font-medium text-zinc-300">
+                <label htmlFor="first-name" className="text-foreground/90 text-sm font-medium">
                   First Name
                 </label>
                 <div className="relative">
-                  <User className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-zinc-400" />
+                  <User className="text-muted-foreground absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2" />
                   <input
                     id="first-name"
                     value={firstName}
                     onChange={(e) => {
                       setFirstName(e.target.value);
                     }}
-                    className="h-12 w-full rounded-lg border-0 bg-white pl-10 pr-4 text-sm text-zinc-900 placeholder:text-zinc-400 focus:outline-none focus:ring-2 focus:ring-indigo-500/50"
+                    className="border-input bg-background text-foreground placeholder:text-muted-foreground h-12 w-full rounded-lg border pl-10 pr-4 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/50"
                     placeholder="John"
                   />
                 </div>
               </div>
 
               <div className="space-y-2">
-                <label htmlFor="last-name" className="text-sm font-medium text-zinc-300">
+                <label htmlFor="last-name" className="text-foreground/90 text-sm font-medium">
                   Last Name
                 </label>
                 <div className="relative">
-                  <User className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-zinc-400" />
+                  <User className="text-muted-foreground absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2" />
                   <input
                     id="last-name"
                     value={lastName}
                     onChange={(e) => {
                       setLastName(e.target.value);
                     }}
-                    className="h-12 w-full rounded-lg border-0 bg-white pl-10 pr-4 text-sm text-zinc-900 placeholder:text-zinc-400 focus:outline-none focus:ring-2 focus:ring-indigo-500/50"
+                    className="border-input bg-background text-foreground placeholder:text-muted-foreground h-12 w-full rounded-lg border pl-10 pr-4 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/50"
                     placeholder="Doe"
                   />
                 </div>
@@ -121,11 +127,11 @@ export default function RegisterPage() {
             </div>
 
             <div className="space-y-2">
-              <label htmlFor="email" className="text-sm font-medium text-zinc-300">
+              <label htmlFor="email" className="text-foreground/90 text-sm font-medium">
                 Work Email
               </label>
               <div className="relative">
-                <Mail className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-zinc-400" />
+                <Mail className="text-muted-foreground absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2" />
                 <input
                   id="email"
                   type="email"
@@ -135,17 +141,17 @@ export default function RegisterPage() {
                   }}
                   required
                   placeholder="name@company.com"
-                  className="h-12 w-full rounded-lg border-0 bg-white pl-10 pr-4 text-sm text-zinc-900 placeholder:text-zinc-400 focus:outline-none focus:ring-2 focus:ring-indigo-500/50"
+                  className="border-input bg-background text-foreground placeholder:text-muted-foreground h-12 w-full rounded-lg border pl-10 pr-4 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/50"
                 />
               </div>
             </div>
 
             <div className="space-y-2">
-              <label htmlFor="password" className="text-sm font-medium text-zinc-300">
+              <label htmlFor="password" className="text-foreground/90 text-sm font-medium">
                 Password
               </label>
               <div className="relative">
-                <Lock className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-zinc-400" />
+                <Lock className="text-muted-foreground absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2" />
                 <input
                   id="password"
                   type={showPassword ? 'text' : 'password'}
@@ -156,14 +162,14 @@ export default function RegisterPage() {
                   required
                   minLength={8}
                   placeholder="••••••••"
-                  className="h-12 w-full rounded-lg border-0 bg-white pl-10 pr-11 text-sm text-zinc-900 placeholder:text-zinc-400 focus:outline-none focus:ring-2 focus:ring-indigo-500/50"
+                  className="border-input bg-background text-foreground placeholder:text-muted-foreground h-12 w-full rounded-lg border pl-10 pr-11 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/50"
                 />
                 <button
                   type="button"
                   onClick={() => {
                     setShowPassword((v) => !v);
                   }}
-                  className="absolute right-3.5 top-1/2 -translate-y-1/2 text-zinc-400 transition-colors hover:text-zinc-600"
+                  className="text-muted-foreground hover:text-muted-foreground absolute right-3.5 top-1/2 -translate-y-1/2 transition-colors"
                   aria-label={showPassword ? 'Hide password' : 'Show password'}
                 >
                   {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
@@ -180,7 +186,7 @@ export default function RegisterPage() {
                           'h-1 flex-1 rounded-full transition-colors',
                           i < passwordStrength.score
                             ? 'bg-gradient-to-r from-indigo-500 to-cyan-400'
-                            : 'bg-zinc-800',
+                            : 'bg-muted',
                         )}
                       />
                     ))}
@@ -199,7 +205,7 @@ export default function RegisterPage() {
               </p>
             ) : null}
 
-            <label className="flex items-start gap-2.5 text-xs leading-relaxed text-zinc-500">
+            <label className="text-muted-foreground flex items-start gap-2.5 text-xs leading-relaxed">
               <input
                 type="checkbox"
                 checked={acceptedTerms}
@@ -238,7 +244,7 @@ export default function RegisterPage() {
             </button>
           </form>
 
-          <p className="mt-8 text-center text-sm text-zinc-500">
+          <p className="text-muted-foreground mt-8 text-center text-sm">
             Already have an account?{' '}
             <Link
               className="font-medium text-indigo-400 transition-colors hover:text-indigo-300"

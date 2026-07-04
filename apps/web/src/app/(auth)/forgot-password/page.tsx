@@ -5,6 +5,7 @@ import { useState } from 'react';
 
 import { Button, Card, CardContent, CardHeader, CardTitle } from '@tradeflow/ui';
 
+import { AuthThemeBar } from '@/components/auth-theme-bar';
 import * as authApi from '@/features/auth/api/auth-api';
 
 export default function ForgotPasswordPage() {
@@ -24,14 +25,15 @@ export default function ForgotPasswordPage() {
   }
 
   return (
-    <main className="flex min-h-screen items-center justify-center p-6">
+    <main className="bg-background relative flex min-h-screen items-center justify-center p-6">
+      <AuthThemeBar />
       <Card className="w-full max-w-md">
         <CardHeader>
           <CardTitle>Reset password</CardTitle>
         </CardHeader>
         <CardContent>
           {sent ? (
-            <p className="text-sm text-zinc-300">
+            <p className="text-foreground/90 text-sm">
               If an account exists for that email, a reset link has been sent.
             </p>
           ) : (
@@ -44,7 +46,7 @@ export default function ForgotPasswordPage() {
               <label className="block space-y-1 text-sm">
                 <span>Email</span>
                 <input
-                  className="w-full rounded-md border border-zinc-700 bg-zinc-900 px-3 py-2"
+                  className="border-input bg-background text-foreground w-full rounded-md border px-3 py-2"
                   type="email"
                   value={email}
                   onChange={(e) => {
