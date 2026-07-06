@@ -20,21 +20,21 @@ const stats = [
 const features = [
   {
     icon: Cloud,
-    iconClass: 'text-indigo-400 bg-indigo-500/10',
+    iconClass: 'text-indigo-600 bg-indigo-500/15 dark:text-indigo-400 dark:bg-indigo-500/10',
     title: 'Zero Latency Sync',
     description:
       'Mirror master accounts to unlimited followers with sub-50ms routing across futures and prop firm platforms.',
   },
   {
     icon: Shield,
-    iconClass: 'text-emerald-400 bg-emerald-500/10',
+    iconClass: 'text-emerald-600 bg-emerald-500/15 dark:text-emerald-400 dark:bg-emerald-500/10',
     title: 'Institutional Risk Controls',
     description:
       'Pre-trade risk gates, position limits, and drawdown rules enforced before every order hits the market.',
   },
   {
     icon: Sparkles,
-    iconClass: 'text-cyan-400 bg-cyan-500/10',
+    iconClass: 'text-cyan-600 bg-cyan-500/15 dark:text-cyan-400 dark:bg-cyan-500/10',
     title: 'Cross-Broker Execution',
     description:
       'Unified OMS across Tradovate, Rithmic, and major brokers — one dashboard, every account.',
@@ -54,7 +54,7 @@ export function LandingPage() {
       <main>
         {/* Hero */}
         <section className="relative overflow-hidden">
-          <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_20%_50%,rgba(99,102,241,0.08)_0%,transparent_50%)]" />
+          <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_20%_50%,rgba(99,102,241,0.12)_0%,transparent_50%)] dark:bg-[radial-gradient(ellipse_at_20%_50%,rgba(99,102,241,0.08)_0%,transparent_50%)]" />
 
           <div className="mx-auto grid max-w-7xl items-center gap-10 px-4 pb-12 pt-10 sm:gap-12 sm:px-6 sm:pb-16 sm:pt-14 lg:grid-cols-2 lg:gap-8 lg:px-8 lg:pb-24 lg:pt-20">
             <motion.div
@@ -63,16 +63,16 @@ export function LandingPage() {
               transition={{ duration: 0.6 }}
               className="mx-auto max-w-xl text-center lg:mx-0 lg:max-w-none lg:text-left"
             >
-              <div className="mb-5 inline-flex max-w-full items-center gap-2 rounded-full border border-emerald-500/20 bg-emerald-500/5 px-3 py-1 sm:mb-6">
-                <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-emerald-400" />
-                <span className="text-[10px] font-medium uppercase tracking-wider text-emerald-400 sm:text-[11px]">
+              <div className="mb-5 inline-flex max-w-full items-center gap-2 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-3 py-1 sm:mb-6 dark:border-emerald-500/20 dark:bg-emerald-500/5">
+                <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-emerald-500 dark:bg-emerald-400" />
+                <span className="text-[10px] font-medium uppercase tracking-wider text-emerald-700 sm:text-[11px] dark:text-emerald-400">
                   Live Trading Network Active
                 </span>
               </div>
 
               <h1 className="text-3xl font-bold leading-[1.1] tracking-tight sm:text-4xl md:text-5xl lg:text-[3.25rem]">
                 Sync Your{' '}
-                <span className="bg-gradient-to-r from-cyan-400 to-indigo-400 bg-clip-text text-transparent">
+                <span className="bg-gradient-to-r from-cyan-600 to-indigo-600 bg-clip-text text-transparent dark:from-cyan-400 dark:to-indigo-400">
                   Edge
                 </span>
               </h1>
@@ -112,10 +112,10 @@ export function LandingPage() {
 
         {/* Stats */}
         <section className="border-border bg-muted/40 border-y">
-          <div className="mx-auto grid max-w-7xl grid-cols-1 divide-y divide-white/[0.06] sm:grid-cols-3 sm:divide-x sm:divide-y-0">
+          <div className="border-border divide-border mx-auto grid max-w-7xl grid-cols-1 divide-y sm:grid-cols-3 sm:divide-x sm:divide-y-0">
             {stats.map((stat) => (
               <div key={stat.label} className="px-4 py-8 text-center sm:px-6 sm:py-10 lg:px-8">
-                <p className="text-2xl font-bold tabular-nums text-cyan-400 sm:text-3xl lg:text-4xl">
+                <p className="text-2xl font-bold tabular-nums text-cyan-600 sm:text-3xl lg:text-4xl dark:text-cyan-400">
                   {stat.value}
                 </p>
                 <p className="text-muted-foreground mt-2 text-[10px] font-medium uppercase tracking-wider sm:text-xs">

@@ -113,7 +113,7 @@ function PricingCard({ plan, index }: { plan: Plan; index: number }) {
       className={cn(
         'relative flex flex-col rounded-2xl border p-5 sm:p-6 lg:p-8',
         isPopular
-          ? 'border-indigo-500/40 bg-gradient-to-b from-indigo-500/[0.08] to-[#0a0d14] shadow-lg shadow-indigo-500/10'
+          ? 'to-card dark:to-card border-indigo-500/40 bg-gradient-to-b from-indigo-500/15 shadow-md shadow-indigo-500/10 dark:from-indigo-500/[0.08] dark:shadow-lg dark:shadow-indigo-500/10'
           : 'border-border bg-card',
       )}
     >
@@ -143,13 +143,15 @@ function PricingCard({ plan, index }: { plan: Plan; index: number }) {
       </div>
 
       {plan.trial_days > 0 ? (
-        <p className="mt-2 text-sm text-cyan-400">{plan.trial_days}-day free trial included</p>
+        <p className="mt-2 text-sm text-cyan-700 dark:text-cyan-400">
+          {plan.trial_days}-day free trial included
+        </p>
       ) : null}
 
       <ul className="mt-8 flex-1 space-y-3">
         {bullets.map((bullet) => (
           <li key={bullet} className="text-muted-foreground flex items-start gap-2.5 text-sm">
-            <Check className="mt-0.5 h-4 w-4 shrink-0 text-emerald-400" />
+            <Check className="mt-0.5 h-4 w-4 shrink-0 text-emerald-600 dark:text-emerald-400" />
             <span className="capitalize">{bullet}</span>
           </li>
         ))}
@@ -160,8 +162,8 @@ function PricingCard({ plan, index }: { plan: Plan; index: number }) {
         className={cn(
           'mt-8 w-full rounded-lg',
           isPopular
-            ? 'text-foreground bg-indigo-600 hover:bg-indigo-500'
-            : 'border-border text-foreground hover:bg-muted bg-white/[0.04]',
+            ? 'bg-indigo-600 text-white hover:bg-indigo-500'
+            : 'border-border text-foreground hover:bg-muted',
         )}
         variant={isPopular ? 'default' : 'outline'}
       >

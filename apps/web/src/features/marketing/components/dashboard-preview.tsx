@@ -32,7 +32,9 @@ function MobileNav() {
           key={item}
           className={cn(
             'shrink-0 rounded-lg px-2.5 py-1.5 text-[10px] font-medium sm:px-3 sm:text-[11px]',
-            i === 0 ? 'bg-indigo-500/15 text-indigo-300' : 'text-muted-foreground',
+            i === 0
+              ? 'bg-indigo-500/15 text-indigo-700 dark:text-indigo-300'
+              : 'text-muted-foreground',
           )}
         >
           {item}
@@ -51,7 +53,9 @@ function Sidebar() {
             key={item}
             className={cn(
               'rounded-lg px-3 py-2 text-[11px] font-medium',
-              i === 0 ? 'bg-indigo-500/15 text-indigo-300' : 'text-muted-foreground',
+              i === 0
+                ? 'bg-indigo-500/15 text-indigo-700 dark:text-indigo-300'
+                : 'text-muted-foreground',
             )}
           >
             {item}
@@ -70,7 +74,7 @@ function DashboardContent() {
           <p className="text-muted-foreground text-[9px] font-medium uppercase tracking-wider sm:text-[10px]">
             Open P&amp;L
           </p>
-          <p className="mt-1 text-lg font-semibold tabular-nums text-teal-400 sm:text-xl">
+          <p className="mt-1 text-lg font-semibold tabular-nums text-teal-600 sm:text-xl dark:text-teal-400">
             +$4,280
           </p>
         </div>
@@ -113,7 +117,9 @@ function DashboardContent() {
         </div>
         <div className="border-border bg-muted/30 rounded-xl border p-3 sm:p-4">
           <p className="text-muted-foreground text-[10px] font-medium">Risk Status</p>
-          <p className="mt-2 text-[10px] text-emerald-400 sm:text-[11px]">All limits OK</p>
+          <p className="mt-2 text-[10px] text-emerald-600 sm:text-[11px] dark:text-emerald-400">
+            All limits OK
+          </p>
           <p className="text-muted-foreground text-[10px] sm:text-[11px]">Max DD: 2.1%</p>
         </div>
       </div>
@@ -131,8 +137,8 @@ function PreviewOverlay() {
         transition={{ duration: 0.5 }}
         className="max-w-xs text-center sm:max-w-sm"
       >
-        <div className="bg-muted/50 mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full border border-white/15 shadow-lg backdrop-blur-sm sm:mb-5 sm:h-14 sm:w-14">
-          <Play className="text-foreground ml-0.5 h-4 w-4 sm:h-5 sm:w-5" fill="white" />
+        <div className="bg-muted/50 border-border mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full border shadow-lg backdrop-blur-sm sm:mb-5 sm:h-14 sm:w-14">
+          <Play className="text-foreground ml-0.5 h-4 w-4 sm:h-5 sm:w-5" fill="currentColor" />
         </div>
         <h3 className="text-foreground text-base font-semibold tracking-tight sm:text-lg md:text-xl">
           Unified Terminal Preview
@@ -155,7 +161,7 @@ export function DashboardPreview() {
         whileInView={{ opacity: 1, y: 0 }}
         viewport={{ once: true }}
         transition={{ duration: 0.6, ease: 'easeOut' }}
-        className="border-border bg-card relative overflow-hidden rounded-xl border shadow-[0_20px_60px_rgba(0,0,0,0.5),0_0_32px_rgba(34,211,238,0.06)] sm:rounded-2xl"
+        className="border-border bg-card relative overflow-hidden rounded-xl border shadow-lg sm:rounded-2xl dark:shadow-[0_20px_60px_rgba(0,0,0,0.5),0_0_32px_rgba(34,211,238,0.06)]"
       >
         <WindowChrome />
         <MobileNav />

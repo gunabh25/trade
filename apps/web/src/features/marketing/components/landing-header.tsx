@@ -30,7 +30,7 @@ export function LandingHeader({ anchorBase = '' }: { anchorBase?: string }) {
       <div className="mx-auto flex h-14 max-w-7xl items-center justify-between gap-3 px-4 sm:h-16 sm:px-6 lg:px-8">
         <Link href="/" className="flex min-w-0 items-center gap-2.5">
           <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-indigo-500/15 ring-1 ring-indigo-500/30">
-            <Layers className="h-4 w-4 text-indigo-300" />
+            <Layers className="h-4 w-4 text-indigo-600 dark:text-indigo-300" />
           </div>
           <span className="text-foreground truncate text-sm font-semibold tracking-tight">
             TradeFlow AI
