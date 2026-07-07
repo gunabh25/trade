@@ -57,6 +57,16 @@ function ChartSectionsSkeleton() {
   );
 }
 
+function hasActivityButNoClosedTrades(
+  data: NonNullable<ReturnType<typeof useAnalyticsData>['data']>,
+): boolean {
+  const hasTradeActivity = data.metrics.total_trades > 0;
+  const hasClosedTradeOutcomes =
+    data.metrics.win_count > 0 || data.metrics.loss_count > 0 || data.metrics.breakeven_count > 0;
+
+  return hasTradeActivity && !hasClosedTradeOutcomes;
+}
+
 export function AnalyticsPage() {
   const analyticsData = useAnalyticsData();
   const { data, loading, error, refetch } = analyticsData;
@@ -81,6 +91,8 @@ export function AnalyticsPage() {
       </div>
     );
   }
+
+  const showActivityNotice = hasActivityButNoClosedTrades(data);
 
   return (
     <FadeInStagger className="space-y-6 p-4 sm:p-6">
@@ -115,6 +127,18 @@ export function AnalyticsPage() {
       <FadeInItem>
         <AnalyticsFilters data={analyticsData} />
       </FadeInItem>
+
+      {showActivityNotice ? (
+        <FadeInItem>
+          <div className="border-border/60 bg-muted/40 rounded-xl border px-4 py-3">
+            <p className="text-sm font-medium">You have fills, but no closed trades yet.</p>
+            <p className="text-muted-foreground mt-1 text-sm">
+              Filled orders count as activity, but most analytics need closed trades with realized
+              P&amp;L before win rate, profit factor, and other performance charts can populate.
+            </p>
+          </div>
+        </FadeInItem>
+      ) : null}
 
       <FadeInItem>
         <AnalyticsMetricsGrid metrics={data.metrics} />
