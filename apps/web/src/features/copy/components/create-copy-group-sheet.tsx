@@ -31,6 +31,7 @@ interface FollowerDraft {
   accountId: string;
   copyMode: string;
   sizingValue: string;
+  enabled: boolean;
 }
 
 interface CreateCopyGroupSheetProps {
@@ -72,7 +73,14 @@ export function CreateCopyGroupSheet({
         setName(group?.name ?? 'My copy group');
         setMode(group?.mode === 'live' ? 'live' : 'sim');
         setLeaderId(group?.leader_account_id ?? items[0]?.id ?? '');
-        setFollowers([]);
+        setFollowers(
+          group?.followers.map((follower) => ({
+            accountId: follower.follower_account_id,
+            copyMode: follower.copy_mode,
+            sizingValue: String(follower.sizing_value),
+            enabled: follower.enabled,
+          })) ?? [],
+        );
         setStartAfterCreate(true);
       })
       .catch(() => {
@@ -90,7 +98,12 @@ export function CreateCopyGroupSheet({
     if (!candidate) return;
     setFollowers((prev) => [
       ...prev,
-      { accountId: candidate.id, copyMode: 'fixed_quantity', sizingValue: '1' },
+      {
+        accountId: candidate.id,
+        copyMode: 'fixed_quantity',
+        sizingValue: '1',
+        enabled: true,
+      },
     ]);
   }
 
@@ -108,16 +121,30 @@ export function CreateCopyGroupSheet({
       setError('Select a leader account.');
       return;
     }
-    if (!isEditing && followers.length === 0) {
+    if (followers.length === 0) {
       setError('Add at least one follower account.');
       return;
     }
 
-    const invalidSizing =
-      !isEditing &&
-      followers.some((follower) => !follower.sizingValue || Number(follower.sizingValue) <= 0);
+    const invalidSizing = followers.some(
+      (follower) => !follower.sizingValue || Number(follower.sizingValue) <= 0,
+    );
     if (invalidSizing) {
       setError('Follower sizing must be greater than zero.');
+      return;
+    }
+
+    const duplicateFollower = followers.some(
+      (follower, index) =>
+        followers.findIndex((other) => other.accountId === follower.accountId) !== index,
+    );
+    if (duplicateFollower) {
+      setError('Each follower account can only be added once.');
+      return;
+    }
+
+    if (followers.some((follower) => follower.accountId === leaderId)) {
+      setError('Leader account cannot also be a follower.');
       return;
     }
 
@@ -129,6 +156,12 @@ export function CreateCopyGroupSheet({
           name: name.trim(),
           leader_account_id: leaderId,
           mode,
+          followers: followers.map((follower) => ({
+            follower_account_id: follower.accountId,
+            copy_mode: follower.copyMode,
+            sizing_value: Number(follower.sizingValue),
+            enabled: follower.enabled,
+          })),
         });
         onCreated();
         onOpenChange(false);
@@ -156,7 +189,13 @@ export function CreateCopyGroupSheet({
       onCreated();
       onOpenChange(false);
     } catch (err) {
-      setError(err instanceof ApiClientError ? err.message : 'Failed to create copy group');
+      setError(
+        err instanceof ApiClientError
+          ? err.message
+          : isEditing
+            ? 'Failed to update copy group'
+            : 'Failed to create copy group',
+      );
     } finally {
       setSaving(false);
     }
@@ -220,6 +259,11 @@ export function CreateCopyGroupSheet({
                   </button>
                 ))}
               </div>
+              {group?.copying_enabled ? (
+                <p className="text-muted-foreground text-xs">
+                  Stop copying first if you need to change the leader or mode.
+                </p>
+              ) : null}
             </div>
 
             <div className="space-y-2">
@@ -230,7 +274,11 @@ export function CreateCopyGroupSheet({
                 id="leader-account"
                 value={leaderId}
                 onChange={(e) => {
-                  setLeaderId(e.target.value);
+                  const nextLeaderId = e.target.value;
+                  setLeaderId(nextLeaderId);
+                  setFollowers((prev) =>
+                    prev.filter((follower) => follower.accountId !== nextLeaderId),
+                  );
                 }}
                 className="border-input bg-background w-full rounded-md border px-3 py-2 text-sm"
               >
@@ -245,26 +293,19 @@ export function CreateCopyGroupSheet({
             <div className="space-y-3">
               <div className="flex items-center justify-between">
                 <p className="text-sm font-medium">Followers</p>
-                {!isEditing ? (
-                  <Button
-                    type="button"
-                    size="sm"
-                    variant="outline"
-                    onClick={addFollowerRow}
-                    disabled={followers.length >= followerOptions.length}
-                  >
-                    <Plus className="mr-1 h-3.5 w-3.5" />
-                    Add follower
-                  </Button>
-                ) : null}
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  onClick={addFollowerRow}
+                  disabled={followers.length >= followerOptions.length}
+                >
+                  <Plus className="mr-1 h-3.5 w-3.5" />
+                  Add follower
+                </Button>
               </div>
 
-              {isEditing ? (
-                <p className="text-muted-foreground text-xs">
-                  Editing currently updates the group name, leader account, and mode. Follower
-                  changes can still be added through the existing group flow.
-                </p>
-              ) : followers.length === 0 ? (
+              {followers.length === 0 ? (
                 <p className="text-muted-foreground text-xs">
                   Add follower accounts and how their order size should be calculated.
                 </p>
@@ -324,6 +365,19 @@ export function CreateCopyGroupSheet({
                         placeholder="Size"
                       />
                     </div>
+                    {isEditing ? (
+                      <label className="flex items-center gap-2 text-xs">
+                        <input
+                          type="checkbox"
+                          checked={follower.enabled}
+                          onChange={(e) => {
+                            updateFollower(index, { enabled: e.target.checked });
+                          }}
+                          className="rounded border-zinc-600"
+                        />
+                        Enabled for copying
+                      </label>
+                    ) : null}
                   </div>
                 ))
               )}

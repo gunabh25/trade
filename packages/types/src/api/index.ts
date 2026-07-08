@@ -117,6 +117,7 @@ export type {
   CreateCopyGroupRequest,
   ExecutionLog,
   SimulateLeaderEventRequest,
+  UpdateCopyFollowerRequest,
   UpdateCopyGroupRequest,
 } from './copy';
 export type {

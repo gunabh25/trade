@@ -13,6 +13,7 @@ from sqlalchemy.orm import selectinload
 from tradeflow.core.errors import ConflictError, NotFoundError
 from tradeflow.core.logging import get_logger
 from tradeflow.db.enums import (
+    CopyFollowerStatus,
     CopyGroupStatus,
     OrderSide,
     TradingAccountRole,
@@ -35,6 +36,7 @@ from tradeflow.features.copy_trading.schemas import (
     ExecutionLogResponse,
     SimulateLeaderEventRequest,
     UpdateCopyGroupRequest,
+    UpdateFollowerRequest,
 )
 
 if TYPE_CHECKING:
@@ -139,13 +141,34 @@ class CopyTradingService:
         if structural_change and group.copying_enabled:
             raise ConflictError("Stop copying before changing the leader or mode")
 
-        follower_ids = {
-            follower.follower_account_id
-            for follower in group.followers
-            if follower.deleted_at is None
-        }
-        if payload.leader_account_id in follower_ids:
-            raise ConflictError("Leader account cannot also be a follower in the same group")
+        desired_followers = payload.followers
+        if desired_followers is not None:
+            desired_ids = [item.follower_account_id for item in desired_followers]
+            if len(desired_ids) != len(set(desired_ids)):
+                raise ConflictError("Duplicate follower accounts are not allowed")
+            if payload.leader_account_id in desired_ids:
+                raise ConflictError(
+                    "Leader account cannot also be a follower in the same group",
+                )
+            if group.copying_enabled and not desired_followers:
+                raise ConflictError("Stop copying before removing all followers")
+            await self._sync_followers(
+                db,
+                user_id,
+                group,
+                desired_followers,
+                leader_account_id=payload.leader_account_id,
+            )
+        else:
+            follower_ids = {
+                follower.follower_account_id
+                for follower in group.followers
+                if follower.deleted_at is None
+            }
+            if payload.leader_account_id in follower_ids:
+                raise ConflictError(
+                    "Leader account cannot also be a follower in the same group",
+                )
 
         group.name = payload.name
         group.leader_account_id = payload.leader_account_id
@@ -155,6 +178,60 @@ class CopyTradingService:
         logger.info("copy_group_updated", copy_group_id=str(group.id))
         return self._to_group_response(group)
 
+    async def _sync_followers(
+        self,
+        db: AsyncSession,
+        user_id: UUID,
+        group: CopyGroup,
+        desired_followers: list[UpdateFollowerRequest],
+        *,
+        leader_account_id: UUID,
+    ) -> None:
+        now = datetime.now(tz=UTC)
+        by_account: dict[UUID, CopyGroupFollower] = {
+            follower.follower_account_id: follower for follower in group.followers
+        }
+        keep_ids = {item.follower_account_id for item in desired_followers}
+
+        for item in desired_followers:
+            account = await self._get_account(db, user_id, item.follower_account_id)
+            if account.id == leader_account_id:
+                raise ConflictError(
+                    "Leader account cannot also be a follower in the same group",
+                )
+            account.account_role = TradingAccountRole.FOLLOWER
+
+            existing = by_account.get(item.follower_account_id)
+            if existing is None:
+                db.add(
+                    CopyGroupFollower(
+                        copy_group_id=group.id,
+                        follower_account_id=item.follower_account_id,
+                        copy_mode=item.copy_mode,
+                        sizing_value=item.sizing_value,
+                        enabled=item.enabled,
+                        status=CopyFollowerStatus.ACTIVE,
+                    ),
+                )
+                continue
+
+            existing.deleted_at = None
+            existing.copy_mode = item.copy_mode
+            existing.sizing_value = item.sizing_value
+            existing.enabled = item.enabled
+            if existing.status != CopyFollowerStatus.LOCKED:
+                existing.status = (
+                    CopyFollowerStatus.ACTIVE if item.enabled else CopyFollowerStatus.PAUSED
+                )
+
+        for follower in group.followers:
+            if follower.follower_account_id in keep_ids:
+                continue
+            if follower.deleted_at is None:
+                follower.deleted_at = now
+                follower.enabled = False
+                follower.status = CopyFollowerStatus.PAUSED
+
     async def start_copying(
         self,
         db: AsyncSession,
@@ -162,7 +239,8 @@ class CopyTradingService:
         group_id: UUID,
     ) -> CopyGroupResponse:
         group = await self._get_group(db, user_id, group_id, load_followers=True)
-        if not group.followers:
+        active_followers = [f for f in group.followers if f.deleted_at is None]
+        if not active_followers:
             raise ConflictError("Add at least one follower before starting")
 
         group.status = CopyGroupStatus.ACTIVE
