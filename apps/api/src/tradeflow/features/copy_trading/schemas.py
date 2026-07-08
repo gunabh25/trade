@@ -26,6 +26,12 @@ class CreateCopyGroupRequest(BaseModel):
     mode: CopyGroupMode = CopyGroupMode.LIVE
 
 
+class UpdateCopyGroupRequest(BaseModel):
+    name: str = Field(min_length=1, max_length=100)
+    leader_account_id: UUID
+    mode: CopyGroupMode = CopyGroupMode.LIVE
+
+
 class AddFollowerRequest(BaseModel):
     follower_account_id: UUID
     copy_mode: CopyMode

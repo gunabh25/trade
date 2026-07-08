@@ -19,6 +19,7 @@ from tradeflow.features.copy_trading.schemas import (
     CreateCopyGroupRequest,
     ExecutionLogResponse,
     SimulateLeaderEventRequest,
+    UpdateCopyGroupRequest,
 )
 from tradeflow.features.copy_trading.service import CopyTradingService
 
@@ -73,6 +74,24 @@ async def get_copy_group(
 ) -> SuccessResponse[CopyGroupResponse]:
     group = await copy_service.get_group(db, user.id, group_id)
     return success(group, request_id=getattr(request.state, "request_id", None))
+
+
+@router.put(
+    "/groups/{group_id}",
+    response_model=SuccessResponse[CopyGroupResponse],
+    summary="Update a copy group",
+)
+@inject
+async def update_copy_group(
+    request: Request,
+    group_id: UUID,
+    payload: UpdateCopyGroupRequest,
+    db: DbSession,
+    user: CurrentUser,
+    copy_service: CopyTradingService = Depends(Provide[Container.copy_trading_service]),
+) -> SuccessResponse[CopyGroupResponse]:
+    result = await copy_service.update_group(db, user.id, group_id, payload)
+    return success(result, request_id=getattr(request.state, "request_id", None))
 
 
 @router.post(

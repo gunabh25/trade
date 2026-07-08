@@ -1,6 +1,6 @@
 'use client';
 
-import { Copy, History, Pause, Play, Plus, Trash2, Zap } from 'lucide-react';
+import { Copy, History, Pause, Pencil, Play, Plus, Trash2, Zap } from 'lucide-react';
 import Link from 'next/link';
 import { useCallback, useEffect, useState } from 'react';
 
@@ -35,6 +35,7 @@ export function CopyTradingPageContent({ autoOpenCreate = false }: CopyTradingPa
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [createOpen, setCreateOpen] = useState(autoOpenCreate);
+  const [editingGroup, setEditingGroup] = useState<CopyGroup | null>(null);
   const [actionId, setActionId] = useState<string | null>(null);
   const [simulateGroup, setSimulateGroup] = useState<CopyGroup | null>(null);
   const [detailsGroupId, setDetailsGroupId] = useState<string | null>(null);
@@ -88,6 +89,9 @@ export function CopyTradingPageContent({ autoOpenCreate = false }: CopyTradingPa
       await copyApi.deleteCopyGroup(group.id);
       if (detailsGroupId === group.id) {
         setDetailsGroupId(null);
+      }
+      if (editingGroup?.id === group.id) {
+        setEditingGroup(null);
       }
       await load();
     } catch (err) {
@@ -234,6 +238,16 @@ export function CopyTradingPageContent({ autoOpenCreate = false }: CopyTradingPa
                       size="sm"
                       variant="outline"
                       onClick={() => {
+                        setEditingGroup(group);
+                      }}
+                    >
+                      <Pencil className="mr-1 h-3.5 w-3.5" />
+                      Edit
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => {
                         setSimulateGroup(group);
                       }}
                     >
@@ -310,8 +324,21 @@ export function CopyTradingPageContent({ autoOpenCreate = false }: CopyTradingPa
 
       <CreateCopyGroupSheet
         open={createOpen}
-        onOpenChange={setCreateOpen}
+        onOpenChange={(open) => {
+          setCreateOpen(open);
+        }}
         onCreated={() => void load()}
+      />
+
+      <CreateCopyGroupSheet
+        open={editingGroup != null}
+        onOpenChange={(open) => {
+          if (!open) {
+            setEditingGroup(null);
+          }
+        }}
+        onCreated={() => void load()}
+        group={editingGroup}
       />
 
       <SimulateCopyEventSheet

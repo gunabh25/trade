@@ -34,6 +34,7 @@ from tradeflow.features.copy_trading.schemas import (
     CreateCopyGroupRequest,
     ExecutionLogResponse,
     SimulateLeaderEventRequest,
+    UpdateCopyGroupRequest,
 )
 
 if TYPE_CHECKING:
@@ -119,6 +120,40 @@ class CopyTradingService:
         await db.flush()
         await db.refresh(config)
         return CopyGroupFollowerResponse.model_validate(config)
+
+    async def update_group(
+        self,
+        db: AsyncSession,
+        user_id: UUID,
+        group_id: UUID,
+        payload: UpdateCopyGroupRequest,
+    ) -> CopyGroupResponse:
+        group = await self._get_group(db, user_id, group_id, load_followers=True)
+        leader = await self._get_account(db, user_id, payload.leader_account_id)
+        if leader.account_role != TradingAccountRole.LEADER:
+            leader.account_role = TradingAccountRole.LEADER
+
+        structural_change = (
+            group.leader_account_id != payload.leader_account_id or group.mode != payload.mode
+        )
+        if structural_change and group.copying_enabled:
+            raise ConflictError("Stop copying before changing the leader or mode")
+
+        follower_ids = {
+            follower.follower_account_id
+            for follower in group.followers
+            if follower.deleted_at is None
+        }
+        if payload.leader_account_id in follower_ids:
+            raise ConflictError("Leader account cannot also be a follower in the same group")
+
+        group.name = payload.name
+        group.leader_account_id = payload.leader_account_id
+        group.mode = payload.mode
+        await db.flush()
+        await db.refresh(group, ["followers"])
+        logger.info("copy_group_updated", copy_group_id=str(group.id))
+        return self._to_group_response(group)
 
     async def start_copying(
         self,

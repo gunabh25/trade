@@ -3,11 +3,16 @@
 import { Loader2, Plus, Trash2 } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 
-import type { TradingAccount } from '@tradeflow/types/api';
+import type { CopyGroup, TradingAccount } from '@tradeflow/types/api';
 
 import { Button, Input, Sheet, SheetContent, SheetHeader, SheetTitle, cn } from '@tradeflow/ui';
 
-import { addCopyFollower, createCopyGroup, startCopyGroup } from '@/features/copy/api/copy-api';
+import {
+  addCopyFollower,
+  createCopyGroup,
+  startCopyGroup,
+  updateCopyGroup,
+} from '@/features/copy/api/copy-api';
 import { listTradingAccounts } from '@/features/broker/api/broker-api';
 import { ApiClientError } from '@/lib/errors';
 
@@ -32,9 +37,15 @@ interface CreateCopyGroupSheetProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onCreated: () => void;
+  group?: CopyGroup | null;
 }
 
-export function CreateCopyGroupSheet({ open, onOpenChange, onCreated }: CreateCopyGroupSheetProps) {
+export function CreateCopyGroupSheet({
+  open,
+  onOpenChange,
+  onCreated,
+  group,
+}: CreateCopyGroupSheetProps) {
   const [accounts, setAccounts] = useState<TradingAccount[]>([]);
   const [loadingAccounts, setLoadingAccounts] = useState(false);
   const [name, setName] = useState('My copy group');
@@ -44,6 +55,7 @@ export function CreateCopyGroupSheet({ open, onOpenChange, onCreated }: CreateCo
   const [startAfterCreate, setStartAfterCreate] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const isEditing = group != null;
 
   const followerOptions = useMemo(
     () => accounts.filter((account) => account.id !== leaderId),
@@ -57,8 +69,11 @@ export function CreateCopyGroupSheet({ open, onOpenChange, onCreated }: CreateCo
     void listTradingAccounts()
       .then((items) => {
         setAccounts(items);
-        setLeaderId(items[0]?.id ?? '');
+        setName(group?.name ?? 'My copy group');
+        setMode(group?.mode === 'live' ? 'live' : 'sim');
+        setLeaderId(group?.leader_account_id ?? items[0]?.id ?? '');
         setFollowers([]);
+        setStartAfterCreate(true);
       })
       .catch(() => {
         setError('Failed to load trading accounts');
@@ -66,7 +81,7 @@ export function CreateCopyGroupSheet({ open, onOpenChange, onCreated }: CreateCo
       .finally(() => {
         setLoadingAccounts(false);
       });
-  }, [open]);
+  }, [open, group]);
 
   function addFollowerRow() {
     const candidate = followerOptions.find(
@@ -93,14 +108,14 @@ export function CreateCopyGroupSheet({ open, onOpenChange, onCreated }: CreateCo
       setError('Select a leader account.');
       return;
     }
-    if (followers.length === 0) {
+    if (!isEditing && followers.length === 0) {
       setError('Add at least one follower account.');
       return;
     }
 
-    const invalidSizing = followers.some(
-      (follower) => !follower.sizingValue || Number(follower.sizingValue) <= 0,
-    );
+    const invalidSizing =
+      !isEditing &&
+      followers.some((follower) => !follower.sizingValue || Number(follower.sizingValue) <= 0);
     if (invalidSizing) {
       setError('Follower sizing must be greater than zero.');
       return;
@@ -109,14 +124,25 @@ export function CreateCopyGroupSheet({ open, onOpenChange, onCreated }: CreateCo
     setSaving(true);
     setError(null);
     try {
-      const group = await createCopyGroup({
+      if (group) {
+        await updateCopyGroup(group.id, {
+          name: name.trim(),
+          leader_account_id: leaderId,
+          mode,
+        });
+        onCreated();
+        onOpenChange(false);
+        return;
+      }
+
+      const createdGroup = await createCopyGroup({
         name: name.trim(),
         leader_account_id: leaderId,
         mode,
       });
 
       for (const follower of followers) {
-        await addCopyFollower(group.id, {
+        await addCopyFollower(createdGroup.id, {
           follower_account_id: follower.accountId,
           copy_mode: follower.copyMode,
           sizing_value: Number(follower.sizingValue),
@@ -124,7 +150,7 @@ export function CreateCopyGroupSheet({ open, onOpenChange, onCreated }: CreateCo
       }
 
       if (startAfterCreate) {
-        await startCopyGroup(group.id);
+        await startCopyGroup(createdGroup.id);
       }
 
       onCreated();
@@ -140,7 +166,7 @@ export function CreateCopyGroupSheet({ open, onOpenChange, onCreated }: CreateCo
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent side="right" className="w-full overflow-y-auto sm:max-w-lg">
         <SheetHeader className="text-left">
-          <SheetTitle>Create copy group</SheetTitle>
+          <SheetTitle>{isEditing ? 'Edit copy group' : 'Create copy group'}</SheetTitle>
         </SheetHeader>
 
         {loadingAccounts ? (
@@ -219,19 +245,26 @@ export function CreateCopyGroupSheet({ open, onOpenChange, onCreated }: CreateCo
             <div className="space-y-3">
               <div className="flex items-center justify-between">
                 <p className="text-sm font-medium">Followers</p>
-                <Button
-                  type="button"
-                  size="sm"
-                  variant="outline"
-                  onClick={addFollowerRow}
-                  disabled={followers.length >= followerOptions.length}
-                >
-                  <Plus className="mr-1 h-3.5 w-3.5" />
-                  Add follower
-                </Button>
+                {!isEditing ? (
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    onClick={addFollowerRow}
+                    disabled={followers.length >= followerOptions.length}
+                  >
+                    <Plus className="mr-1 h-3.5 w-3.5" />
+                    Add follower
+                  </Button>
+                ) : null}
               </div>
 
-              {followers.length === 0 ? (
+              {isEditing ? (
+                <p className="text-muted-foreground text-xs">
+                  Editing currently updates the group name, leader account, and mode. Follower
+                  changes can still be added through the existing group flow.
+                </p>
+              ) : followers.length === 0 ? (
                 <p className="text-muted-foreground text-xs">
                   Add follower accounts and how their order size should be calculated.
                 </p>
@@ -296,17 +329,19 @@ export function CreateCopyGroupSheet({ open, onOpenChange, onCreated }: CreateCo
               )}
             </div>
 
-            <label className="flex items-center gap-2 text-sm">
-              <input
-                type="checkbox"
-                checked={startAfterCreate}
-                onChange={(e) => {
-                  setStartAfterCreate(e.target.checked);
-                }}
-                className="rounded border-zinc-600"
-              />
-              Start copying immediately
-            </label>
+            {!isEditing ? (
+              <label className="flex items-center gap-2 text-sm">
+                <input
+                  type="checkbox"
+                  checked={startAfterCreate}
+                  onChange={(e) => {
+                    setStartAfterCreate(e.target.checked);
+                  }}
+                  className="rounded border-zinc-600"
+                />
+                Start copying immediately
+              </label>
+            ) : null}
 
             {error ? <p className="text-sm text-red-400">{error}</p> : null}
 
@@ -314,8 +349,10 @@ export function CreateCopyGroupSheet({ open, onOpenChange, onCreated }: CreateCo
               {saving ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Creating…
+                  {isEditing ? 'Saving…' : 'Creating…'}
                 </>
+              ) : isEditing ? (
+                'Save changes'
               ) : (
                 'Create copy group'
               )}

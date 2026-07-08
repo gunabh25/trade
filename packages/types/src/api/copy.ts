@@ -59,6 +59,12 @@ export interface CreateCopyGroupRequest {
   mode?: string;
 }
 
+export interface UpdateCopyGroupRequest {
+  name: string;
+  leader_account_id: string;
+  mode?: string;
+}
+
 export interface AddCopyFollowerRequest {
   follower_account_id: string;
   copy_mode: string;

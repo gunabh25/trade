@@ -7,6 +7,7 @@ import type {
   CreateCopyGroupRequest,
   ExecutionLog,
   SimulateLeaderEventRequest,
+  UpdateCopyGroupRequest,
 } from '@tradeflow/types/api';
 
 import { apiRequest } from '@/lib/api/client';
@@ -84,6 +85,18 @@ export async function getCopyGroup(groupId: string): Promise<CopyGroup> {
 export async function createCopyGroup(payload: CreateCopyGroupRequest): Promise<CopyGroup> {
   const response = await apiRequest<Record<string, unknown>>('/copy/groups', {
     method: 'POST',
+    body: payload,
+    timeoutMs: 30_000,
+  });
+  return normalizeGroup(response.data);
+}
+
+export async function updateCopyGroup(
+  groupId: string,
+  payload: UpdateCopyGroupRequest,
+): Promise<CopyGroup> {
+  const response = await apiRequest<Record<string, unknown>>(`/copy/groups/${groupId}`, {
+    method: 'PUT',
     body: payload,
     timeoutMs: 30_000,
   });

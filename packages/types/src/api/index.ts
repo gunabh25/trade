@@ -117,6 +117,7 @@ export type {
   CreateCopyGroupRequest,
   ExecutionLog,
   SimulateLeaderEventRequest,
+  UpdateCopyGroupRequest,
 } from './copy';
 export type {
   BulkUpdatePreferencesRequest,
