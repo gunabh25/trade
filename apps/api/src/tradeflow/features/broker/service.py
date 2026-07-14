@@ -143,12 +143,32 @@ class BrokerConnectionService:
         user_id: UUID,
         connection_id: UUID,
     ) -> BrokerHealthResponse:
+        from tradeflow.core.errors import ValidationError
+        from tradeflow.integrations.brokers.exceptions import BrokerAuthError, NormalizedBrokerError
+
         connection = await self._get_connection(db, user_id, connection_id)
-        health = await self._sessions.connect(
-            connection.id,
-            BrokerType(connection.broker),
-            connection.credentials_encrypted,
-        )
+        try:
+            health = await self._sessions.connect(
+                connection.id,
+                BrokerType(connection.broker),
+                connection.credentials_encrypted,
+            )
+        except BrokerAuthError as exc:
+            connection.status = ConnectionStatus.ERROR
+            connection.last_error = str(exc)
+            await db.flush()
+            raise ValidationError(str(exc)) from exc
+        except NormalizedBrokerError as exc:
+            connection.status = ConnectionStatus.ERROR
+            connection.last_error = str(exc)
+            await db.flush()
+            raise ValidationError(str(exc)) from exc
+        except Exception as exc:
+            connection.status = ConnectionStatus.ERROR
+            connection.last_error = str(exc)
+            await db.flush()
+            raise
+
         connection.status = self._sessions.map_status(health)
         connection.last_connected_at = datetime.now(tz=UTC)
         connection.last_error = health.last_error

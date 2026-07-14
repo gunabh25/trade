@@ -41,20 +41,37 @@ export const ONBOARDING_BROKERS: BrokerFormConfig[] = [
   {
     id: 'tradovate',
     label: 'Tradovate',
-    description: 'Futures broker — use demo credentials for sandbox testing.',
+    description:
+      'Futures broker — needs your Tradovate username/password and API key (cid + sec). Use demo credentials when the demo checkbox is on.',
     fields: [
       { key: 'username', label: 'Username', required: true },
       { key: 'password', label: 'Password', type: 'password', required: true },
-      { key: 'app_id', label: 'App ID', defaultValue: 'TradeFlow' },
-      { key: 'cid', label: 'Client ID (cid)', defaultValue: '0' },
-      { key: 'sec', label: 'App secret (sec)', type: 'password' },
+      {
+        key: 'app_id',
+        label: 'App ID (must match Tradovate API key name)',
+        defaultValue: 'TradeFlow',
+        required: true,
+      },
+      {
+        key: 'cid',
+        label: 'Client ID (cid)',
+        placeholder: 'From Tradovate API key',
+        required: true,
+      },
+      {
+        key: 'sec',
+        label: 'App secret (sec)',
+        type: 'password',
+        placeholder: 'From Tradovate API key',
+        required: true,
+      },
       { key: 'demo', label: 'Use demo environment', type: 'checkbox', defaultValue: 'true' },
     ],
     buildCredentials: (values) => ({
       username: values.username,
       password: values.password,
       app_id: values.app_id ?? 'TradeFlow',
-      cid: Number(values.cid ?? 0),
+      cid: Number(values.cid),
       sec: values.sec ?? '',
       demo: values.demo === 'true',
     }),

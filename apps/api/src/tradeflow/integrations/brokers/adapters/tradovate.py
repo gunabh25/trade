@@ -5,6 +5,7 @@ from __future__ import annotations
 from datetime import UTC, datetime, timedelta
 from decimal import Decimal
 from typing import Any
+from uuid import uuid4
 
 from tradeflow.integrations.brokers.adapters.rest_base import RestBrokerAdapter
 from tradeflow.integrations.brokers.capabilities import BrokerCapabilities
@@ -25,13 +26,18 @@ from tradeflow.integrations.brokers.types import (
     PlaceOrderRequest,
 )
 
+DEMO_REST_URL = "https://demo.tradovateapi.com/v1"
+LIVE_REST_URL = "https://live.tradovateapi.com/v1"
+DEMO_WS_URL = "wss://demo.tradovateapi.com/v1/websocket"
+LIVE_WS_URL = "wss://live.tradovateapi.com/v1/websocket"
+
 
 class TradovateBrokerAdapter(RestBrokerAdapter):
     """Tradovate API — https://api.tradovate.com/"""
 
-    required_credential_keys = ("username", "password")
-    default_base_url = "https://live.tradovateapi.com/v1"
-    websocket_url = "wss://live.tradovateapi.com/v1/websocket"
+    required_credential_keys = ("username", "password", "cid", "sec")
+    default_base_url = LIVE_REST_URL
+    websocket_url: str | None = None
 
     @property
     def broker_name(self) -> str:
@@ -49,9 +55,16 @@ class TradovateBrokerAdapter(RestBrokerAdapter):
             supported_asset_classes=("futures",),
         )
 
+    def _is_demo(self, credentials: BrokerCredentials) -> bool:
+        return bool(credentials.data.get("demo"))
+
+    def _rest_base_url(self, credentials: BrokerCredentials) -> str:
+        return DEMO_REST_URL if self._is_demo(credentials) else LIVE_REST_URL
+
+    def _ws_url(self, credentials: BrokerCredentials) -> str:
+        return DEMO_WS_URL if self._is_demo(credentials) else LIVE_WS_URL
+
     def _build_http_client(self, credentials: BrokerCredentials, base_url: str) -> BrokerHttpClient:
-        if credentials.data.get("demo"):
-            base_url = "https://demo.tradovateapi.com/v1"
         pool = BrokerHttpPool(base_url=base_url)
         limiter = TokenBucketRateLimiter(rate_per_second=self.capabilities.max_orders_per_second)
         return BrokerHttpClient(
@@ -62,23 +75,60 @@ class TradovateBrokerAdapter(RestBrokerAdapter):
         )
 
     async def _connect_impl(self, credentials: BrokerCredentials) -> None:
-        await super()._connect_impl(credentials)
+        missing = [k for k in self.required_credential_keys if not credentials.data.get(k)]
+        if missing:
+            msg = (
+                f"Missing Tradovate credentials: {', '.join(missing)}. "
+                "Create an API key in Tradovate (cid + sec) and use matching username/password."
+            )
+            raise BrokerAuthError(msg)
+
+        cid = credentials.data.get("cid")
+        if cid in (0, "0"):
+            raise BrokerAuthError(
+                "Tradovate Client ID (cid) cannot be 0. "
+                "Use the numeric cid from your Tradovate API key.",
+            )
+
+        base_url = self._rest_base_url(credentials)
+        self._pool = BrokerHttpPool(base_url=base_url)
+        self._http = self._build_http_client(credentials, base_url)
+        self._account_id = credentials.data.get("account_id")
+        # Authenticate over REST first. Do not open websocket pre-auth —
+        # Tradovate WS requires an authorize message after REST login.
         await self._authenticate(credentials)
+        self.websocket_url = self._ws_url(credentials)
 
     async def _authenticate(self, credentials: BrokerCredentials) -> None:
+        device_id = str(credentials.data.get("device_id") or uuid4())
         body = {
             "name": credentials.data["username"],
             "password": credentials.data["password"],
-            "appId": credentials.data.get("app_id", "TradeFlow"),
-            "appVersion": credentials.data.get("app_version", "1.0"),
-            "deviceId": credentials.data.get("device_id", "tradeflow-server"),
-            "cid": credentials.data.get("cid", 0),
-            "sec": credentials.data.get("sec", ""),
+            "appId": credentials.data.get("app_id") or "TradeFlow",
+            "appVersion": credentials.data.get("app_version") or "1.0",
+            "deviceId": device_id,
+            "cid": int(credentials.data["cid"]),
+            "sec": str(credentials.data["sec"]),
         }
         data = await self._http_client().post("/auth/accesstokenrequest", json_body=body)
+        if not isinstance(data, dict):
+            raise BrokerAuthError("Tradovate authentication failed — unexpected response")
+
+        # Soft failures often return HTTP 200 with errorText / p-ticket.
+        error_text = data.get("errorText") or data.get("error")
+        if error_text:
+            raise BrokerAuthError(f"Tradovate authentication failed: {error_text}")
+        if data.get("p-ticket") and not data.get("accessToken"):
+            raise BrokerAuthError(
+                "Tradovate temporarily rate-limited this login. Wait a few seconds and try again.",
+            )
+
         token = data.get("accessToken")
         if not token:
-            raise BrokerAuthError("Tradovate authentication failed — no access token returned")
+            raise BrokerAuthError(
+                "Tradovate authentication failed — no access token returned. "
+                "Check username/password, API key (cid/sec), appId, and demo vs live environment.",
+            )
         self._access_token = str(token)  # type: ignore[attr-defined]
         expiration = data.get("expirationTime")
         self._token_expires_at = (  # type: ignore[attr-defined]
@@ -95,7 +145,10 @@ class TradovateBrokerAdapter(RestBrokerAdapter):
             "/auth/renewaccesstoken",
             json_body={},
         )
-        token = data.get("accessToken")
+        if isinstance(data, dict) and data.get("errorText"):
+            await self._authenticate(self._credentials)
+            return
+        token = data.get("accessToken") if isinstance(data, dict) else None
         if not token:
             await self._authenticate(self._credentials)
             return
